@@ -7,30 +7,14 @@ import { UserData } from '@/lib/types';
 import { Heart, ArrowLeft, Wind, Target, Volume2, Lock, Crown } from 'lucide-react';
 import Link from 'next/link';
 
-const motivationalPhrases = [
-  "Você é mais forte do que imagina.",
-  "Esta vontade vai passar. Respire fundo.",
-  "Cada segundo que você resiste é uma vitória.",
-  "Você já chegou tão longe. Continue!",
-  "Seu futuro eu agradece por esta escolha.",
-  "A fissura é temporária. Sua força é permanente.",
-  "Você não precisa disso. Você é completo.",
-  "Respire. Você está no controle.",
-];
-
 export default function SOSPage() {
   const router = useRouter();
-  
-  // TODOS OS HOOKS NO TOPO - SEMPRE NA MESMA ORDEM
   const [userData, setUserData] = useState<UserData | null>(null);
   const [mounted, setMounted] = useState(false);
   const [activeExercise, setActiveExercise] = useState<'breathing' | 'focus' | 'calm' | null>(null);
   const [breathingPhase, setBreathingPhase] = useState<'inhale' | 'hold' | 'exhale'>('inhale');
   const [breathingCount, setBreathingCount] = useState(4);
   const [focusTimer, setFocusTimer] = useState(60);
-  const [currentPhraseIndex, setCurrentPhraseIndex] = useState(() =>
-    Math.floor(Math.random() * motivationalPhrases.length)
-  );
 
   useEffect(() => {
     setMounted(true);
@@ -80,7 +64,6 @@ export default function SOSPage() {
     }
   }, [activeExercise, focusTimer]);
 
-  // AGORA SIM PODEMOS FAZER RETURNS CONDICIONAIS
   if (!mounted || !userData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
@@ -90,7 +73,19 @@ export default function SOSPage() {
   }
 
   const isPremium = userData.isPremium;
-  const currentPhrase = motivationalPhrases[currentPhraseIndex];
+
+  const motivationalPhrases = [
+    "Você é mais forte do que imagina.",
+    "Esta vontade vai passar. Respire fundo.",
+    "Cada segundo que você resiste é uma vitória.",
+    "Você já chegou tão longe. Continue!",
+    "Seu futuro eu agradece por esta escolha.",
+    "A fissura é temporária. Sua força é permanente.",
+    "Você não precisa disso. Você é completo.",
+    "Respire. Você está no controle.",
+  ];
+
+  const [currentPhrase] = useState(motivationalPhrases[Math.floor(Math.random() * motivationalPhrases.length)]);
 
   return (
     <div className={`min-h-screen ${userData.themeMode === 'focus' ? 'bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900' : 'bg-gradient-to-br from-red-50 via-orange-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900'}`}>
