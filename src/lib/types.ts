@@ -1,7 +1,31 @@
 // Tipos completos do aplicativo de suporte à abstinência
 
+// =====================
+// USER DATA & RELAPSE
+// =====================
+
+export interface RelapseRecord {
+  id: string;
+  date: string;      // 'YYYY-MM-DD'
+  time: string;      // 'HH:mm:ss'
+  notes?: string;
+  mood?: string;
+  trigger?: string;
+}
+
+export type FrequencyPeriod = 'day' | 'week' | 'month';
+
+export interface Friend {
+  id: string;
+  name: string;
+  level: number;
+  cleanDays: number;
+}
+
+export type ThemeMode = 'default' | 'focus';
+
 export interface UserData {
-  // Dados básicos
+  // Dados básicos de progresso
   startDate: string;
   lastRelapseDate: string | null;
   totalRelapses: number;
@@ -16,43 +40,30 @@ export interface UserData {
   pricePerGram: number;
   consumptionMethods: string[];
   frequencyAmount: number;
-  frequencyPeriod: 'day' | 'week' | 'month';
-  lastUseDateTime: string;
+  frequencyPeriod: FrequencyPeriod;
+  lastUseDateTime?: string | null;
 
   // Histórico
   relapseHistory: RelapseRecord[];
 
-  // Novos recursos avançados
+  // Gamificação / progresso
   xp: number;
   level: number;
   completedMissions: string[];
   unlockedRewards: string[];
-  themeMode: 'default' | 'focus';
+  themeMode: ThemeMode;
   detoxCycleActive: boolean;
   detoxCycleStartDate: string | null;
+
+  // Rede / social
   friends: Friend[];
 }
 
-export interface RelapseRecord {
-  id: string;
-  date: string;
-  time: string;
-  notes?: string;
-  mood?: string;
-  trigger?: string;
-  location?: string;
-  withWhom?: string;
-  equipment?: string;
-}
+// =====================
+// ACHIEVEMENTS / MISSIONS / REWARDS
+// =====================
 
-export interface HealthMetric {
-  id: string;
-  name: string;
-  value: number;
-  maxValue: number;
-  icon: string;
-  color: string;
-}
+export type AchievementCategory = 'time' | 'savings' | 'special';
 
 export interface Achievement {
   id: string;
@@ -61,22 +72,54 @@ export interface Achievement {
   icon: string;
   unlocked: boolean;
   unlockedAt?: string;
-  daysRequired: number;
-  category: 'time' | 'savings' | 'health' | 'special';
+  category: AchievementCategory;
+  daysRequired?: number;
 }
+
+// Missões no contexto do app (podemos usar tanto para local quanto para dados do banco)
+export interface Mission {
+  id: number | string;
+  title: string;
+  description?: string | null;
+  category?: string | null;
+  rarity?: string | null;
+  difficulty?: string | null;
+
+  // Recompensas
+  reward_xp?: number;
+  reward_coins?: number;
+
+  // Campos opcionais caso alguma parte do app use esse formato
+  xpReward?: number;
+  type?: 'daily' | 'weekly' | 'one-time';
+  completed?: boolean;
+  completedAt?: string | null;
+}
+
+export interface Reward {
+  id: string;
+  name: string;
+  description: string;
+  xpCost: number;
+  unlocked: boolean;
+}
+
+// =====================
+// COMMUNITY / RECIPES / METHODS
+// =====================
 
 export interface CommunityPost {
   id: string;
   content: string;
   timestamp: string;
   likes: number;
-  isPremiumPost: boolean;
+  isPremiumPost?: boolean;
 }
 
 export interface Recipe {
   id: string;
   title: string;
-  category: 'juice' | 'smoothie' | 'vitamin' | 'tea';
+  category: string; // juice, smoothie, vitamin, tea, etc.
   ingredients: string[];
   instructions: string;
   benefits: string;
@@ -89,13 +132,17 @@ export interface AntiRelapseMethod {
   description: string;
   steps: string[];
   duration: string;
-  category: 'breathing' | 'grounding' | 'distraction' | 'mindfulness';
+  category: string; // breathing, grounding, distraction, mindfulness, etc.
   isPremium: boolean;
 }
 
+// =====================
+// LIMITES DIÁRIOS / DICAS / NOTIFICAÇÕES
+// =====================
+
 export interface DailyLimit {
   id: string;
-  date: string;
+  date: string;       // 'YYYY-MM-DD'
   maxUses: number;
   currentUses: number;
   notifications: boolean;
@@ -106,47 +153,7 @@ export interface AccessTip {
   id: string;
   title: string;
   description: string;
-  category: 'environment' | 'storage' | 'routine' | 'social';
-}
-
-export interface AnalyticsData {
-  dailyStats: DailyStat[];
-  weeklyComparison: WeeklyStat[];
-  monthlyTrends: MonthlyTrend[];
-  commonTriggers: TriggerStat[];
-  peakHours: HourStat[];
-}
-
-export interface DailyStat {
-  date: string;
-  relapses: number;
-  savings: number;
-  healthScore: number;
-}
-
-export interface WeeklyStat {
-  week: string;
-  totalRelapses: number;
-  avgHealthScore: number;
-  totalSavings: number;
-}
-
-export interface MonthlyTrend {
-  month: string;
-  relapseCount: number;
-  savingsTotal: number;
-  improvementRate: number;
-}
-
-export interface TriggerStat {
-  trigger: string;
-  count: number;
-  percentage: number;
-}
-
-export interface HourStat {
-  hour: number;
-  count: number;
+  category: string;
 }
 
 export interface NotificationSettings {
@@ -158,74 +165,48 @@ export interface NotificationSettings {
   crisisSupport: boolean;
 }
 
-// ===== NOVOS TIPOS PARA RECURSOS AVANÇADOS =====
+// =====================
+// ANALYTICS / HEALTH
+// =====================
+
+export interface AnalyticsData {
+  date: string;             // 'YYYY-MM-DD'
+  moodAvg?: number | null;
+  detoxUsed?: number | null;
+  sosUsed?: number | null;
+  missionsCompleted?: number | null;
+  relapses?: number | null;
+}
+
+export interface HealthMetric {
+  id: string;
+  name: string;
+  value: number;
+  maxValue: number;
+  icon: string;
+  color: string; // ex: 'from-blue-500 to-cyan-500'
+}
+
+// =====================
+// MOOD / DETOX / TRIGGERS
+// =====================
 
 export interface MoodEntry {
-  id: string;
-  date: string;
-  time: string;
-  mood: 'calm' | 'anxious' | 'very-anxious' | 'irritated' | 'normal' | 'good' | 'great';
+  date: string;   // 'YYYY-MM-DD'
+  mood: string;
   notes?: string;
 }
 
-export interface AIInsight {
-  id: string;
-  type: 'mood' | 'relapse-risk' | 'pattern' | 'achievement';
-  title: string;
-  description: string;
-  timestamp: string;
-  priority: 'low' | 'medium' | 'high';
+export interface DetoxCycle {
+  active: boolean;
+  startDate: string;
+  endDate: string;
+  recommendations: string[];
 }
 
-export interface Mission {
-  id: string;
-  title: string;
-  description: string;
-  type: 'daily' | 'weekly';
-  xpReward: number;
-  completed: boolean;
-  completedAt?: string;
-  category: 'delay' | 'substitute' | 'engage' | 'track';
-}
-
-export interface Reward {
-  id: string;
-  title: string;
-  description: string;
-  type: 'badge' | 'card' | 'avatar-frame' | 'theme' | 'icon';
-  xpCost: number;
-  unlocked: boolean;
-  imageUrl?: string;
-}
-
-export interface BodyEvolution {
-  hours: number;
-  title: string;
-  description: string;
-  icon: string;
-  completed: boolean;
-}
-
-export interface DetoxMetric {
-  day: number;
-  thcLevel: number;
-  hydrationGoal: number;
-  sleepGoal: number;
-  exerciseMinutes: number;
-}
-
-export interface Friend {
-  id: string;
-  name: string;
-  avatar: string;
-  cleanDays: number;
-  xp: number;
-  level: number;
-}
-
-export interface TriggerAnalysis {
-  locations: { name: string; count: number }[];
-  times: { hour: number; count: number }[];
-  people: { name: string; count: number }[];
-  equipment: { name: string; count: number }[];
+export interface Trigger {
+  location: string;
+  time: string;
+  people: string[];
+  objects: string[];
 }

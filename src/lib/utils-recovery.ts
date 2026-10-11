@@ -91,7 +91,7 @@ export function calculateHealthMetrics(days: number): HealthMetric[] {
       name: 'Pulmões',
       value: Math.min(100, days * 2),
       maxValue: 100,
-      icon: '🫁',
+      icon: '🩹',
       color: 'from-blue-500 to-cyan-500',
     },
     {
