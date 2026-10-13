@@ -31,7 +31,7 @@ export default function AdminImportPage() {
             Para imports grandes (ex.: 400 missões, 200 ferramentas SOS), o ideal é fazer via Supabase SQL Editor / CSV import.
           </p>
           <ul className="mt-3 list-disc pl-5 text-sm text-slate-400 space-y-1">
-            <li>Confirme colunas e tipos (uuid vs text, numeric vs int).</li>
+            <li>Confirme colunas e tipos (UUID versus texto, numérico versus inteiro).</li>
             <li>Se tiver funções RPC, use <code className="text-slate-200">DROP FUNCTION</code> antes de recriar.</li>
             <li>Prefira índices únicos para evitar duplicidades.</li>
           </ul>
