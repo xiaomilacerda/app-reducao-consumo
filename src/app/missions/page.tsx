@@ -533,17 +533,18 @@ export default function MissionsPage() {
         // missions
         // Consulta direta por dia e apenas o pequeno catálogo Premium.
         // Evita o corte em 1.000 registros que exibia erroneamente o Dia 1.
-        const todayMissionIndex = Math.min(365, todayIndex);
         const [dailyQuery, premiumQuery, weeklyQuery] = await Promise.all([
+          // 365 missões diárias para preservar também os títulos do histórico.
+          // Consultas segmentadas não sofrem o corte em 1.000 linhas.
           supabase.from('missions').select('*')
-            .eq('type', 'daily').eq('day_index', todayMissionIndex)
-            .order('id', { ascending: true }).limit(2),
+            .eq('type', 'daily')
+            .order('id', { ascending: true }).limit(400),
           supabase.from('missions').select('*')
             .or('premium_only.eq.true,is_premium_only.eq.true,type.eq.premium')
             .order('id', { ascending: true }).limit(150),
           supabase.from('missions').select('*')
-            .eq('type', 'weekly').eq('day_index', weeklyIndex)
-            .order('id', { ascending: true }).limit(1),
+            .eq('type', 'weekly')
+            .order('id', { ascending: true }).limit(70),
         ]);
         const mErr = dailyQuery.error || premiumQuery.error || weeklyQuery.error;
         const mData = [
@@ -1246,7 +1247,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
     if (!dailyMissionsRaw.length) return null;
 
     const byIndex = dailyMissionsRaw.find(
-      (m) => (m.day_index || 0) === todayIndex,
+      (m) => (m.day_index || 0) === Math.min(todayIndex, 365),
     );
     if (byIndex) return byIndex;
 
