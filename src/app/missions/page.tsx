@@ -13,6 +13,8 @@ import {
   Coins,
   Crown,
   Lock,
+  LogIn,
+  X,
 } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
@@ -295,6 +297,7 @@ export default function MissionsPage() {
   }, []);
   const [userId, setUserId] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [showLoginNotice, setShowLoginNotice] = useState(false);
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [isPremium, setIsPremium] = useState(false);
 
@@ -344,6 +347,14 @@ export default function MissionsPage() {
 
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (userId) setShowLoginNotice(false);
+  }, [userId]);
+
+  function requestMissionLogin() {
+    setShowLoginNotice(true);
+  }
 
   const today = new Date();
   const todayDayKey = getLocalDayKey(today); // YYYY-MM-DD (LOCAL)
@@ -1655,6 +1666,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
         {/* RITUAL DIÁRIO, DESAFIOS PESSOAIS E PROGRESSO REAL NA NUVEM */}
         <MissionsEngagement
           userId={userId}
+          onRequireLogin={requestMissionLogin}
           onProgress={setVerifiedWeekCheckins}
           onReward={() => {
             void (async () => {
@@ -1922,11 +1934,15 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                       </div>
                       <button
                         type="button"
-                        onClick={() => void handleWeeklyCheckin()}
-                        disabled={!userId || weeklyDoneThisWeek || !!weeklyProgress.checkins?.[todayDayKey] || !!processing[`weekly:${String(weeklyMission.id)}`]}
+                        onClick={() => {
+                          if (!userId) { requestMissionLogin(); return; }
+                          void handleWeeklyCheckin();
+                        }}
+                        disabled={!authChecked || (userId !== null && (weeklyDoneThisWeek || !!weeklyProgress.checkins?.[todayDayKey] || !!processing[`weekly:${String(weeklyMission.id)}`]))}
                         className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-sky-400 px-4 py-3 text-sm font-extrabold text-sky-950 shadow-[0_8px_20px_rgba(56,189,248,.18)] transition-all hover:bg-sky-300 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky-400/40 disabled:cursor-not-allowed disabled:bg-emerald-500/15 disabled:text-emerald-100 disabled:shadow-none"
                       >
-                        {!!processing[`weekly:${String(weeklyMission.id)}`]
+                        {!userId ? <><LogIn className="h-4 w-4" /> Entrar para marcar hoje</>
+                        : !!processing[`weekly:${String(weeklyMission.id)}`]
                           ? <><Clock className="h-4 w-4 animate-spin" /> Salvando...</>
                           : weeklyProgress.checkins?.[todayDayKey]
                             ? <><CheckCircle className="h-4 w-4" /> Dia marcado</>
@@ -1952,17 +1968,21 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                       const isToday = dayKey === todayDayKey;
 
                       const disabled =
-                        !userId ||
-                        weeklyDoneThisWeek ||
+                        !authChecked ||
+                        (userId !== null && weeklyDoneThisWeek) ||
                         checked ||
-                        !isToday;
+                        !isToday ||
+                        !!processing[`weekly:${String(weeklyMission.id)}`];
 
                       return (
                         <button
                           key={dayKey}
                           type="button"
+                          disabled={disabled}
                           onClick={() => {
-                            if (!disabled) handleWeeklyCheckin();
+                            if (disabled) return;
+                            if (!userId) { requestMissionLogin(); return; }
+                            void handleWeeklyCheckin();
                           }}
                           className={[
                             'relative flex min-h-[78px] flex-col items-center justify-center rounded-xl border px-1 py-2 text-center text-xs transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 sm:min-h-[86px]',
@@ -1976,7 +1996,9 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                             checked
                               ? `Marcado (${dayKey})`
                               : isToday
-                                ? `Marcar hoje (${dayKey})`
+                                ? userId
+                                  ? `Marcar hoje (${dayKey})`
+                                  : 'Entre na sua conta para registrar este dia'
                                 : `Volte no dia (${dayKey})`
                           }
                         >
@@ -2055,11 +2077,16 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                   ) : (
                     <button
                       type="button"
-                      onClick={handleWeeklyComplete}
+                      onClick={() => {
+                        if (!userId) { requestMissionLogin(); return; }
+                        void handleWeeklyComplete();
+                      }}
                       disabled={
-                        !userId ||
-                        processing[`weeklyComplete:${String(weeklyMission.id)}`] ||
-                        verifiedWeekCheckins < 7
+                        !authChecked ||
+                        (userId !== null && (
+                          !!processing[`weeklyComplete:${String(weeklyMission.id)}`] ||
+                          verifiedWeekCheckins < 7
+                        ))
                       }
                       className={[
                         'px-4 py-2 rounded-full font-medium text-sm border transition',
@@ -2073,9 +2100,10 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                           : `Registre ${7 - verifiedWeekCheckins} check-in(s) no Ritual de Hoje para liberar`
                       }
                     >
-                      {processing[`weeklyComplete:${String(weeklyMission.id)}`]
-                        ? 'Processando...'
-                        : 'Concluir semana'}
+                      {!userId ? 'Entrar para validar missão'
+                        : processing[`weeklyComplete:${String(weeklyMission.id)}`]
+                          ? 'Processando...'
+                          : 'Concluir semana'}
                     </button>
                   )}
                 </div>
@@ -2374,6 +2402,36 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                     )}
                   </div>
                 </section>
+
+        {/* Aviso visível para visitantes: nenhum botão de missão deve falhar silenciosamente. */}
+        {authChecked && !userId && showLoginNotice && (
+          <div role="alert" aria-live="assertive" className="fixed inset-x-4 bottom-4 z-[70] mx-auto max-w-md rounded-2xl border border-violet-300/50 bg-[#171228] p-4 text-white shadow-[0_15px_60px_rgba(0,0,0,.75)] sm:bottom-6 sm:p-5">
+            <button type="button" onClick={() => setShowLoginNotice(false)}
+              aria-label="Fechar aviso de login"
+              className="absolute right-3 top-3 rounded-lg p-2 text-violet-100 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
+              <X className="h-5 w-5" />
+            </button>
+            <div className="flex items-start gap-3 pr-7">
+              <span className="rounded-xl bg-violet-500/25 p-2 text-violet-200">
+                <Lock className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-base font-bold text-white">Entre para validar sua missão</p>
+                <p className="mt-1 text-sm leading-relaxed text-slate-200">
+                  Para marcar os dias, salvar seu progresso e receber XP ou moedas,
+                  você precisa estar conectado à sua conta WeedReset.
+                </p>
+              </div>
+            </div>
+            <Link href="/login?next=%2Fmissions"
+              className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-violet-400 px-4 py-3 text-sm font-bold text-[#170c2a] transition-colors hover:bg-violet-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-200">
+              <LogIn className="h-5 w-5" /> Entrar para registrar minha missão
+            </Link>
+            <p className="mt-2 text-center text-xs text-slate-400">
+              Depois do login, você volta para a página de missões.
+            </p>
+          </div>
+        )}
 
 {/* ERRO GERAL */}
         {errorMsg && (
