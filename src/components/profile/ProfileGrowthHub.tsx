@@ -212,7 +212,9 @@ export default function ProfileGrowthHub({
       const { error: e } = await supabase.from('profile_growth_settings').upsert({
         user_id: userId, goal_kind: next.goal_kind, goal_target: next.goal_target,
         goal_deadline: next.goal_deadline || null, baseline_weekly_spend: next.baseline_weekly_spend,
-        money_currency: currency, updated_at: new Date().toISOString(),
+        money_currency: currency,
+        triggers: settings.triggers, coping_actions: settings.coping_actions,
+        support_label: settings.support_label, updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id' });
       if (e) throw e;
       setSettings(next); setGoalDirty(false); setNotice('Meta salva na sua conta com sucesso.');
@@ -253,7 +255,12 @@ export default function ProfileGrowthHub({
     setSaving('support'); setError(''); setNotice('');
     try {
       const { error: e } = await supabase.from('profile_growth_settings').upsert({
-        user_id: userId, triggers: t, coping_actions: a,
+        user_id: userId,
+        goal_kind: settings.goal_kind, goal_target: settings.goal_target,
+        goal_deadline: settings.goal_deadline,
+        baseline_weekly_spend: settings.baseline_weekly_spend,
+        money_currency: settings.money_currency,
+        triggers: t, coping_actions: a,
         support_label: contact.trim() || null, updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id' });
       if (e) throw e;
@@ -279,7 +286,7 @@ export default function ProfileGrowthHub({
         supabase.from('user_wallet').select('coins').eq('user_id', userId),
       ]);
       if (queries.some(q=>q.error)) throw new Error('Falha ao buscar os dados.');
-      const document = {
+      const exportedData = {
         exportedAt: new Date().toISOString(),
         description: 'Cópia dos dados da conta WeedReset. Guardar em local privado.',
         profile: queries[0].data, journey: queries[1].data,
@@ -288,19 +295,18 @@ export default function ProfileGrowthHub({
         wallet: queries[6].data,
         note: 'Exportação dos conjuntos principais. Consultas com máximo de 1000 itens por conjunto.',
       };
-      const url = URL.createObjectURL(new Blob([JSON.stringify(document,null,2)],{type:'application/json'}));
-      const anchor = documentNodeAnchor();
+      const url = URL.createObjectURL(new Blob([JSON.stringify(exportedData,null,2)],{type:'application/json'}));
+      const anchor = document.createElement('a');
       anchor.href = url; anchor.download = 'weedreset-meus-dados-' + today + '.json';
+      document.body.appendChild(anchor);
       anchor.click();
+      anchor.remove();
       setTimeout(() => URL.revokeObjectURL(url), 3000);
       setNotice('Exportação gerada. Guarde o arquivo com cuidado: contém informações pessoais.');
     } catch { setError('Não foi possível gerar o arquivo. Confira a conexão e tente novamente.'); }
     finally { setSaving(null); }
   }
-  function documentNodeAnchor() {
-    // Acesso ao DOM apenas após ação explícita do usuário, nunca no SSR.
-    return document.createElement('a');
-  }
+  // O download é preparado apenas na ação explícita do usuário.
 
   if (!userId) return null;
   return (
