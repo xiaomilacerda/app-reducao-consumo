@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -21,6 +21,7 @@ import { supabase } from '@/lib/supabase';
 import { storage } from '@/lib/storage';
 import SosPlayer from '@/components/SosPlayer';
 import ProfileSupportReminder from '@/components/profile/ProfileSupportReminder';
+import ProfileActionNotice from '@/components/profile/ProfileActionNotice';
 
 type ThemeMode = 'default' | 'focus';
 
@@ -135,10 +136,17 @@ export default function SosPage() {
   const [tools, setTools] = useState<SosTool[]>([]);
   const [toolsLoading, setToolsLoading] = useState(true);
   const [selectedTool, setSelectedTool] = useState<SosTool | null>(null);
+  const [sosSuccess, setSosSuccess] = useState<string | null>(null);
+  const [sosError, setSosError] = useState<string | null>(null);
+  const dismissSosNotice = useCallback(() => {
+    setSosSuccess(null);
+    setSosError(null);
+  }, []);
 
   // ----- NOVO: Curtidas globais + minhas curtidas -----
   const [myLikes, setMyLikes] = useState<Set<number>>(new Set());
   const [likesReady, setLikesReady] = useState(false);
+  const [likesBusy, setLikesBusy] = useState<Set<number>>(new Set());
 
   // ----- NOVO: Organização (busca, categoria, filtro) -----
   const [search, setSearch] = useState('');
@@ -150,6 +158,8 @@ export default function SosPage() {
   // ----- NOVO: Histórico breve (mais claro) -----
   const [recentLogs, setRecentLogs] = useState<SosLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(12);
+  useEffect(() => setVisibleCount(12), [search, activeCategory, sortMode]);
 
   // ---------------- EFFECTS BÁSICOS ----------------
 
@@ -412,10 +422,12 @@ export default function SosPage() {
   // ---------------- Curtir (global) ----------------
   async function toggleLike(toolId: number) {
     if (!supabaseUser) {
-      alert('Faça login para curtir ferramentas e salvar seu histórico.');
+      setSosError('Entre em sua conta para salvar favoritas e sessões no histórico.');
       return;
     }
-
+    if (likesBusy.has(toolId) || !likesReady) return;
+    setLikesBusy(prev => new Set(prev).add(toolId));
+    setSosError(null);
     const already = myLikes.has(toolId);
 
     // UI otimista
@@ -479,6 +491,13 @@ export default function SosPage() {
             : t,
         ),
       );
+      setSosError('Não foi possível atualizar esta favorita. Confira a conexão e tente novamente.');
+    } finally {
+      setLikesBusy(prev => {
+        const next = new Set(prev);
+        next.delete(toolId);
+        return next;
+      });
     }
   }
 
@@ -1095,7 +1114,9 @@ export default function SosPage() {
 
                             {/* Curtidas globais */}
                             <button
-                              onClick={() => toggleLike(t.id)}
+                              onClick={() => void toggleLike(t.id)}
+                              disabled={likesBusy.has(t.id) || !likesReady}
+                              aria-label={likedByMe ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
                               className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-[11px] transition ${
                                 likedByMe
                                   ? 'border-rose-400/60 bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-200'
