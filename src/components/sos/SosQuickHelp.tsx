@@ -70,7 +70,8 @@ export default function SosQuickHelp({ userId }: { userId: string | null }) {
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!userId) { setRecentSave(null); return; }
+    setRecentSave(null);
+    if (!userId) return;
     let live = true;
     void (async () => {
       try {
@@ -104,7 +105,17 @@ export default function SosQuickHelp({ userId }: { userId: string | null }) {
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     dialogRef.current?.focus();
-    const key = (ev: KeyboardEvent) => { if (ev.key === 'Escape') close(); };
+    const key = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') { close(); return; }
+      if (ev.key !== 'Tab') return;
+      const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+        'a[href],button:not([disabled]),input:not([disabled])'
+      );
+      if (!focusable || focusable.length === 0) return;
+      const first = focusable[0], last = focusable[focusable.length-1];
+      if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); last.focus(); }
+      else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); }
+    };
     window.addEventListener('keydown', key);
     return () => {
       document.body.style.overflow = previous;
