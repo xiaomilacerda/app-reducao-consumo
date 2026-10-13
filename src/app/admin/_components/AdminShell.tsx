@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Shield, Users, MessageSquareWarning, Upload, Activity, LayoutDashboard, LogIn } from 'lucide-react';
 import { getSupabaseBrowserClient } from '../_lib/supabase';
+import { isTrustedAdmin } from '@/lib/admin-access';
 
 type AdminCheck =
   | { ok: true; userId: string; email?: string | null }
@@ -34,22 +35,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           return;
         }
 
-        // Prefer profiles.is_admin; fallback to admin_users table if present
-        let isAdmin = false;
-
-        const profileRes = await supabase
-          .from('profiles')
-          .select('id, email, is_admin')
-          .eq('id', user.id)
-          .maybeSingle();
-
-        if (!profileRes.error && profileRes.data) {
-          isAdmin = Boolean((profileRes.data as any).is_admin);
-        } else {
-          // fallback admin_users table
-          const adminRes = await supabase.from('admin_users').select('user_id').eq('user_id', user.id).maybeSingle();
-          if (!adminRes.error && adminRes.data) isAdmin = true;
-        }
+        // Use server-managed app_metadata only. Profile columns can be self-edited.
+        const isAdmin = isTrustedAdmin(user);
 
         if (!isAdmin) {
           if (!cancelled) setState({ ok: false, reason: 'not_admin' });
@@ -127,7 +114,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           </div>
 
           <div className="mt-4 text-xs text-slate-500">
-            Dica: se você já é admin no banco, verifique se <code className="text-slate-300">profiles.is_admin</code> está <code className="text-slate-300">true</code> ou se existe uma linha em <code className="text-slate-300">admin_users</code>.
+            O acesso administrativo precisa ser concedido no Supabase Auth,
+            em app_metadata, por uma operação administrativa segura.
           </div>
         </div>
       </div>
