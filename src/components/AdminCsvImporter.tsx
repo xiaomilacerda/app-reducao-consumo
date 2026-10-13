@@ -1,3 +1,4 @@
+import { traduzirErro } from '@/lib/traduzir-erro';
 'use client';
 
 import React, { useState, useRef } from 'react';
@@ -203,7 +204,7 @@ export default function AdminCsvImporter({ defaultTable = 'missions' }: { defaul
           for (const row of transformed) {
             const { data: d2, error: e2 } = await supabase.from(targetTable).insert([row]);
             if (e2) {
-              fails++; setErrors(prev => [...prev, `Linha com title="${row.title ?? '—'}" falhou: ${e2.message}`]);
+              fails++; setErrors(prev => [...prev, `Linha com title="${row.title ?? '—'}" falhou: ${traduzirErro(e2, 'Erro ao importar esta linha.')}`]);
             } else {
               successes++;
             }
@@ -220,7 +221,7 @@ export default function AdminCsvImporter({ defaultTable = 'missions' }: { defaul
       }
     } catch (err:any) {
       console.error('import error', err);
-      setErrors([String(err.message ?? err)]);
+      setErrors([traduzirErro(err, 'Erro ao importar o arquivo.')]);
     } finally {
       setLoading(false);
     }
