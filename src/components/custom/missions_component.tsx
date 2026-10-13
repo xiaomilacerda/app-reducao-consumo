@@ -1,5 +1,6 @@
-import { traduzirErro } from '@/lib/traduzir-erro';
 'use client';
+
+import { traduzirErro } from '@/lib/traduzir-erro';
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
