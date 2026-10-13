@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import SosQuickHistory from '@/components/sos/SosQuickHistory';
 import { ArrowLeft, Filter, BarChart3 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -346,6 +347,7 @@ export default function SosHistoryPage() {
 
       {/* Conteúdo */}
       <main className="max-w-4xl mx-auto px-4 pb-10 pt-4 space-y-6">
+        <SosQuickHistory userId={userId}/>
         {/* Resumo (mais útil e claro) */}
         <section className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
