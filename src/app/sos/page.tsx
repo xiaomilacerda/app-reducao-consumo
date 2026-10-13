@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -10,30 +10,22 @@ import {
   Crown,
   Lock,
   Clock,
-  Sparkles,
   Flame,
   Search,
   Filter,
+  ChevronDown,
+  BookOpen,
+  ArrowRight,
 } from 'lucide-react';
 
 import { supabase } from '@/lib/supabase';
 import { storage } from '@/lib/storage';
 import SosPlayer from '@/components/SosPlayer';
+import SosQuickHelp from '@/components/sos/SosQuickHelp';
 import ProfileSupportReminder from '@/components/profile/ProfileSupportReminder';
 import ProfileActionNotice from '@/components/profile/ProfileActionNotice';
 
 type ThemeMode = 'default' | 'focus';
-
-const motivationalPhrases = [
-  'Você é mais forte do que imagina.',
-  'Esta vontade vai passar. Respire fundo.',
-  'Cada segundo que você resiste é uma vitória.',
-  'Você já chegou tão longe. Continue!',
-  'Seu futuro eu agradece por esta escolha.',
-  'A fissura é temporária. Sua força é permanente.',
-  'Você não precisa disso. Você é completo.',
-  'Respire. Você está no controle.',
-];
 
 type SosTool = {
   id: number;
@@ -75,21 +67,39 @@ function getEmojiForTool(tool: SosTool): string {
     ((tool.tags || []).join(' '))
   ).toLowerCase();
 
-  if (base.includes('visual')) return '👁️';
+  if (base.includes('grounding') || base.includes('visual')) return '👁️';
   if (base.includes('gatilho')) return '🛡️';
   if (base.includes('ansiedade') || base.includes('crise')) return '😰';
   if (base.includes('respira') || base.includes('respiração')) return '🌬️';
-  if (base.includes('sono') || base.includes('dormir')) return '🌙';
-  if (base.includes('corpo') || base.includes('tensão')) return '💆‍♂️';
-  if (base.includes('pensamento') || base.includes('mental')) return '🧠';
+  if (base.includes('sono') || base.includes('dormir') || base.includes('sleep')) return '🌙';
+  if (base.includes('corpo') || base.includes('tensão') || base.includes('relax')) return '🍃';
+  if (base.includes('pensamento') || base.includes('mental') || base.includes('cbt')) return '🧠';
   if (base.includes('urge') || base.includes('vontade')) return '🔥';
-
-  return '💜';
+  if (base.includes('meditação') || base.includes('mindfulness')) return '🪷';
+  if (base.includes('caminh') || base.includes('exercise')) return '🚶';
+  if (base.includes('audio') || base.includes('som')) return '🎧';
+  if (base.includes('distraction') || base.includes('distração')) return '🧩';
+  return '✨';
 }
 
 function normalizeCategory(s: string | null): string {
   const v = (s || '').trim();
   return v ? v : 'Outros';
+}
+function displayCategory(category: string | null) {
+  const key = normalizeCategory(category).toLowerCase();
+  const names: Record<string, string> = {
+    'anti-recaida': 'Apoio ao impulso',
+    breathing: 'Respiração', grounding: 'Atenção ao presente',
+    mindfulness: 'Atenção plena', relax: 'Relaxamento',
+    exercise: 'Movimento', distraction: 'Mudar o foco',
+    cbt: 'Pensamentos', sleep: 'Descanso', audio: 'Áudios',
+  };
+  return names[key] || (category || 'Outras práticas').replace(/-/g, ' ');
+}
+function toolQuality(t: SosTool) {
+  return (Array.isArray(t.steps_json) && t.steps_json.length >= 2 ? 2 : 0) +
+    (t.duration_minutes && t.duration_minutes > 0 ? 1 : 0);
 }
 
 function formatRelativeTime(iso: string): string {
@@ -127,14 +137,11 @@ export default function SosPage() {
 
   const [focusTimer, setFocusTimer] = useState(60);
 
-  const [currentPhraseIndex] = useState(
-    () => Math.floor(Math.random() * motivationalPhrases.length),
-  );
-
   // ----- FERRAMENTAS SOS DO BANCO -----
   const [tools, setTools] = useState<SosTool[]>([]);
   const [toolsLoading, setToolsLoading] = useState(true);
   const [selectedTool, setSelectedTool] = useState<SosTool | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
   const [sosSuccess, setSosSuccess] = useState<string | null>(null);
   const [sosError, setSosError] = useState<string | null>(null);
   const dismissSosNotice = useCallback(() => {
@@ -158,7 +165,8 @@ export default function SosPage() {
   const [recentLogs, setRecentLogs] = useState<SosLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
   const [visibleCount, setVisibleCount] = useState(12);
-  useEffect(() => setVisibleCount(12), [search, activeCategory, sortMode]);
+  const [quickFilter, setQuickFilter] = useState<'all' | 'free' | 'short' | 'guided'>('all');
+  useEffect(() => setVisibleCount(12), [search, activeCategory, sortMode, quickFilter]);
 
   // ---------------- EFFECTS BÁSICOS ----------------
 
@@ -568,6 +576,9 @@ export default function SosPage() {
     if (activeCategory !== 'Todas') {
       base = base.filter((t) => normalizeCategory(t.category) === activeCategory);
     }
+    if (quickFilter === 'free') base = base.filter(t => !t.premium_only);
+    if (quickFilter === 'short') base = base.filter(t => t.duration_minutes != null && t.duration_minutes > 0 && t.duration_minutes <= 3);
+    if (quickFilter === 'guided') base = base.filter(t => Array.isArray(t.steps_json) && t.steps_json.length >= 2);
 
     if (q) {
       base = base.filter((t) => {
@@ -586,19 +597,69 @@ export default function SosPage() {
 
     if (sortMode === 'favorites') {
       base = base.filter((t) => myLikes.has(t.id));
-      base = [...base].sort((a, b) => Number(b.likes_count || 0) - Number(a.likes_count || 0));
+      base = [...base].sort((a, b) => (Number(b.likes_count || 0) - Number(a.likes_count || 0)) || (toolQuality(b) - toolQuality(a)));
       return base;
     }
 
     if (sortMode === 'popular') {
-      base = [...base].sort((a, b) => Number(b.likes_count || 0) - Number(a.likes_count || 0));
+      base = [...base].sort((a, b) => (Number(b.likes_count || 0) - Number(a.likes_count || 0)) || (toolQuality(b) - toolQuality(a)));
       return base;
     }
 
     // recent (fallback por ID desc)
     base = [...base].sort((a, b) => Number(b.id) - Number(a.id));
     return base;
-  }, [tools, activeCategory, search, sortMode, myLikes]);
+  }, [tools, activeCategory, search, sortMode, myLikes, quickFilter]);
+
+  // A técnica abre em área de foco; a lista não fica mais se expandindo.
+  useEffect(() => {
+    if (!selectedTool) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    modalRef.current?.focus();
+    const key = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { setSelectedTool(null); return; }
+      if (event.key !== 'Tab') return;
+      const focusable = modalRef.current?.querySelectorAll<HTMLElement>(
+        'a[href],button:not([disabled]),input:not([disabled])'
+      );
+      if (!focusable?.length) return;
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault();last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault();first.focus(); }
+    };
+    window.addEventListener('keydown', key);
+    return () => { document.body.style.overflow = prev; window.removeEventListener('keydown', key); };
+  }, [selectedTool]);
+
+  const featuredTools = useMemo(() => {
+    // Somente opções gratuitas com orientação estruturada: variedade acima de popularidade.
+    const eligible = tools.filter(t => !t.premium_only &&
+      Array.isArray(t.steps_json) && t.steps_json.length >= 2);
+    const selected: SosTool[] = [];
+    for (const category of ['grounding', 'breathing', 'distraction']) {
+      const match = eligible.find(t => (t.category || '').toLowerCase() === category &&
+        !selected.some(item => item.id === t.id));
+      if (match) selected.push(match);
+    }
+    for (const match of eligible) {
+      if (selected.length >= 3) break;
+      if (!selected.some(t => t.id === match.id)) selected.push(match);
+    }
+    return selected;
+  }, [tools]);
+
+  const showExercise = (name: 'breathing' | 'focus' | 'calm') => {
+    setActiveExercise(previous => previous === name ? null : name);
+    if (name === 'breathing') {
+      setBreathingPhase('inhale');
+      setBreathingCount(4);
+    }
+    if (name === 'focus') setFocusTimer(60);
+    // O conteúdo abre logo abaixo dos atalhos. Role até ele, sem procurar.
+    window.setTimeout(() => document.getElementById('sos-active-exercise')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 70);
+  };
 
   // ---------------- RENDER ----------------
   if (!mounted) {
@@ -609,12 +670,11 @@ export default function SosPage() {
     );
   }
 
-  const currentPhrase = motivationalPhrases[currentPhraseIndex];
   const isFocusMode = themeMode === 'focus';
 
   return (
     <div
-      className={`min-h-screen ${
+      className={`min-h-screen w-full overflow-x-clip ${
         isFocusMode
           ? 'bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900'
           : 'bg-gradient-to-br from-red-50 via-orange-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900'
@@ -623,7 +683,7 @@ export default function SosPage() {
       <ProfileActionNotice success={sosSuccess} error={sosError} onDismiss={dismissSosNotice}/>
       {/* HEADER */}
       <header className="bg-black/40 backdrop-blur-xl shadow-lg sticky top-0 z-40 border-b border-white/10">
-        <div className="max-w-5xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 px-3 py-3 sm:gap-4 sm:px-6 sm:py-4">
           <div className="flex items-center gap-3">
             <Link
               href="/"
@@ -631,7 +691,7 @@ export default function SosPage() {
             >
               <ArrowLeft className="w-6 h-6 text-white/80" />
             </Link>
-            <Heart className="w-8 h-8 text-red-500 animate-pulse" />
+            <Heart className="h-6 w-6 shrink-0 text-fuchsia-400 sm:h-8 sm:w-8" />
             <div>
               <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-red-600 to-pink-600 bg-clip-text text-transparent flex items-center gap-2">
                 Modo SOS Anti-Fissura
@@ -642,7 +702,7 @@ export default function SosPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <Link
               href="/sos/history"
               className="hidden sm:inline-flex items-center gap-1 px-3 py-2 text-xs sm:text-sm rounded-full bg-white dark:bg-gray-900 border border-purple-500/30 text-purple-700 dark:text-purple-200 hover:bg-purple-50 dark:hover:bg-gray-800 transition-colors"
@@ -662,51 +722,39 @@ export default function SosPage() {
       </header>
 
       {/* MAIN */}
-      <main className="max-w-5xl mx-auto px-4 py-8 sm:px-6 lg:px-8 space-y-8">
-        <ProfileSupportReminder userId={supabaseUser?.id ?? null} />
-        {/* FRASE MOTIVACIONAL */}
-        <section className="bg-gradient-to-r from-red-500 to-pink-600 rounded-3xl p-6 sm:p-8 shadow-2xl text-white text-center">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <Sparkles className="w-6 h-6" />
-            <span className="uppercase tracking-wide text-xs sm:text-sm opacity-90">
-              Lembrete importante
-            </span>
+      <main className="mx-auto w-full max-w-5xl min-w-0 space-y-5 px-3 py-5 pb-28 sm:space-y-7 sm:px-6 sm:py-8">
+        <SosQuickHelp userId={supabaseUser?.id ?? null} />
+        <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+          <p className="text-xs text-slate-400">Sem pressão. Você escolhe seu próximo passo.</p>
+          <Link href="/sos/history" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 text-xs font-semibold text-slate-200 hover:bg-white/10">
+            <Clock className="h-4 w-4"/> Meu histórico
+          </Link>
+        </div>
+        <section aria-label="Técnicas rápidas e sem distração" className="space-y-3">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white sm:text-xl">Três formas de cuidar de você</h2>
+            <p className="mt-1 text-xs leading-relaxed text-slate-400">Escolha uma prática. Não é necessário concluir uma etapa perfeita.</p>
           </div>
-          <p className="text-2xl sm:text-3xl font-bold mb-4">
-            “{currentPhrase}”
-          </p>
-          <p className="text-sm sm:text-lg opacity-90">
-            Se você está em fissura agora, escolha um dos blocos abaixo e siga o
-            passo a passo.
-          </p>
-        </section>
-
         {/* CARTÕES DE EXERCÍCIO RÁPIDO */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
           {/* Respiração Guiada */}
           <button
-            onClick={() => {
-              setActiveExercise((prev) =>
-                prev === 'breathing' ? null : 'breathing',
-              );
-              setBreathingPhase('inhale');
-              setBreathingCount(4);
-            }}
-            className={`p-6 rounded-2xl shadow-xl transition-all text-left ${
+            onClick={() => showExercise('breathing')}
+            className={`min-w-0 rounded-2xl border border-white/10 p-3 text-left shadow-lg transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 sm:p-5 ${
               activeExercise === 'breathing'
-                ? 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white scale-105'
+                ? 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white'
                 : 'bg-white dark:bg-gray-800 hover:shadow-2xl'
             }`}
           >
             <Wind
-              className={`w-10 h-10 mb-3 ${
+              className={`h-6 w-6 mb-2 sm:h-8 sm:w-8 sm:mb-3 ${
                 activeExercise === 'breathing'
                   ? 'text-white'
                   : 'text-blue-500'
               }`}
             />
             <h3
-              className={`text-lg sm:text-xl font-bold mb-1 ${
+              className={`text-[13px] font-bold leading-tight sm:mb-1 sm:text-lg ${
                 activeExercise === 'breathing'
                   ? 'text-white'
                   : 'text-gray-900 dark:text-gray-100'
@@ -715,7 +763,7 @@ export default function SosPage() {
               Respiração 4-7-8
             </h3>
             <p
-              className={`text-sm ${
+              className={`sr-only sm:not-sr-only sm:block sm:text-sm ${
                 activeExercise === 'breathing'
                   ? 'text-white/90'
                   : 'text-gray-600 dark:text-gray-400'
@@ -727,23 +775,20 @@ export default function SosPage() {
 
           {/* Treino de Foco */}
           <button
-            onClick={() => {
-              setActiveExercise((prev) => (prev === 'focus' ? null : 'focus'));
-              setFocusTimer(60);
-            }}
-            className={`p-6 rounded-2xl shadow-xl transition-all text-left ${
+            onClick={() => showExercise('focus')}
+            className={`min-w-0 rounded-2xl border border-white/10 p-3 text-left shadow-lg transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 sm:p-5 ${
               activeExercise === 'focus'
-                ? 'bg-gradient-to-br from-purple-500 to-pink-600 text-white scale-105'
+                ? 'bg-gradient-to-br from-purple-500 to-pink-600 text-white'
                 : 'bg-white dark:bg-gray-800 hover:shadow-2xl'
             }`}
           >
             <Target
-              className={`w-10 h-10 mb-3 ${
+              className={`h-6 w-6 mb-2 sm:h-8 sm:w-8 sm:mb-3 ${
                 activeExercise === 'focus' ? 'text-white' : 'text-purple-500'
               }`}
             />
             <h3
-              className={`text-lg sm:text-xl font-bold mb-1 ${
+              className={`text-[13px] font-bold leading-tight sm:mb-1 sm:text-lg ${
                 activeExercise === 'focus'
                   ? 'text-white'
                   : 'text-gray-900 dark:text-gray-100'
@@ -752,7 +797,7 @@ export default function SosPage() {
               Treino de Foco (1 min)
             </h3>
             <p
-              className={`text-sm ${
+              className={`sr-only sm:not-sr-only sm:block sm:text-sm ${
                 activeExercise === 'focus'
                   ? 'text-white/90'
                   : 'text-gray-600 dark:text-gray-400'
@@ -764,22 +809,20 @@ export default function SosPage() {
 
           {/* Pausa guiada, disponível mesmo sem áudio ou conexão. */}
           <button
-            onClick={() =>
-              setActiveExercise((prev) => (prev === 'calm' ? null : 'calm'))
-            }
-            className={`p-6 rounded-2xl shadow-xl transition-all text-left ${
+            onClick={() => showExercise('calm')}
+            className={`min-w-0 rounded-2xl border border-white/10 p-3 text-left shadow-lg transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 sm:p-5 ${
               activeExercise === 'calm'
-                ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white scale-105'
+                ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white'
                 : 'bg-white dark:bg-gray-800 hover:shadow-2xl'
             }`}
           >
             <Heart
-              className={`w-10 h-10 mb-3 ${
+              className={`h-6 w-6 mb-2 sm:h-8 sm:w-8 sm:mb-3 ${
                 activeExercise === 'calm' ? 'text-white' : 'text-green-500'
               }`}
             />
             <h3
-              className={`text-lg sm:text-xl font-bold mb-1 ${
+              className={`text-[13px] font-bold leading-tight sm:mb-1 sm:text-lg ${
                 activeExercise === 'calm'
                   ? 'text-white'
                   : 'text-gray-900 dark:text-gray-100'
@@ -788,7 +831,7 @@ export default function SosPage() {
               Pausa de Calma
             </h3>
             <p
-              className={`text-sm ${
+              className={`sr-only sm:not-sr-only sm:block sm:text-sm ${
                 activeExercise === 'calm'
                   ? 'text-white/90'
                   : 'text-gray-600 dark:text-gray-400'
@@ -797,17 +840,18 @@ export default function SosPage() {
               Aterre sua atenção no presente, sem áudio nem conexão.
             </p>
           </button>
+        </div>
         </section>
 
         {/* BLOCO DO EXERCÍCIO ATIVO */}
         {activeExercise === 'breathing' && (
-          <section className="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-xl space-y-8">
+          <section id="sos-active-exercise" className="scroll-mt-28 min-w-0 rounded-3xl bg-white p-4 shadow-xl dark:bg-gray-800 sm:p-8 space-y-6">
             <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-gray-100 mb-4">
               Respiração 4-7-8
             </h2>
 
             <div className="flex flex-col items-center gap-8">
-              <div className="relative w-64 h-64">
+              <div className="relative h-48 w-48 sm:h-64 sm:w-64">
                 <div
                   className={`absolute inset-0 rounded-full transition-all duration-1000 ${
                     breathingPhase === 'inhale'
@@ -821,10 +865,10 @@ export default function SosPage() {
                   }}
                 />
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-                  <div className="text-6xl font-bold mb-2">
+                  <div className="mb-2 text-5xl font-bold sm:text-6xl">
                     {breathingCount}
                   </div>
-                  <div className="text-2xl font-semibold">
+                  <div className="text-xl font-semibold sm:text-2xl">
                     {breathingPhase === 'inhale' && 'Inspire'}
                     {breathingPhase === 'hold' && 'Segure'}
                     {breathingPhase === 'exhale' && 'Expire'}
@@ -845,7 +889,7 @@ export default function SosPage() {
         )}
 
         {activeExercise === 'focus' && (
-          <section className="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-xl space-y-8">
+          <section id="sos-active-exercise" className="scroll-mt-28 min-w-0 rounded-3xl bg-white p-4 shadow-xl dark:bg-gray-800 sm:p-8 space-y-6">
             <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-gray-100 mb-4">
               Treino de Foco (1 minuto)
             </h2>
@@ -892,7 +936,7 @@ export default function SosPage() {
         )}
 
         {activeExercise === 'calm' && (
-          <section className="rounded-3xl border border-emerald-300/20 bg-white p-5 shadow-xl dark:bg-gray-800 sm:p-8" aria-label="Pausa guiada de calma">
+          <section id="sos-active-exercise" className="scroll-mt-28 min-w-0 rounded-3xl border border-emerald-300/20 bg-white p-5 shadow-xl dark:bg-gray-800 sm:p-8" aria-label="Pausa guiada de calma">
             <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Pausa de Calma</h2>
             <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
               Um exercício sem áudio, disponível imediatamente. Faça no seu ritmo e mantenha a respiração confortável.
@@ -920,8 +964,59 @@ export default function SosPage() {
           </section>
         )}
 
-        {/* ÁREA AVANÇADA: FERRAMENTAS SOS DO BANCO */}
-        <section className="space-y-4">
+        <details className="group overflow-hidden rounded-2xl border border-emerald-300/15 bg-[#122622] text-white">
+          <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 [&::-webkit-details-marker]:hidden">
+            <span className="min-w-0"><span className="block text-sm font-semibold">Meu plano pessoal de apoio</span>
+              <span className="mt-1 block text-xs text-emerald-100/70">Meus gatilhos e ações que me ajudam, quando precisar.</span>
+            </span>
+            <ChevronDown className="h-5 w-5 shrink-0 text-emerald-300 transition-transform group-open:rotate-180"/>
+          </summary>
+          <div className="px-2 pb-3 sm:px-3">
+            <ProfileSupportReminder userId={supabaseUser?.id ?? null}/>
+          </div>
+        </details>
+
+        {/* Três indicações gratuitas com instruções cadastradas no banco. */}
+        <section aria-label="Técnicas sugeridas" className="space-y-3">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">Descubra no seu ritmo</p>
+              <h2 className="mt-1 text-lg font-bold text-white sm:text-xl">Três boas opções para conhecer</h2>
+              <p className="mt-1 text-xs text-slate-400">Gratuitas, com passos disponíveis. Você escolhe quando começar.</p>
+            </div>
+          </div>
+          {toolsLoading ? <div className="grid gap-3 sm:grid-cols-3">
+            {[0,1,2].map(i=><div key={i} className="h-36 animate-pulse rounded-2xl border border-white/10 bg-white/5"/>)}
+          </div> : featuredTools.length ? (
+            <div className="grid gap-3 sm:grid-cols-3">
+              {featuredTools.map(t=>(
+                <button type="button" key={t.id} onClick={()=>setSelectedTool(t)}
+                  className="group flex min-w-0 flex-col items-start rounded-2xl border border-white/10 bg-[#212b3c] p-4 text-left text-white transition hover:border-violet-300/40 hover:bg-[#28364b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
+                  <span className="flex w-full items-center justify-between gap-3">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-400/10 text-2xl" aria-hidden="true">{getEmojiForTool(t)}</span>
+                    <span className="text-[11px] font-semibold text-emerald-300">Gratuita</span>
+                  </span>
+                  <span className="mt-3 line-clamp-2 text-sm font-semibold leading-snug">{t.title}</span>
+                  <span className="mt-2 text-xs text-slate-300">Passo a passo guiado · {t.duration_minutes && t.duration_minutes > 0 ? t.duration_minutes + ' min' : 'no seu tempo'}</span>
+                  <span className="mt-4 flex items-center gap-1.5 text-xs font-bold text-violet-200">Conhecer técnica <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1"/></span>
+                </button>
+              ))}
+            </div>
+          ) : <p className="rounded-xl border border-white/10 bg-[#212b3c] p-4 text-xs text-slate-300">O catálogo está indisponível. A ajuda guiada acima continua funcionando.</p>}
+        </section>
+
+        <details id="sos-library" className="group min-w-0 scroll-mt-28 overflow-hidden rounded-3xl border border-white/10 bg-[#172133] text-white">
+          <summary className="flex min-h-20 cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 sm:px-5 [&::-webkit-details-marker]:hidden">
+            <span className="flex min-w-0 items-center gap-3">
+              <span className="rounded-2xl border border-violet-400/20 bg-violet-400/10 p-3"><BookOpen className="h-5 w-5 text-violet-300"/></span>
+              <span className="min-w-0">
+                <strong className="block text-sm font-bold sm:text-base">Explorar biblioteca de técnicas</strong>
+                <span className="mt-1 block text-xs leading-relaxed text-slate-400">Busque pelo nome, filtre por objetivo e descubra outras práticas.</span>
+              </span>
+            </span>
+            <ChevronDown className="h-5 w-5 shrink-0 text-violet-200 transition-transform group-open:rotate-180"/>
+          </summary>
+          <section className="min-w-0 space-y-4 border-t border-white/10 p-3 sm:p-5">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div>
               <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
@@ -943,7 +1038,7 @@ export default function SosPage() {
           </div>
 
           {/* Histórico resumido */}
-          <div className="bg-white/90 dark:bg-gray-900/70 border border-gray-200/60 dark:border-gray-700/80 rounded-2xl p-4">
+          <div className="rounded-2xl border border-white/10 bg-white/90 p-4 dark:bg-[#1e2b3f]">
             <div className="flex items-center justify-between gap-2">
               <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                 Seu histórico recente
@@ -1048,7 +1143,7 @@ export default function SosPage() {
                     <input
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Buscar técnica..."
+                      placeholder="Ex.: respiração, sono, ansiedade" aria-label="Buscar técnica"
                       className="w-full sm:w-60 pl-9 pr-3 py-2 rounded-full border border-gray-200/60 dark:border-gray-700/80 bg-white/90 dark:bg-gray-900/60 text-sm text-gray-800 dark:text-gray-100 outline-none"
                     />
                   </div>
@@ -1062,12 +1157,30 @@ export default function SosPage() {
                     >
                       {categories.map((c) => (
                         <option key={c} value={c}>
-                          {c}
+                          {c === 'Todas' ? 'Todas as categorias' : displayCategory(c)}
                         </option>
                       ))}
                     </select>
                   </div>
                 </div>
+              </div>
+
+              <div role="group" aria-label="Filtros rápidos de técnicas" className="flex flex-wrap gap-2">
+                {([
+                  {value:'all',label:'Todas'},
+                  {value:'free',label:'Gratuitas'},
+                  {value:'short',label:'Até 3 minutos'},
+                  {value:'guided',label:'Com passo a passo'}
+                ] as const).map(option=>(
+                  <button type="button" key={option.value} aria-pressed={quickFilter===option.value}
+                    onClick={()=>setQuickFilter(option.value)}
+                    className={'min-h-10 rounded-full border px-3 py-2 text-xs font-semibold transition '+
+                      (quickFilter===option.value
+                        ? 'border-emerald-300/40 bg-emerald-300/15 text-emerald-200'
+                        : 'border-white/15 bg-white/[.045] text-slate-300 hover:bg-white/10')}>
+                    {option.label}
+                  </button>
+                ))}
               </div>
 
               {/* Lista */}
@@ -1082,22 +1195,22 @@ export default function SosPage() {
                   return (
                     <article
                       key={t.id}
-                      className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-md flex flex-col gap-3"
+                      className="flex min-w-0 flex-col gap-3 rounded-2xl border border-white/10 bg-white p-4 shadow-md dark:bg-[#212b3c]"
                     >
                       <div className="flex items-start gap-3">
-                        <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-purple-100 via-pink-50 to-red-100 dark:from-purple-900 dark:via-gray-900 dark:to-red-900 flex items-center justify-center flex-shrink-0 shadow-sm">
-                          <span className="text-3xl">{getEmojiForTool(t)}</span>
+                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-violet-300/10 bg-gradient-to-br from-[#402859] via-[#372344] to-[#482833] shadow-sm sm:h-16 sm:w-16">
+                          <span className="text-2xl" aria-hidden="true">{getEmojiForTool(t)}</span>
                         </div>
 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
-                              <h3 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-gray-100 truncate">
+                              <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-gray-900 dark:text-gray-100 sm:text-base">
                                 {t.title || 'Ferramenta SOS'}
                               </h3>
                               {t.category && (
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                  {t.category}
+                                  {displayCategory(t.category)}
                                 </p>
                               )}
                             </div>
@@ -1132,27 +1245,16 @@ export default function SosPage() {
                           )}
 
                           <div className="mt-3 flex flex-wrap items-center gap-2">
-                            <button
-                              onClick={() => !locked && setSelectedTool(t)}
-                              disabled={locked}
-                              className={`px-3 py-1.5 rounded-full text-xs sm:text-sm inline-flex items-center gap-2 border ${
-                                locked
-                                  ? 'border-gray-300 dark:border-gray-600 text-gray-400 cursor-not-allowed bg-gray-50 dark:bg-gray-900'
-                                  : 'border-purple-500/60 text-purple-700 dark:text-purple-200 bg-purple-50/60 dark:bg-purple-900/40 hover:bg-purple-100 dark:hover:bg-purple-900/60'
-                              }`}
-                            >
-                              {locked ? (
-                                <>
-                                  <Lock className="w-3 h-3" />
-                                  Somente Premium
-                                </>
-                              ) : (
-                                <>
-                                  <Heart className="w-3 h-3 fill-red-500/80 text-red-500/80" />
-                                  Iniciar agora
-                                </>
-                              )}
-                            </button>
+                            {locked ? (
+                              <Link href="/premium" className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-xs font-semibold text-amber-200">
+                                <Lock className="h-3.5 w-3.5" /> Conhecer Premium
+                              </Link>
+                            ) : (
+                              <button type="button" onClick={() => setSelectedTool(t)}
+                                className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-violet-400/30 bg-violet-400/10 px-3 py-2 text-xs font-semibold text-violet-200 hover:bg-violet-400/20">
+                                <Heart className="h-3.5 w-3.5" /> Iniciar agora
+                              </button>
+                            )}
 
                             {isToolPremium && (
                               <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-200 border border-yellow-300/60 dark:border-yellow-800/80">
@@ -1177,23 +1279,6 @@ export default function SosPage() {
                         </div>
                       </div>
 
-                      {/* Player embutido quando selecionado */}
-                      {selectedTool?.id === t.id && !locked && (
-                        <div className="mt-3 border-t border-gray-200 dark:border-gray-700 pt-3">
-                          <SosPlayer
-                            tool={t}
-                            onComplete={async (secs) => {
-                              console.log(
-                                `Sessão SOS "${t.title}" concluída em ~${secs}s`,
-                              );
-                              const saved = await handleSosComplete(t, secs ?? 0);
-                              if (saved) setSelectedTool(null);
-                              return saved;
-                            }}
-                            onCancel={() => setSelectedTool(null)}
-                          />
-                        </div>
-                      )}
                     </article>
                   );
                 })}
@@ -1217,7 +1302,28 @@ export default function SosPage() {
             </>
           )}
         </section>
+        </details>
       </main>
+      {selectedTool && (
+        <div className="fixed inset-0 z-[140] flex items-center justify-center bg-[#080c1a]/90 p-3 backdrop-blur-md sm:p-6" role="presentation">
+          <div role="dialog" ref={modalRef} tabIndex={-1} aria-modal="true" aria-label={'Técnica SOS: ' + selectedTool.title}
+            className="dark max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-white/15 bg-[#151d30] p-3 text-white shadow-2xl sm:p-5">
+            <div className="flex justify-end">
+              <button type="button" onClick={()=>setSelectedTool(null)}
+                aria-label="Fechar técnica" className="flex min-h-11 items-center gap-2 rounded-xl px-4 text-xs font-semibold text-slate-200 hover:bg-white/10">
+                Fechar <span aria-hidden="true">×</span>
+              </button>
+            </div>
+            <SosPlayer tool={selectedTool}
+              onComplete={async seconds => {
+                const success = await handleSosComplete(selectedTool, seconds ?? 0);
+                if (success) setSelectedTool(null);
+                return success;
+              }}
+              onCancel={()=>setSelectedTool(null)}/>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
