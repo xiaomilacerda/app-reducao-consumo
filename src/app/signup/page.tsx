@@ -1,3 +1,4 @@
+import { traduzirErro } from '@/lib/traduzir-erro';
 'use client';
 
 import type { FormEvent } from 'react';
@@ -40,7 +41,7 @@ export default function SignupPage() {
       });
 
       if (error) {
-        setErro(error.message);
+        setErro(traduzirErro(error));
         setLoading(false);
         return;
       }
