@@ -107,7 +107,7 @@ export default function SettingsPage() {
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select(
-            'display_name, is_premium, timezone, preferred_focus_area, motivational_level, notifications_enabled, dark_mode, preferred_language'
+            'display_name, is_premium, timezone, preferred_language'
           )
           .eq('id', user.id)
           .maybeSingle();
@@ -209,10 +209,6 @@ export default function SettingsPage() {
         id: userId,
         display_name: displayName.trim() || null,
         timezone,
-        preferred_focus_area: preferredFocusArea,
-        motivational_level: motivationalLevel,
-        notifications_enabled: notificationsEnabled,
-        dark_mode: darkMode,
         preferred_language: preferredLanguage,
       });
 
