@@ -17,7 +17,7 @@ type SosTool = {
 
 interface SosPlayerProps {
   tool: SosTool;
-  onComplete?: (elapsedSeconds?: number) => void | Promise<void>;
+  onComplete?: (elapsedSeconds?: number) => boolean | void | Promise<boolean | void>;
   onCancel?: () => void;
 }
 
@@ -27,11 +27,17 @@ const MIN_SECONDS_REQUIRED = 30;
 const SosPlayer: React.FC<SosPlayerProps> = ({ tool, onComplete, onCancel }) => {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [running, setRunning] = useState(true);
+  const [finishing, setFinishing] = useState(false);
+  const [finished, setFinished] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   // reinicia o cronômetro sempre que trocar de técnica
   useEffect(() => {
     setElapsedSeconds(0);
     setRunning(true);
+    setFinishing(false);
+    setFinished(false);
+    setSaveError('');
   }, [tool?.id]);
 
   useEffect(() => {
@@ -64,12 +70,22 @@ const SosPlayer: React.FC<SosPlayerProps> = ({ tool, onComplete, onCancel }) => 
   })();
 
   const handleFinish = async () => {
-    if (!canFinish) return;
+    if (!canFinish || finishing || finished) return;
     setRunning(false);
+    setFinishing(true);
+    setSaveError('');
     try {
-      await onComplete?.(elapsedSeconds);
+      const saved = await onComplete?.(elapsedSeconds);
+      if (saved === false) {
+        setSaveError('O histórico ainda não foi salvo. Você pode tentar novamente sem refazer o exercício.');
+      } else {
+        setFinished(true);
+      }
     } catch (err) {
       console.error('Erro em onComplete do SosPlayer:', err);
+      setSaveError('Falha ao confirmar a conclusão. Tente salvar novamente.');
+    } finally {
+      setFinishing(false);
     }
   };
 
@@ -161,6 +177,7 @@ const SosPlayer: React.FC<SosPlayerProps> = ({ tool, onComplete, onCancel }) => 
         </div>
       )}
 
+      {saveError && <p role="alert" className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{saveError}</p>}
       {/* Botões */}
       <div className="flex flex-col sm:flex-row sm:justify-end gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
         <button
@@ -175,15 +192,15 @@ const SosPlayer: React.FC<SosPlayerProps> = ({ tool, onComplete, onCancel }) => 
         <button
           type="button"
           onClick={handleFinish}
-          disabled={!canFinish}
+          disabled={!canFinish || finishing || finished}
           className={`inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold shadow-md transition-colors ${
-            canFinish
+            canFinish && !finishing && !finished
               ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white hover:opacity-90'
               : 'bg-gray-300 dark:bg-gray-700 text-gray-600 dark:text-gray-300 cursor-not-allowed'
           }`}
         >
           <CheckCircle2 className="w-4 h-4" />
-          {canFinish
+          {finishing ? 'Confirmando...' : finished ? 'Concluído' : canFinish
             ? 'Concluir técnica'
             : `Aguarde ${remainingToUnlock}s`}
         </button>
