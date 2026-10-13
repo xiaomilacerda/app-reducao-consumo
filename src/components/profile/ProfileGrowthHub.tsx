@@ -192,8 +192,8 @@ export default function ProfileGrowthHub({
       setReviewSessions(current?.sessions == null ? '' : String(current.sessions));
       setReviewMood(current?.mood ?? '');
       setCheckins((daily.data ?? []) as Checkin[]);
-      setXp(profile.error ? null : Number(profile.data?.xp ?? 0));
-      setCoins(wallet.error ? null : Number(wallet.data?.coins ?? 0));
+      setXp(profile.error || !profile.data ? null : Number(profile.data.xp ?? 0));
+      setCoins(wallet.error || !wallet.data ? null : Number(wallet.data.coins ?? 0));
       setMissionsMonth(missions.error ? null : missions.count ?? 0);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Falha ao consultar sua evolução. Tente novamente.');
