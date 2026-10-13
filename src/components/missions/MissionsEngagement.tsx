@@ -113,6 +113,7 @@ export default function MissionsEngagement({ userId, onReward, onProgress, onReq
   const [goal, setGoal] = useState<string | null>(null);
   const [rows, setRows] = useState<CheckinRow[]>([]);
   const [awardedWeek, setAwardedWeek] = useState(false);
+  const [totalCheckins, setTotalCheckins] = useState(0);
   const [selected, setSelected] = useState<ChallengeId>('respirar');
   const [mood, setMood] = useState<MoodId>('normal');
   const [reflection, setReflection] = useState('');
@@ -128,18 +129,18 @@ export default function MissionsEngagement({ userId, onReward, onProgress, onReq
     catch { return dayClock; }
   }, [timezone, dayClock]);
 
-  const weekStart = mondayOf(today);
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addUTCDate(weekStart, i)), [weekStart]);
-  const indexToday = days.indexOf(today);
+  // Os sete passos contam check-ins reais, mesmo em semanas diferentes.
+  const cyclePosition = totalCheckins > 0 ? ((totalCheckins - 1) % 7) + 1 : 0;
+  const completedCycles = Math.floor(totalCheckins / 7);
+  const currentCycle = totalCheckins > 0 ? Math.ceil(totalCheckins / 7) : 1;
+  const cycleDates = rows.slice(-(cyclePosition || 0));
   const recorded = rows.find((r) => r.checkin_date === today);
-  const daysRecorded = rows.filter((r) => days.includes(r.checkin_date));
-  const completedSet = new Set(daysRecorded.map((r) => r.checkin_date));
-  const total = daysRecorded.length;
-  const percent = Math.min(100, Math.round((total / 7) * 100));
+  const total = cyclePosition;
+  const percent = Math.round((total / 7) * 100);
   const recommended = recommendedChallenge(goal);
 
   const refresh = useCallback(async () => {
-    if (!userId) { setLoading(false); setRows([]); setAwardedWeek(false); onProgress?.(0); return; }
+    if (!userId) { setLoading(false); setRows([]); setTotalCheckins(0); setAwardedWeek(false); onProgress?.(0); return; }
     setLoading(true);
     setError(null);
     try {
@@ -151,25 +152,34 @@ export default function MissionsEngagement({ userId, onReward, onProgress, onReq
       try { localDayKey(tz); verifiedTz = tz; } catch { /* fallback de fuso */ }
       setTimezone(verifiedTz);
 
-      const key = localDayKey(verifiedTz);
-      const monday = mondayOf(key);
+      const { count, error: countError } = await supabase
+        .from('engagement_daily_checkins')
+        .select('checkin_date', { count: 'exact', head: true })
+        .eq('user_id', userId);
+      if (countError) throw countError;
+      const totalLoaded = count ?? 0;
       const { data: checkins, error: checkinErr } = await supabase
         .from('engagement_daily_checkins')
         .select('checkin_date,challenge,mood,reflection')
-        .eq('user_id', userId).gte('checkin_date', monday)
-        .lte('checkin_date', addUTCDate(monday, 6))
-        .order('checkin_date', { ascending: true });
+        .eq('user_id', userId)
+        .order('checkin_date', { ascending: false })
+        .limit(7);
       if (checkinErr) throw checkinErr;
 
-      const { data: bonus, error: bonusErr } = await supabase
-        .from('engagement_week_awards').select('week_start')
-        .eq('user_id', userId).eq('week_start', monday).maybeSingle();
-      if (bonusErr) throw bonusErr;
+      let bonus = null;
+      if (totalLoaded >= 7 && totalLoaded % 7 === 0) {
+        const { data, error: bonusError } = await supabase
+          .from('engagement_cycle_awards').select('cycle_number')
+          .eq('user_id', userId).eq('cycle_number', totalLoaded / 7).maybeSingle();
+        if (bonusError) throw bonusError;
+        bonus = data;
+      }
       setGoal(profile?.main_goal ?? null);
       setSelected(recommendedChallenge(profile?.main_goal ?? null));
-      setRows((checkins ?? []) as CheckinRow[]);
+      setRows(((checkins ?? []) as CheckinRow[]).reverse());
+      setTotalCheckins(totalLoaded);
       setAwardedWeek(!!bonus);
-      onProgress?.(checkins?.length ?? 0);
+      onProgress?.(totalLoaded);
     } catch (e) {
       console.error('Erro ao carregar check-ins:', e);
       setError('Não foi possível sincronizar seus check-ins. Confira a conexão e tente novamente.');
@@ -212,7 +222,7 @@ export default function MissionsEngagement({ userId, onReward, onProgress, onReq
       } else {
         setCelebration(true);
         setMessage(result.week_bonus
-          ? 'Você concluiu 7 dias! Recebeu 8 XP e 4 moedas, mais o bônus semanal de 35 XP e 20 moedas. ✨'
+          ? 'Você completou sete check-ins! Recebeu 8 XP e 4 moedas, mais o bônus de 35 XP e 20 moedas. ✨'
           : 'Sua vitória de hoje foi registrada! Você ganhou 8 XP e 4 moedas. ✨');
         onReward?.();
       }
@@ -224,7 +234,7 @@ export default function MissionsEngagement({ userId, onReward, onProgress, onReq
     }
   }
 
-  const story = WEEK_STORY[Math.max(0, indexToday)];
+  const story = WEEK_STORY[Math.min(6, total)];
   const displayedMotivation = selected === 'respirar'
     ? 'A respiração ajuda a criar um intervalo antes de reagir a um impulso.'
     : selected === 'movimento'
@@ -364,10 +374,10 @@ export default function MissionsEngagement({ userId, onReward, onProgress, onReq
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[.13em] text-violet-300">
-              <Trophy className="h-4 w-4" /> Sua jornada de 7 dias
+              <Trophy className="h-4 w-4" /> Plano anti-gatilho · jornada de 7 conquistas
             </p>
             <h2 className="mt-2 text-xl font-bold text-white">Pequenas ações, progresso real.</h2>
-            <p className="mt-1 text-sm text-slate-300">Um tema diferente a cada dia. Sua jornada recomeça toda segunda, sem punições.</p>
+            <p className="mt-1 text-sm text-slate-300">Comece quando quiser. Cada check-in vale um passo, sem prazo para terminar e sem perder o progresso na segunda-feira.</p>
           </div>
           <span className="rounded-xl border border-violet-400/25 bg-violet-500/15 px-3 py-2 text-sm font-semibold text-violet-100">
             {total}/7 dias
@@ -375,37 +385,41 @@ export default function MissionsEngagement({ userId, onReward, onProgress, onReq
         </div>
 
         <div className="mt-5 h-3 overflow-hidden rounded-full bg-slate-700/75"
-          role="progressbar" aria-label="Progresso da jornada semanal" aria-valuemin={0} aria-valuemax={7} aria-valuenow={total}>
+          role="progressbar" aria-label="Progresso do ciclo de sete check-ins" aria-valuemin={0} aria-valuemax={7} aria-valuenow={total}>
           <div className="h-full rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-emerald-400 transition-[width] duration-500 ease-out"
             style={{ width: `${percent}%` }} />
         </div>
 
-        <div className="mt-4 grid grid-cols-7 gap-1.5 sm:gap-2">
-          {days.map((day, i) => {
-            const done = completedSet.has(day);
-            const current = day === today;
-            const isPast = day < today;
+        <div className="mt-4 grid grid-cols-7 gap-1.5 sm:gap-2" aria-label="Etapas do ciclo">
+          {WEEK_STORY.map((chapter, i) => {
+            const done = i < total;
+            const active = i === total && !recorded;
             return (
-              <div key={day} title={`${DAY_NAMES[i]}, ${day}: ${done ? 'registrado' : current ? 'hoje' : isPast ? 'sem registro' : 'próximo dia'}`}
-                className={`relative flex min-h-[81px] flex-col items-center justify-center rounded-xl border px-1 py-2 text-center transition-colors sm:min-h-[90px] ${done
+              <div key={i} title={`Etapa ${i + 1}: ${chapter.title}`}
+                className={`flex min-h-[78px] flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-center sm:min-h-[90px] ${done
                   ? 'border-emerald-400/60 bg-emerald-500/20 text-emerald-100'
-                  : current
-                    ? 'border-violet-300 bg-violet-500/20 text-white ring-2 ring-violet-400/30'
+                  : active ? 'border-violet-300 bg-violet-500/20 text-white ring-2 ring-violet-400/30'
                     : 'border-white/10 bg-white/[.035] text-slate-400'}`}>
-                <span className="text-xs font-bold sm:text-sm">{DAY_NAMES[i]}</span>
-                <span className="mt-1 text-[10px] sm:text-xs">{day.slice(8,10)}/{day.slice(5,7)}</span>
-                {done ? <Check className="mt-1 h-4 w-4 text-emerald-300" />
-                  : current ? <span className="mt-1 text-[10px] font-bold text-violet-200">HOJE</span>
-                    : <span className="mt-1 h-4" />}
+                <span className="text-[10px] font-bold sm:text-xs">Passo {i + 1}</span>
+                {done ? <CheckCircle2 className="h-5 w-5 text-emerald-300"/>
+                  : active ? <span className="text-[9px] font-bold text-violet-200">PRÓXIMO</span>
+                    : <span className="h-5"/>}
+                {done && cycleDates[i]?.checkin_date && (
+                  <span className="text-[9px] text-emerald-100/80">{cycleDates[i].checkin_date.slice(8,10)}/{cycleDates[i].checkin_date.slice(5,7)}</span>
+                )}
               </div>
             );
           })}
         </div>
-
+        <p className="mt-3 text-xs text-slate-300">
+          {completedCycles > 0 ? `${completedCycles} ciclo(s) concluído(s). ` : ''}
+          {total === 7 ? 'Ciclo completo! No próximo check-in começa outro ciclo.'
+            : `Faltam ${7-total} check-in(s) para o próximo bônus.`}
+        </p>
         <div className="mt-5 rounded-2xl border border-violet-400/20 bg-gradient-to-r from-violet-500/10 to-transparent p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-violet-200">
-              {indexToday >= 0 ? `Capítulo ${indexToday + 1} de 7` : 'Seu próximo capítulo'}
+              {total === 7 ? 'Ciclo concluído' : `Seu próximo capítulo: ${Math.min(7, total + 1)} de 7`}
             </p>
             {recorded && <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300"><CheckCircle2 className="h-4 w-4" /> Vivido hoje</span>}
           </div>
@@ -420,9 +434,9 @@ export default function MissionsEngagement({ userId, onReward, onProgress, onReq
           <div className="flex items-start gap-2 text-sm text-slate-200">
             <Coins className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
             <div>
-              <p className="font-semibold text-white">{awardedWeek ? 'Bônus da semana desbloqueado!' : 'Recompensa por completar os 7 dias'}</p>
+              <p className="font-semibold text-white">{awardedWeek ? 'Bônus de sete conquistas recebido!' : 'Recompensa por sete check-ins'}</p>
               <p className="mt-1 text-xs text-slate-300">
-                {awardedWeek ? 'Seu bônus foi creditado uma vez na sua conta.' : '+35 XP e +20 moedas ao registrar os 7 dias desta semana.'}
+                {awardedWeek ? 'Seu bônus foi creditado uma vez na sua conta.' : '+35 XP e +20 moedas a cada sete check-ins, em qualquer ritmo.'}
               </p>
             </div>
           </div>
@@ -432,7 +446,7 @@ export default function MissionsEngagement({ userId, onReward, onProgress, onReq
         </div>
         <div className="mt-4 flex items-center gap-2 text-xs leading-relaxed text-slate-400">
           <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-300" />
-          Check-ins e bônus são confirmados pelo Supabase. Um dia perdido não apaga suas conquistas anteriores.
+          Seu progresso fica salvo no Supabase. Um dia sem check-in não apaga etapas nem recompensas.
         </div>
       </div>
     </section>
