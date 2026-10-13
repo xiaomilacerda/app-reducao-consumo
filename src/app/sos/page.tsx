@@ -7,7 +7,6 @@ import {
   Heart,
   Wind,
   Target,
-  Volume2,
   Crown,
   Lock,
   Clock,
@@ -763,7 +762,7 @@ export default function SosPage() {
             </p>
           </button>
 
-          {/* Áudio de Calma (placeholder) */}
+          {/* Pausa guiada, disponível mesmo sem áudio ou conexão. */}
           <button
             onClick={() =>
               setActiveExercise((prev) => (prev === 'calm' ? null : 'calm'))
@@ -774,7 +773,7 @@ export default function SosPage() {
                 : 'bg-white dark:bg-gray-800 hover:shadow-2xl'
             }`}
           >
-            <Volume2
+            <Heart
               className={`w-10 h-10 mb-3 ${
                 activeExercise === 'calm' ? 'text-white' : 'text-green-500'
               }`}
@@ -786,7 +785,7 @@ export default function SosPage() {
                   : 'text-gray-900 dark:text-gray-100'
               }`}
             >
-              Áudio de Calma
+              Pausa de Calma
             </h3>
             <p
               className={`text-sm ${
@@ -795,7 +794,7 @@ export default function SosPage() {
                   : 'text-gray-600 dark:text-gray-400'
               }`}
             >
-              Escolha sons relaxantes para desacelerar o corpo.
+              Aterre sua atenção no presente, sem áudio nem conexão.
             </p>
           </button>
         </section>
@@ -893,43 +892,31 @@ export default function SosPage() {
         )}
 
         {activeExercise === 'calm' && (
-          <section className="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-xl space-y-8">
-            <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-gray-100 mb-4">
-              Áudio de Calma
-            </h2>
-
-            <div className="flex flex-col items-center gap-8">
-              <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center animate-pulse shadow-lg">
-                <Volume2 className="w-14 h-14 sm:w-16 h-16 text-white" />
-              </div>
-
-              <div className="text-center space-y-3 max-w-xl">
-                <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  Sons relaxantes para desacelerar o corpo
-                </p>
-                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">
-                  Feche os olhos, coloque um fone e escolha um tipo de som.
-                  Enquanto ouve, mantenha a atenção na respiração e no corpo.
-                </p>
-              </div>
-
-              <div className="w-full max-w-md space-y-3">
-                <button className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 text-white font-semibold hover:shadow-lg transition-all">
-                  🌊 Som de Ondas (em breve)
-                </button>
-                <button className="w-full py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold hover:shadow-lg transition-all">
-                  🌲 Floresta / Natureza (em breve)
-                </button>
-                <button className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-600 text-white font-semibold hover:shadow-lg transition-all">
-                  🌧️ Chuva Suave (em breve)
-                </button>
-              </div>
-
-              <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                **Nesta versão, os botões são placeholders visuais. Você pode
-                conectar esses botões a áudios reais depois.**
-              </p>
-            </div>
+          <section className="rounded-3xl border border-emerald-300/20 bg-white p-5 shadow-xl dark:bg-gray-800 sm:p-8" aria-label="Pausa guiada de calma">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Pausa de Calma</h2>
+            <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+              Um exercício sem áudio, disponível imediatamente. Faça no seu ritmo e mantenha a respiração confortável.
+            </p>
+            <ol className="mt-5 grid gap-3 sm:grid-cols-3">
+              {[
+                ['Apoie os pés', 'Perceba o contato dos pés com o chão. Sinta o peso do corpo.'],
+                ['Olhe ao redor', 'Identifique três coisas que você consegue ver neste momento.'],
+                ['Solte a tensão', 'Relaxe os ombros e respire suavemente algumas vezes, sem prender o ar.'],
+              ].map(([title, guidance], index) => (
+                <li key={title} className="rounded-2xl border border-emerald-300/20 bg-emerald-50 p-4 dark:bg-emerald-950/20">
+                  <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300">PASSO {index + 1}</p>
+                  <h3 className="mt-1 font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
+                  <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">{guidance}</p>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-4 text-xs text-gray-600 dark:text-gray-300">
+              Você pode repetir a sequência ou escolher outra técnica. Não é necessário se sentir melhor imediatamente.
+            </p>
+            <button type="button" onClick={() => setActiveExercise(null)}
+              className="mt-4 min-h-11 rounded-xl border border-emerald-600/25 bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+              Encerrar minha pausa
+            </button>
           </section>
         )}
 
@@ -942,7 +929,7 @@ export default function SosPage() {
               </h2>
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                 Escolha uma técnica, clique em <strong>“Iniciar agora”</strong> e siga o passo a passo.
-                Se você gostar, curta ❤️ — as mais curtidas ficam no topo.
+                Se encontrar uma técnica útil, salve como favorita. Mostramos opções aos poucos para facilitar sua escolha.
               </p>
             </div>
 
@@ -975,7 +962,7 @@ export default function SosPage() {
               </div>
             ) : recentLogs.length === 0 ? (
               <div className="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300">
-                Nenhuma sessão registrada ainda. Conclua uma técnica por pelo menos {MIN_SECONDS_TO_LOG}s para salvar.
+                Nenhuma sessão registrada ainda. Depois de praticar pelo menos {MIN_SECONDS_TO_LOG}s, confirme a conclusão para guardar no seu histórico.
               </div>
             ) : (
               <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
