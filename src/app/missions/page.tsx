@@ -1093,7 +1093,7 @@ const requiresAnswer = missionRequiresAnswer(m);
       // Supabase realiza resposta, XP, moedas e recibo na mesma transação.
       // Não há fallback de crédito pelo navegador.
       const { data: claim, error: claimError } = await supabase.rpc(
-        'claim_mission_secure', {
+        'claim_personal_mission_secure', {
           p_mission_id: Number(m.id),
           p_answer: answerText,
         }
