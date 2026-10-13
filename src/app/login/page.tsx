@@ -7,6 +7,16 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { storage } from '@/lib/storage';
 
+function getSafeAfterLoginPath(): string {
+  if (typeof window === 'undefined') return '/profile';
+  const target = new URLSearchParams(window.location.search).get('next');
+  // Only allow same-origin paths; never pass user-controlled external URLs to router.replace.
+  if (!target || !target.startsWith('/') || target.startsWith('//') || target.includes('\\')) {
+    return '/profile';
+  }
+  return target;
+}
+
 export default function LoginPage() {
   const router = useRouter();
 
@@ -22,7 +32,7 @@ export default function LoginPage() {
     const checkSession = async () => {
       const { data } = await supabase.auth.getSession();
       if (data?.session) {
-        router.replace('/profile');
+        router.replace(getSafeAfterLoginPath());
         return;
       }
       setLoading(false);
@@ -107,7 +117,7 @@ export default function LoginPage() {
       }
 
       await syncProfile();
-      router.replace('/profile');
+      router.replace(getSafeAfterLoginPath());
     } catch (err: any) {
       console.error(err);
       setErrorMsg(err.message ?? 'Erro inesperado');
