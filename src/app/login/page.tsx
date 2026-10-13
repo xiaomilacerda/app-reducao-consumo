@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { storage } from '@/lib/storage';
+import { prepareLocalAccount, readPrivateState, restoreJourney, snapshotJourney, updatePrivateState } from '@/lib/private-state';
 
 function getSafeAfterLoginPath(): string {
   if (typeof window === 'undefined') return '/profile';
@@ -39,6 +40,21 @@ export default function LoginPage() {
       if (!data?.user) return;
 
       const user = data.user;
+      prepareLocalAccount(user.id);
+
+      // Ao entrar, a conta no Supabase assume a prioridade sobre o cache local.
+      try {
+        const cloud = await readPrivateState(user.id);
+        const local = storage.getUserData();
+        if (cloud?.userData && Object.keys(cloud.userData).length > 0) {
+          restoreJourney(cloud, local);
+        } else if (local?.onboardingCompleted) {
+          // Migra dados locais antigos somente quando ainda não existe registro na nuvem.
+          await updatePrivateState({ userData: snapshotJourney(local) });
+        }
+      } catch (syncError) {
+        console.warn('Sincronização da jornada pendente:', syncError);
+      }
 
       const { data: profile } = await supabase
         .from('profiles')

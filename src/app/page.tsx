@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 import { storage } from '@/lib/storage';
+import { supabase } from '@/lib/supabase';
+import { prepareLocalAccount, readPrivateState, restoreJourney, snapshotJourney, updatePrivateState } from '@/lib/private-state';
 import { UserData, Achievement } from '@/lib/types';
 
 import {
@@ -52,6 +54,8 @@ export default function HomePage() {
   const [cleanDays, setCleanDays] = useState(0);
   const [dailyMessage, setDailyMessage] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const latestData = useRef<UserData | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   // ======================
   // BANCO DE FRASES
@@ -85,63 +89,94 @@ export default function HomePage() {
   }
 
   useEffect(() => {
+    let active = true;
+    let interval: ReturnType<typeof setInterval> | null = null;
     setMounted(true);
-    const data = storage.getUserData();
 
-    if (!data) {
+    const startHome = async () => {
+      let data = storage.getUserData();
+
+      try {
+        const { data: auth, error: authError } = await supabase.auth.getUser();
+        if (authError) throw authError;
+        if (auth.user) {
+          prepareLocalAccount(auth.user.id);
+          data = storage.getUserData();
+          const cloud = await readPrivateState(auth.user.id);
+          if (cloud?.userData && Object.keys(cloud.userData).length > 0) {
+            data = restoreJourney(cloud, data);
+          } else if (data?.onboardingCompleted) {
+            // Importação única dos dados antigos que ainda existiam só no aparelho.
+            await updatePrivateState({ userData: snapshotJourney(data) });
+          } else {
+            // Contas criadas antes da sincronização podem ter o último uso no profile.
+            const { data: profile } = await supabase.from('profiles')
+              .select('last_use, daily_cost, thc_potency, grams_per_joint, currency')
+              .eq('id', auth.user.id).maybeSingle();
+            if (profile?.last_use) {
+              data = {
+                ...(data ?? {}),
+                startDate: profile.last_use,
+                lastUseDateTime: profile.last_use,
+                dailyCost: profile.daily_cost ?? data?.dailyCost ?? 0,
+                thcPotency: profile.thc_potency ?? data?.thcPotency ?? 5,
+                gramsPerJoint: profile.grams_per_joint ?? data?.gramsPerJoint ?? 0.5,
+                currency: profile.currency ?? data?.currency ?? 'BRL',
+              } as UserData;
+            }
+          }
+
+          // Plano e XP devem vir da tabela oficial, nunca de dados editáveis locais.
+          const { data: officialProfile } = await supabase.from('profiles')
+            .select('is_premium, xp').eq('id', auth.user.id).maybeSingle();
+          if (data && officialProfile) {
+            data = {
+              ...data,
+              isPremium: !!officialProfile.is_premium,
+              xp: Number(officialProfile.xp ?? data.xp ?? 0),
+            };
+          }
+        }
+      } catch (err) {
+        console.error('Não foi possível carregar a jornada da nuvem:', err);
+        if (active) setSyncError('Sem sincronização com a nuvem. Confira a conexão antes de trocar de dispositivo.');
+      }
+
+      if (!active) return;
       const nowIso = new Date().toISOString();
-      const defaultData: UserData = {
-        ...storage.getUserData(),
-        startDate: nowIso,
-        lastRelapseDate: null,
-        dailyCost: 20,
-        gramsPerJoint: 0.5,
-        pricePerGram: 10,
-        frequencyAmount: 4,
-        frequencyPeriod: 'day',
-        thcPotency: 5,
+      const safeData: UserData = {
+        ...(data ?? {}),
+        startDate: data?.startDate || data?.lastUseDateTime || nowIso,
+        lastRelapseDate: data?.lastRelapseDate ?? null,
+        dailyCost: typeof data?.dailyCost === 'number' ? data.dailyCost : 0,
+        gramsPerJoint: typeof data?.gramsPerJoint === 'number' ? data.gramsPerJoint : 0.5,
+        pricePerGram: typeof data?.pricePerGram === 'number' ? data.pricePerGram : 0,
+        frequencyAmount: typeof data?.frequencyAmount === 'number' ? data.frequencyAmount : 1,
+        frequencyPeriod: data?.frequencyPeriod || 'day',
+        thcPotency: typeof data?.thcPotency === 'number' ? data.thcPotency : 5,
+        lastMood: (data as any)?.lastMood || 'neutral',
       } as UserData;
 
-      storage.saveUserData(defaultData);
-      setUserData(defaultData);
-      setDailyMessage(gerarMensagemDiaria(null));
-      loadAchievements(defaultData);
-      return;
-    }
+      storage.saveUserData(safeData);
+      latestData.current = safeData;
+      setUserData(safeData);
+      setDailyMessage(gerarMensagemDiaria((safeData as any).lastMood || null));
+      loadAchievements(safeData);
 
-    const safeData: UserData = {
-      ...data,
-      startDate: data.startDate || new Date().toISOString(),
-      lastRelapseDate: data.lastRelapseDate ?? null,
-      dailyCost: typeof data.dailyCost === 'number' ? data.dailyCost : 20,
-      gramsPerJoint:
-        typeof data.gramsPerJoint === 'number' ? data.gramsPerJoint : 0.5,
-      pricePerGram:
-        typeof (data as any).pricePerGram === 'number'
-          ? (data as any).pricePerGram
-          : 10,
-      frequencyAmount:
-        typeof data.frequencyAmount === 'number' ? data.frequencyAmount : 4,
-      frequencyPeriod: data.frequencyPeriod || 'day',
-      thcPotency:
-        typeof data.thcPotency === 'number' ? data.thcPotency : 5,
-      lastMood: (data as any).lastMood || 'neutral',
+      interval = setInterval(() => {
+        const latest = latestData.current;
+        if (!latest) return;
+        const days = calculateCleanDays(latest.startDate, latest.lastRelapseDate);
+        setCleanDays(Number.isFinite(days) ? days : 0);
+        checkAndUnlockAchievements(days, latest);
+      }, 1000);
     };
 
-    setUserData(safeData);
-    setDailyMessage(gerarMensagemDiaria(safeData.lastMood || null));
-    loadAchievements(safeData);
-
-    const interval = setInterval(() => {
-      const days = calculateCleanDays(
-        safeData.startDate,
-        safeData.lastRelapseDate
-      );
-      setCleanDays(Number.isFinite(days) ? days : 0);
-      checkAndUnlockAchievements(days, safeData);
-    }, 1000);
-
-    return () => clearInterval(interval);
+    void startHome();
+    return () => {
+      active = false;
+      if (interval) clearInterval(interval);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -205,19 +240,59 @@ export default function HomePage() {
     setAchievements(updatedAchievements);
   };
 
-  const handleRelapse = () => {
-    const updatedData = storage.registerRelapse();
-    setUserData(updatedData);
-    setCleanDays(0);
-    loadAchievements(updatedData);
+  const handleRelapse = async () => {
+    if (!userData) return;
+    const now = new Date();
+    const updatedData = {
+      ...userData,
+      lastRelapseDate: now.toISOString(),
+      lastUseDateTime: now.toISOString(),
+      totalRelapses: (userData.totalRelapses || 0) + 1,
+      relapseHistory: [
+        ...(userData.relapseHistory || []),
+        {
+          id: `relapse_${now.getTime()}`,
+          date: now.toISOString().slice(0, 10),
+          time: now.toTimeString().split(' ')[0],
+        },
+      ],
+    } as UserData;
+
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      if (auth.user) {
+        await updatePrivateState({ userData: snapshotJourney(updatedData) });
+      }
+      storage.saveUserData(updatedData);
+      storage.resetAchievements();
+      latestData.current = updatedData;
+      setUserData(updatedData);
+      setCleanDays(0);
+      loadAchievements(updatedData);
+      setSyncError(null);
+    } catch (error) {
+      console.error('Falha ao registrar recaída:', error);
+      setSyncError('Não foi possível salvar o registro na nuvem. Tente novamente.');
+    }
   };
 
-  const toggleTheme = () => {
+  const toggleTheme = async () => {
     if (!userData) return;
     const newTheme = userData.themeMode === 'default' ? 'focus' : 'default';
-    const updatedData = { ...userData, themeMode: newTheme };
-    storage.saveUserData(updatedData);
-    setUserData(updatedData);
+    const updatedData = { ...userData, themeMode: newTheme } as UserData;
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      if (auth.user) {
+        await updatePrivateState({ userData: { themeMode: newTheme } });
+      }
+      storage.saveUserData(updatedData);
+      latestData.current = updatedData;
+      setUserData(updatedData);
+      setSyncError(null);
+    } catch (error) {
+      console.error('Erro ao salvar tema:', error);
+      setSyncError('Não foi possível salvar o tema na nuvem.');
+    }
   };
 
   if (!mounted || !userData) {
@@ -410,6 +485,11 @@ export default function HomePage() {
 
       {/* MAIN */}
       <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8 space-y-8">
+        {syncError && (
+          <div role="alert" className="rounded-xl border border-amber-400/50 bg-amber-950/75 px-4 py-3 text-sm text-amber-100">
+            {syncError}
+          </div>
+        )}
         {/* FRASE DO DIA */}
         {dailyMessage && (
           <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-5 border border-purple-100 dark:border-purple-900/40">
