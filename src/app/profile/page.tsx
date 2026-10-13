@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { prepareLocalAccount, readPrivateState, restoreJourney, snapshotJourney, updatePrivateState, type PrivateState } from '@/lib/private-state';
+import { prepareLocalAccount, readPrivateState, restoreJourney, snapshotJourney, type PrivateState } from '@/lib/private-state';
+import ProfileActionNotice from '@/components/profile/ProfileActionNotice';
 import { storage } from '@/lib/storage';
 import {
   ArrowLeft,
@@ -183,6 +184,7 @@ export default function ProfilePage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [cloudReady, setCloudReady] = useState(false);
   const [settingsDirty, setSettingsDirty] = useState(false);
   // Protege ajustes ainda não salvos ao fechar/atualizar a aba.
   useEffect(() => {
@@ -223,6 +225,7 @@ export default function ProfilePage() {
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const dismissNotice = useCallback(() => { setErrorMessage(null); setSuccessMessage(null); }, []);
 
   // Gamificação (se existir no userData)
   const [xp, setXp] = useState<number | null>(null);
@@ -304,6 +307,7 @@ export default function ProfilePage() {
       try {
         setLoading(true);
         setErrorMessage(null);
+        setCloudReady(false);
 
         // Garantir sessão Supabase
         const {
@@ -351,7 +355,7 @@ export default function ProfilePage() {
     lastRelapseDate: null,
     daysClean: 0,
     moneySaved: 0,
-    lastUseDateTime: nowIso,
+    lastUseDateTime: null,
     ...DEFAULT_CORE_VALUES,
   } as UserData;
 
@@ -364,6 +368,7 @@ export default function ProfilePage() {
         let cloudState: PrivateState | null = null;
         try {
           cloudState = await waitForCloud(readPrivateState(user.id));
+          setCloudReady(true);
           data = restoreJourney(cloudState, data);
           if (cloudState?.displayName) setDisplayName(cloudState.displayName);
           if (cloudState?.preferredFocusArea && isPreferredFocusArea(cloudState.preferredFocusArea)) {
@@ -379,6 +384,7 @@ export default function ProfilePage() {
           if (typeof cloudState?.timezone === 'string') setTimezone(cloudState.timezone);
         } catch (cloudError) {
           console.error('Falha ao carregar dados privados:', cloudError);
+          setCloudReady(false);
           setErrorMessage('Não foi possível sincronizar seus dados. Confira a conexão antes de salvar.');
         }
 
@@ -479,16 +485,9 @@ if (lastIso) {
   setLastUseDate(`${yyyy}-${mm}-${dd}`);
   setLastUseTime(`${hh}:${min}`);
 } else {
-  // Fallback: se não existir informação de último uso,
-  // usamos a data de hoje para não deixar o campo vazio.
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-
-  setLastUseDate(`${yyyy}-${mm}-${dd}`);
-  // Horário fica em branco, já que a pessoa pode não lembrar
-  setLastUseTime('12:00');
+  // Nunca inventar uma data de consumo em um aparelho novo.
+  setLastUseDate('');
+  setLastUseTime('');
 }
 
 
@@ -523,7 +522,7 @@ if (lastIso) {
         // Fallback: nome salvo no localStorage, caso não exista/funcione o profile
         if (typeof window !== 'undefined') {
           const storedName = localStorage.getItem('weedreset_display_name');
-          if (storedName && storedName.trim()) {
+          if (!cloudState?.displayName && storedName && storedName.trim()) {
             setDisplayName(storedName.trim());
           }
         }
@@ -534,7 +533,7 @@ if (lastIso) {
         try {
           const { data: profile, error: profileError } = await waitForCloud(
             supabase.from('profiles')
-              .select('display_name, full_name, is_premium, thc_potency, main_goal, timezone, preferred_language, currency, grams_per_joint, daily_cost, last_use, equipped_avatar, equipped_icon, xp')
+              .select('display_name, full_name, is_premium, thc_potency, main_goal, timezone, preferred_language, currency, frequency_amount, frequency_period, grams_per_joint, daily_cost, price_per_gram, consumption_methods, last_use, equipped_avatar, equipped_icon, xp')
               .eq('id', user.id)
               .maybeSingle()
           ) as any;
@@ -814,6 +813,10 @@ if (lastIso) {
       setErrorMessage('Faça login para sincronizar seus dados.');
       return;
     }
+    if (!cloudReady) {
+      setErrorMessage('A nuvem não foi confirmada. Atualize o Perfil e aguarde a sincronização antes de salvar, para não substituir dados de outro dispositivo.');
+      return;
+    }
     setErrorMessage(null);
     setSuccessMessage(null);
 
@@ -825,8 +828,17 @@ if (lastIso) {
     // informar uma nova data de consumo nem redefinir a jornada.
     const selectedLastUse = lastUseDate
       ? buildIsoFromDateAndTime(lastUseDate, lastUseTime || '12:00') : null;
-    if (lastUseDate && !selectedLastUse) {
-      setErrorMessage('A data ou o horário informado é inválido.');
+    if (lastUseDate && (!selectedLastUse || new Date(selectedLastUse).getTime() > Date.now() + 300000)) {
+      setErrorMessage('Informe uma data válida, que não esteja no futuro.');
+      return;
+    }
+    const bounded = [frequencyAmount, gramsPerJoint, pricePerGram, dailyCost];
+    if (bounded.some((value) => !Number.isFinite(value) || value < 0) ||
+      frequencyAmount > 1000 || gramsPerJoint > 100 ||
+      pricePerGram > 100000 || dailyCost > 100000 ||
+      !displayName || displayName.trim().length > 80 ||
+      mainGoal.length > 500) {
+      setErrorMessage('Revise nome e valores de consumo: alguns campos estão inválidos ou excedem os limites.');
       return;
     }
     const previousLastUse = userData.lastUseDateTime;
@@ -853,33 +865,36 @@ if (lastIso) {
     try {
       setSaving(true);
 
-      // Primeiro confirma o registro privado. Dados ainda não salvos ficam no formulário.
-      await updatePrivateState({
-        userData: snapshotJourney(updated),
-        displayName: displayName.trim(),
-        equippedAvatar,
-        preferredFocusArea,
-        notificationsEnabled,
-        darkMode,
-        preferredLanguage,
-        timezone,
-      });
-
-      // Campos de compatibilidade usados por outras telas do aplicativo.
-      const { error: profileError } = await supabase.from('profiles').upsert({
-        id: userId,
-        display_name: displayName.trim() || null,
-        thc_potency: thcPotency,
-        main_goal: mainGoal.trim() || DEFAULT_PROFILE_VALUES.mainGoal,
-        timezone,
-        preferred_language: preferredLanguage,
-        currency,
-        grams_per_joint: gramsPerJoint,
-        daily_cost: dailyCost,
-        last_use: lastUseDateTime,
-      });
-
-      if (profileError) throw profileError;
+      // Transação única no Supabase: JSON privado e campos de compatibilidade.
+      // O servidor confirma tudo junto ou não aplica nenhuma alteração.
+      const { data: saveResult, error: saveError } = await supabase.rpc(
+        'save_profile_preferences_secure', {
+          p_user_data: snapshotJourney(updated),
+          p_preferences: {
+            displayName: displayName.trim(),
+            equippedAvatar,
+            preferredFocusArea,
+            notificationsEnabled,
+            darkMode,
+            preferredLanguage,
+            timezone,
+          },
+          p_profile: {
+            display_name: displayName.trim() || null,
+            thc_potency: thcPotency,
+            main_goal: mainGoal.trim() || DEFAULT_PROFILE_VALUES.mainGoal,
+            timezone, preferred_language: preferredLanguage,
+            currency, frequency_amount: frequencyAmount,
+            frequency_period: frequencyPeriod,
+            grams_per_joint: gramsPerJoint, daily_cost: dailyCost,
+            price_per_gram: pricePerGram,
+            consumption_methods: consumptionMethods,
+            last_use: lastUseDateTime,
+          },
+        }
+      );
+      if (saveError || saveResult?.ok !== true)
+        throw saveError || new Error('O Supabase não confirmou o salvamento.');
 
       storage.saveUserData(updated);
       if (typeof window !== 'undefined') {
@@ -912,17 +927,11 @@ if (lastIso) {
       setErrorMessage(null);
       setSuccessMessage(null);
 
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({ id: userId, equipped_icon: target });
-
-      if (error) {
-        console.warn('Erro ao equipar avatar:', error?.message, error);
-        setErrorMessage('Não foi possível equipar esse avatar agora.');
-        return;
-      }
-      await updatePrivateState({ equippedAvatar: target });
-
+      const { data: equipped, error } = await supabase.rpc(
+        'equip_profile_avatar_secure', { p_code: target }
+      );
+      if (error || equipped?.ok !== true)
+        throw error || new Error('O servidor não confirmou o avatar.');
       setEquippedAvatar(target);
       setAvatarPickerOpen(false);
       setSuccessMessage('Avatar equipado com sucesso!');
@@ -1117,6 +1126,7 @@ if (lastIso) {
 
   return (
     <div className="min-h-screen w-full overflow-x-clip bg-gradient-to-br from-purple-900 via-black to-gray-900">
+      <ProfileActionNotice success={successMessage} error={errorMessage} onDismiss={dismissNotice}/>
       <header className="bg-black/40 backdrop-blur-sm shadow-sm sticky top-0 z-30 border-b border-purple-500/20">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-3">
           <button
@@ -1145,25 +1155,6 @@ if (lastIso) {
 
       {/* Conteúdo */}
       <main className="mx-auto w-full max-w-4xl min-w-0 space-y-5 px-3 py-5 pb-28 sm:space-y-6 sm:px-6 sm:py-6">
-        {/* Mensagens */}
-        {(errorMessage || successMessage) && (
-          <div className="space-y-2">
-            {errorMessage && (
-              <div className="flex items-center gap-2 text-xs bg-red-900/40 border border-red-500/60 text-red-50 px-3 py-2 rounded-xl">
-                <AlertCircle className="w-4 h-4" />
-                <span>{errorMessage}</span>
-              </div>
-            )}
-
-            {successMessage && (
-              <div className="flex items-center gap-2 text-xs bg-emerald-900/40 border border-emerald-500/60 text-emerald-50 px-3 py-2 rounded-xl">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>{successMessage}</span>
-              </div>
-            )}
-          </div>
-        )}
-
                 {avatarPickerOpen && (
           <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-4">
             <div
@@ -1847,8 +1838,6 @@ if (lastIso) {
         </section>
 
           </div>
-          {errorMessage && <p role="alert" className="mx-3 mb-3 rounded-xl border border-rose-300/40 bg-rose-900/50 px-4 py-3 text-sm text-rose-100">{errorMessage}</p>}
-          {successMessage && <p role="status" className="mx-3 mb-3 rounded-xl border border-emerald-300/40 bg-emerald-900/40 px-4 py-3 text-sm text-emerald-100">{successMessage}</p>}
           {settingsDirty && (
             <div role="status" className="sticky bottom-20 z-20 mx-2 mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300/30 bg-[#292037] px-4 py-3 text-sm text-white shadow-xl sm:mx-4">
               <span>Você tem alterações ainda não salvas.</span>
