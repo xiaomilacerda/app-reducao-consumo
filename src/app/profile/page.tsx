@@ -470,15 +470,9 @@ if (lastIso) {
         let days = 0;
         let money = 0;
 
-        if (typeof data?.daysClean === 'number') {
-          days = data.daysClean;
-        } else if (typeof (data as any)?.cleanDays === 'number') {
-          days = (data as any).cleanDays;
-        } else if (typeof (data as any)?.days_without_weed === 'number') {
-          days = (data as any).days_without_weed;
-        } else if ((data as any)?.lastUseTimestamp) {
-          const diff = Date.now() - (data as any).lastUseTimestamp;
-          days = Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+        const cleanSince = data?.lastRelapseDate || data?.lastUseDateTime || data?.startDate;
+        if (cleanSince && Number.isFinite(new Date(cleanSince).getTime())) {
+          days = Math.max(0, Math.floor((Date.now() - new Date(cleanSince).getTime()) / 86400000));
         }
 
         const dailyCostLocal =
@@ -486,13 +480,7 @@ if (lastIso) {
             ? data.dailyCost
             : DEFAULT_CORE_VALUES.dailyCost;
 
-        if (typeof (data as any)?.moneySaved === 'number') {
-          money = (data as any).moneySaved;
-        } else if (typeof (data as any)?.totalSavings === 'number') {
-          money = (data as any).totalSavings;
-        } else if (days > 0 && dailyCostLocal > 0) {
-          money = Math.round(days * dailyCostLocal);
-        }
+        money = Math.round(Math.max(0, days * Math.max(0, dailyCostLocal)));
 
         setDaysClean(days || null);
         setMoneySaved(money || null);
