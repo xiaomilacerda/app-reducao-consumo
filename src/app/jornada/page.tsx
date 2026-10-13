@@ -33,11 +33,8 @@ type Mission = {
 type MissionJournalRow = {
   id: number;
   journey_day: number | null;
-  // ✅ Compatibilidade entre versões do banco:
-  // banco antigo: answer_text
-  // código mais novo: answered_text
-  answer_text?: string | null;
-  answered_text?: string | null;
+  // Colunas existentes no Supabase de produção.
+  answer_text: string | null;
   content: string | null;
   day_key: string | null;
   created_at: string | null;
@@ -72,7 +69,7 @@ function todayKey() {
 
 function getJournalText(row?: MissionJournalRow | null) {
   if (!row) return '';
-  return row.content || row.answered_text || row.answer_text || '';
+  return row.content || row.answer_text || '';
 }
 
 function normalizeSteps(steps: Mission['steps_json']) {
@@ -264,12 +261,11 @@ export default function Jornada365Page() {
     const currentDayIndex = todayRow?.day_index ?? 1;
     setJourneyDayNumber(currentDayIndex);
 
-    // ✅ Compatível com as duas versões do banco:
-    // answer_text (backup antigo) e answered_text (código atual)
+    // Selecionar apenas colunas que existem no banco de produção.
     const { data: journalData, error: journalError } = await supabase
       .from('mission_journal')
       .select(
-        'id, journey_day, answer_text, answered_text, content, day_key, created_at'
+        'id, journey_day, answer_text, content, day_key, created_at'
       )
       .eq('user_id', user.id)
       .order('day_key', { ascending: true });
@@ -339,9 +335,8 @@ export default function Jornada365Page() {
       const payload = {
         user_id: user.id,
         journey_day: currentMission.journey_day,
-        // ✅ Salva nas duas colunas para não quebrar nenhuma página antiga/nova.
+        // Mantém a coluna legada usada pelo histórico e a coluna principal.
         answer_text: cleanContent,
-        answered_text: cleanContent,
         content: cleanContent,
         day_key: day,
       };
@@ -352,7 +347,7 @@ export default function Jornada365Page() {
           onConflict: 'user_id,journey_day',
         })
         .select(
-          'id, journey_day, answer_text, answered_text, content, day_key, created_at'
+          'id, journey_day, answer_text, content, day_key, created_at'
         )
         .maybeSingle();
 
