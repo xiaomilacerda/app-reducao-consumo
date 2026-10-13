@@ -10,7 +10,6 @@ import {
   Crown,
   Lock,
   Clock,
-  Sparkles,
   Flame,
   Search,
   Filter,
@@ -29,17 +28,6 @@ import ProfileSupportReminder from '@/components/profile/ProfileSupportReminder'
 import ProfileActionNotice from '@/components/profile/ProfileActionNotice';
 
 type ThemeMode = 'default' | 'focus';
-
-const motivationalPhrases = [
-  'Você é mais forte do que imagina.',
-  'Esta vontade vai passar. Respire fundo.',
-  'Cada segundo que você resiste é uma vitória.',
-  'Você já chegou tão longe. Continue!',
-  'Seu futuro eu agradece por esta escolha.',
-  'A fissura é temporária. Sua força é permanente.',
-  'Você não precisa disso. Você é completo.',
-  'Respire. Você está no controle.',
-];
 
 type SosTool = {
   id: number;
@@ -135,10 +123,6 @@ export default function SosPage() {
   const [breathingCount, setBreathingCount] = useState(4);
 
   const [focusTimer, setFocusTimer] = useState(60);
-
-  const [currentPhraseIndex] = useState(
-    () => Math.floor(Math.random() * motivationalPhrases.length),
-  );
 
   // ----- FERRAMENTAS SOS DO BANCO -----
   const [tools, setTools] = useState<SosTool[]>([]);
@@ -630,6 +614,18 @@ export default function SosPage() {
     return selected;
   }, [tools]);
 
+  const showExercise = (name: 'breathing' | 'focus' | 'calm') => {
+    setActiveExercise(previous => previous === name ? null : name);
+    if (name === 'breathing') {
+      setBreathingPhase('inhale');
+      setBreathingCount(4);
+    }
+    if (name === 'focus') setFocusTimer(60);
+    // O conteúdo abre logo abaixo dos atalhos. Role até ele, sem procurar.
+    window.setTimeout(() => document.getElementById('sos-active-exercise')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 70);
+  };
+
   // ---------------- RENDER ----------------
   if (!mounted) {
     return (
@@ -639,7 +635,6 @@ export default function SosPage() {
     );
   }
 
-  const currentPhrase = motivationalPhrases[currentPhraseIndex];
   const isFocusMode = themeMode === 'focus';
 
   return (
@@ -703,28 +698,22 @@ export default function SosPage() {
         <div className="grid grid-cols-3 gap-2 sm:gap-4">
           {/* Respiração Guiada */}
           <button
-            onClick={() => {
-              setActiveExercise((prev) =>
-                prev === 'breathing' ? null : 'breathing',
-              );
-              setBreathingPhase('inhale');
-              setBreathingCount(4);
-            }}
-            className={`p-6 rounded-2xl shadow-xl transition-all text-left ${
+            onClick={() => showExercise('breathing')}
+            className={`min-w-0 rounded-2xl border border-white/10 p-3 text-left shadow-lg transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 sm:p-5 ${
               activeExercise === 'breathing'
-                ? 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white scale-105'
+                ? 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white'
                 : 'bg-white dark:bg-gray-800 hover:shadow-2xl'
             }`}
           >
             <Wind
-              className={`w-10 h-10 mb-3 ${
+              className={`h-6 w-6 mb-2 sm:h-8 sm:w-8 sm:mb-3 ${
                 activeExercise === 'breathing'
                   ? 'text-white'
                   : 'text-blue-500'
               }`}
             />
             <h3
-              className={`text-lg sm:text-xl font-bold mb-1 ${
+              className={`text-[13px] font-bold leading-tight sm:mb-1 sm:text-lg ${
                 activeExercise === 'breathing'
                   ? 'text-white'
                   : 'text-gray-900 dark:text-gray-100'
@@ -733,7 +722,7 @@ export default function SosPage() {
               Respiração 4-7-8
             </h3>
             <p
-              className={`text-sm ${
+              className={`sr-only sm:not-sr-only sm:block sm:text-sm ${
                 activeExercise === 'breathing'
                   ? 'text-white/90'
                   : 'text-gray-600 dark:text-gray-400'
@@ -745,23 +734,20 @@ export default function SosPage() {
 
           {/* Treino de Foco */}
           <button
-            onClick={() => {
-              setActiveExercise((prev) => (prev === 'focus' ? null : 'focus'));
-              setFocusTimer(60);
-            }}
-            className={`p-6 rounded-2xl shadow-xl transition-all text-left ${
+            onClick={() => showExercise('focus')}
+            className={`min-w-0 rounded-2xl border border-white/10 p-3 text-left shadow-lg transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 sm:p-5 ${
               activeExercise === 'focus'
-                ? 'bg-gradient-to-br from-purple-500 to-pink-600 text-white scale-105'
+                ? 'bg-gradient-to-br from-purple-500 to-pink-600 text-white'
                 : 'bg-white dark:bg-gray-800 hover:shadow-2xl'
             }`}
           >
             <Target
-              className={`w-10 h-10 mb-3 ${
+              className={`h-6 w-6 mb-2 sm:h-8 sm:w-8 sm:mb-3 ${
                 activeExercise === 'focus' ? 'text-white' : 'text-purple-500'
               }`}
             />
             <h3
-              className={`text-lg sm:text-xl font-bold mb-1 ${
+              className={`text-[13px] font-bold leading-tight sm:mb-1 sm:text-lg ${
                 activeExercise === 'focus'
                   ? 'text-white'
                   : 'text-gray-900 dark:text-gray-100'
@@ -770,7 +756,7 @@ export default function SosPage() {
               Treino de Foco (1 min)
             </h3>
             <p
-              className={`text-sm ${
+              className={`sr-only sm:not-sr-only sm:block sm:text-sm ${
                 activeExercise === 'focus'
                   ? 'text-white/90'
                   : 'text-gray-600 dark:text-gray-400'
@@ -782,22 +768,20 @@ export default function SosPage() {
 
           {/* Pausa guiada, disponível mesmo sem áudio ou conexão. */}
           <button
-            onClick={() =>
-              setActiveExercise((prev) => (prev === 'calm' ? null : 'calm'))
-            }
-            className={`p-6 rounded-2xl shadow-xl transition-all text-left ${
+            onClick={() => showExercise('calm')}
+            className={`min-w-0 rounded-2xl border border-white/10 p-3 text-left shadow-lg transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 sm:p-5 ${
               activeExercise === 'calm'
-                ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white scale-105'
+                ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white'
                 : 'bg-white dark:bg-gray-800 hover:shadow-2xl'
             }`}
           >
             <Heart
-              className={`w-10 h-10 mb-3 ${
+              className={`h-6 w-6 mb-2 sm:h-8 sm:w-8 sm:mb-3 ${
                 activeExercise === 'calm' ? 'text-white' : 'text-green-500'
               }`}
             />
             <h3
-              className={`text-lg sm:text-xl font-bold mb-1 ${
+              className={`text-[13px] font-bold leading-tight sm:mb-1 sm:text-lg ${
                 activeExercise === 'calm'
                   ? 'text-white'
                   : 'text-gray-900 dark:text-gray-100'
@@ -806,7 +790,7 @@ export default function SosPage() {
               Pausa de Calma
             </h3>
             <p
-              className={`text-sm ${
+              className={`sr-only sm:not-sr-only sm:block sm:text-sm ${
                 activeExercise === 'calm'
                   ? 'text-white/90'
                   : 'text-gray-600 dark:text-gray-400'
@@ -820,13 +804,13 @@ export default function SosPage() {
 
         {/* BLOCO DO EXERCÍCIO ATIVO */}
         {activeExercise === 'breathing' && (
-          <section className="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-xl space-y-8">
+          <section id="sos-active-exercise" className="scroll-mt-28 min-w-0 rounded-3xl bg-white p-4 shadow-xl dark:bg-gray-800 sm:p-8 space-y-6">
             <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-gray-100 mb-4">
               Respiração 4-7-8
             </h2>
 
             <div className="flex flex-col items-center gap-8">
-              <div className="relative w-64 h-64">
+              <div className="relative h-48 w-48 sm:h-64 sm:w-64">
                 <div
                   className={`absolute inset-0 rounded-full transition-all duration-1000 ${
                     breathingPhase === 'inhale'
@@ -840,10 +824,10 @@ export default function SosPage() {
                   }}
                 />
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-                  <div className="text-6xl font-bold mb-2">
+                  <div className="mb-2 text-5xl font-bold sm:text-6xl">
                     {breathingCount}
                   </div>
-                  <div className="text-2xl font-semibold">
+                  <div className="text-xl font-semibold sm:text-2xl">
                     {breathingPhase === 'inhale' && 'Inspire'}
                     {breathingPhase === 'hold' && 'Segure'}
                     {breathingPhase === 'exhale' && 'Expire'}
@@ -864,7 +848,7 @@ export default function SosPage() {
         )}
 
         {activeExercise === 'focus' && (
-          <section className="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-xl space-y-8">
+          <section id="sos-active-exercise" className="scroll-mt-28 min-w-0 rounded-3xl bg-white p-4 shadow-xl dark:bg-gray-800 sm:p-8 space-y-6">
             <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-gray-100 mb-4">
               Treino de Foco (1 minuto)
             </h2>
@@ -911,7 +895,7 @@ export default function SosPage() {
         )}
 
         {activeExercise === 'calm' && (
-          <section className="rounded-3xl border border-emerald-300/20 bg-white p-5 shadow-xl dark:bg-gray-800 sm:p-8" aria-label="Pausa guiada de calma">
+          <section id="sos-active-exercise" className="scroll-mt-28 min-w-0 rounded-3xl border border-emerald-300/20 bg-white p-5 shadow-xl dark:bg-gray-800 sm:p-8" aria-label="Pausa guiada de calma">
             <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Pausa de Calma</h2>
             <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
               Um exercício sem áudio, disponível imediatamente. Faça no seu ritmo e mantenha a respiração confortável.
@@ -938,6 +922,18 @@ export default function SosPage() {
             </button>
           </section>
         )}
+
+        <details className="group overflow-hidden rounded-2xl border border-emerald-300/15 bg-[#122622] text-white">
+          <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 [&::-webkit-details-marker]:hidden">
+            <span className="min-w-0"><span className="block text-sm font-semibold">Meu plano pessoal de apoio</span>
+              <span className="mt-1 block text-xs text-emerald-100/70">Meus gatilhos e ações que me ajudam, quando precisar.</span>
+            </span>
+            <ChevronDown className="h-5 w-5 shrink-0 text-emerald-300 transition-transform group-open:rotate-180"/>
+          </summary>
+          <div className="px-2 pb-3 sm:px-3">
+            <ProfileSupportReminder userId={supabaseUser?.id ?? null}/>
+          </div>
+        </details>
 
         {/* ÁREA AVANÇADA: FERRAMENTAS SOS DO BANCO */}
         <section className="space-y-4">
