@@ -184,6 +184,16 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settingsDirty, setSettingsDirty] = useState(false);
+  // Protege ajustes ainda não salvos ao fechar/atualizar a aba.
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (!settingsDirty) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [settingsDirty]);
 
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -811,18 +821,17 @@ if (lastIso) {
       setErrorMessage('Informe uma porcentagem de THC entre 5% e 40%.');
       return;
     }
-    if (!lastUseDate) {
-      setErrorMessage('Informe a data da última vez que você fumou.');
-      return;
-    }
-
-    const lastUseDateTime = buildIsoFromDateAndTime(lastUseDate, lastUseTime || '12:00');
-    if (!lastUseDateTime) {
+    // Ajustar apenas o nome, idioma ou preferências não deve exigir
+    // informar uma nova data de consumo nem redefinir a jornada.
+    const selectedLastUse = lastUseDate
+      ? buildIsoFromDateAndTime(lastUseDate, lastUseTime || '12:00') : null;
+    if (lastUseDate && !selectedLastUse) {
       setErrorMessage('A data ou o horário informado é inválido.');
       return;
     }
-
     const previousLastUse = userData.lastUseDateTime;
+    const lastUseDateTime = selectedLastUse || previousLastUse || null;
+    const lastUseChanged = Boolean(selectedLastUse && selectedLastUse !== previousLastUse);
     const updated: UserData = {
       ...userData,
       thcPotency,
@@ -835,10 +844,10 @@ if (lastIso) {
       dailyCost,
       pricePerGram,
       consumptionMethods,
-      lastUseDateTime,
-      // O contador de tempo limpo deve seguir a data e hora informadas.
-      startDate: lastUseDateTime,
-      lastRelapseDate: previousLastUse !== lastUseDateTime ? null : userData.lastRelapseDate,
+      lastUseDateTime: lastUseDateTime || userData.lastUseDateTime,
+      // Preserva a data original da jornada se a pessoa apenas ajustou configurações.
+      startDate: lastUseChanged ? lastUseDateTime : userData.startDate,
+      lastRelapseDate: lastUseChanged ? null : userData.lastRelapseDate,
     } as UserData;
 
     try {
@@ -1126,8 +1135,7 @@ if (lastIso) {
               <div>
                 <h1 className="text-lg font-bold text-white">Seu perfil</h1>
                 <p className="text-xs text-purple-100/80">
-                  Ajuste nome, consumo, dinheiro e configurações principais em
-                  um único lugar.
+                  Sua jornada, suas conquistas e seu próximo passo.
                 </p>
               </div>
             </div>
@@ -1890,9 +1898,8 @@ if (lastIso) {
           <div className="pt-3 border-t border-gray-100 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
             <div className="space-y-1 text-[11px] text-gray-500">
               <p>
-                • O reset do app limpa apenas os dados deste dispositivo
-                (progresso e projeções) e volta para valores padrão
-                recomendados.
+                • Redefinir os dados locais afeta somente este dispositivo; o conteúdo
+                salvo na nuvem não é apagado.
               </p>
               <p>• Sair da conta encerra sua sessão neste dispositivo.</p>
             </div>
