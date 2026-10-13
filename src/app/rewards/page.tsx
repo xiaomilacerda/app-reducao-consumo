@@ -472,9 +472,10 @@ export default function RewardsPage() {
         item_id: `avatar_${code}`,
         equipped: false,
       })
-      if (ins.error && ins.error.code !== '23505') {
-        // Nunca anuncie um item como comprado quando a gravação falhou.
-        // Tenta reverter o débito da carteira em caso de falha.
+      if (ins.error) {
+        // Nunca cobre por um item duplicado ou por uma gravação que falhou.
+        // A compra ideal deve ser transacional no banco; fazemos o estorno
+        // defensivo enquanto a operação atômica não for implementada.
         const refund = await supabase.from('user_wallet')
           .update({ coins: wallet.coins })
           .eq('user_id', userId)
