@@ -881,7 +881,8 @@ if (lastIso) {
           p_user_data: snapshotJourney(updated),
           p_preferences: {
             displayName: displayName.trim(),
-            equippedAvatar,
+            // Avatar é salvo por sua própria operação atômica, para que
+            // editar nome/consumo não reverta um avatar escolhido em outro aparelho.
             preferredFocusArea,
             notificationsEnabled,
             darkMode,
