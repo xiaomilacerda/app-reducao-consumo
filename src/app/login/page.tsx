@@ -1,3 +1,4 @@
+import { traduzirErro } from '@/lib/traduzir-erro';
 'use client';
 
 import type { FormEvent } from 'react';
@@ -95,7 +96,7 @@ export default function LoginPage() {
       });
 
       if (error) {
-        setErrorMsg(error.message);
+        setErrorMsg(traduzirErro(error));
         setSubmitting(false);
         return;
       }
@@ -110,7 +111,7 @@ export default function LoginPage() {
       router.replace(getSafeAfterLoginPath());
     } catch (err: any) {
       console.error(err);
-      setErrorMsg(err.message ?? 'Erro inesperado');
+      setErrorMsg(traduzirErro(err, 'Não foi possível entrar. Tente novamente.'));
     } finally {
       setSubmitting(false);
     }
