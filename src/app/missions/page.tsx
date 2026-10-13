@@ -231,6 +231,26 @@ function getRequiredDaysForWeek(weekDays: string[], startDayKey: string | undefi
   return Math.max(1, 7 - idx); // seg=7, ter=6, ..., dom=1
 }
 
+/** Calcula o dia da jornada a partir do início escolhido pela pessoa. */
+function personalJourneyDay(startISO: string | null | undefined, timezone: string) {
+  if (!startISO) return 1;
+  const start = new Date(startISO);
+  if (Number.isNaN(start.getTime())) return 1;
+  const key = (date: Date) => {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: timezone || 'America/Sao_Paulo',
+      day: '2-digit', month: '2-digit', year: 'numeric',
+    }).formatToParts(date);
+    const part = (name: string) => parts.find(p => p.type === name)?.value ?? '';
+    return `${part('year')}-${part('month')}-${part('day')}`;
+  };
+  try {
+    const from = Date.parse(key(start) + 'T12:00:00Z');
+    const until = Date.parse(key(new Date()) + 'T12:00:00Z');
+    return Math.max(1, Math.min(365, Math.floor((until - from) / 86400000) + 1));
+  } catch { return 1; }
+}
+
 type WeeklyProgress = {
   week_key: string;
   checkins: Record<string, boolean>;
@@ -304,6 +324,10 @@ export default function MissionsPage() {
   const [walletCoins, setWalletCoins] = useState(0);
   const [totalXP, setTotalXP] = useState(0);
   const [level, setLevel] = useState(1);
+  const [personalMissionDay, setPersonalMissionDay] = useState(1);
+  const [xpVerified, setXpVerified] = useState(false);
+  const [walletVerified, setWalletVerified] = useState(false);
+  const [completedDailyTodayId, setCompletedDailyTodayId] = useState<string | null>(null);
 
   const [missions, setMissions] = useState<MissionRow[]>([]);
   const [weeklyMission, setWeeklyMission] = useState<MissionRow | null>(null);
@@ -358,7 +382,7 @@ export default function MissionsPage() {
 
   const today = new Date();
   const todayDayKey = getLocalDayKey(today); // YYYY-MM-DD (LOCAL)
-  const todayIndex = getDayOfYear(today); // 1..366
+  const todayIndex = personalMissionDay; // 1..365 desde o início da jornada
   const weekInfo = useMemo(() => getWeekKeyMonday(today), [todayDayKey]);
   const weeklyIndex = useMemo(() => ((weekInfo.isoWeek - 1) % 55) + 1, [weekInfo.weekKey]);
 
@@ -461,27 +485,48 @@ export default function MissionsPage() {
 
       try {
         const uid = userId;
+        let completedTodayIds: string[] = [];
         if (!uid || cancelled) {
           setProfile(null);
           setIsPremium(false);
           setWalletCoins(0);
+          setTotalXP(0);
+          setXpVerified(false);
+          setWalletVerified(false);
+          setPersonalMissionDay(1);
+          setCompletedDailyTodayId(null);
         } else {
 
           // perfil
           const { data: p, error: pErr } = await supabase
             .from('profiles')
-            .select('id, xp, is_premium')
+            .select('id, xp, is_premium, created_at, timezone')
             .eq('id', uid)
             .maybeSingle();
 
-          if (pErr) {
+          if (pErr || !p) {
+            setXpVerified(false);
             console.warn('profiles load error', pErr);
-          } else if (p) {
+          } else {
             const xp = Number((p as any).xp ?? 0);
+            const tz = (p as any).timezone || 'America/Sao_Paulo';
+            const registered = (p as any).created_at as string | null;
             setProfile(p as ProfileRow);
             setIsPremium(!!(p as any).is_premium);
             setTotalXP(xp);
+            setXpVerified(true);
             setLevel(Math.floor(xp / XP_PER_LEVEL) + 1);
+            setPersonalMissionDay(personalJourneyDay(registered, tz));
+            // Início do onboarding tem prioridade; sua falha não impede o login.
+            void supabase.from('user_private_state').select('data')
+              .eq('user_id', uid).maybeSingle()
+              .then(({ data: saved, error: stateError }: any) => {
+                if (cancelled || stateError) return;
+                const cloudStart = saved?.data?.userData?.detoxCycleStartDate ||
+                  saved?.data?.userData?.startDate;
+                if (typeof cloudStart === 'string')
+                  setPersonalMissionDay(personalJourneyDay(cloudStart, tz));
+              }, () => {});
           }
 
           // carteira
@@ -492,16 +537,18 @@ export default function MissionsPage() {
             .maybeSingle();
 
           if (wErr) {
+            setWalletVerified(false);
             console.warn('wallet load error', wErr);
-          } else if (w) {
-            setWalletCoins(Number((w as any).coins ?? 0));
+          } else {
+            setWalletCoins(Number((w as any)?.coins ?? 0));
+            setWalletVerified(true);
           }
 
           // user_missions (se já completou)
           try {
             const { data: um, error: umErr } = await supabase
               .from('user_missions')
-              .select('mission_id, completed, completed_at, status')
+              .select('mission_id, completed, completed_at, status, progress')
               .eq('user_id', uid);
 
             if (umErr) {
@@ -510,7 +557,14 @@ export default function MissionsPage() {
               const map: Record<string, boolean> = {};
               (um as any[]).forEach((row) => {
                 const mid = String(row.mission_id);
-                if (isDoneFromUserMissionRow(row)) map[mid] = true;
+                if (isDoneFromUserMissionRow(row)) {
+                  map[mid] = true;
+                  const completionKey = row.progress?.day_key || row.progress?.dayKey;
+                  const completedAt = typeof row.completed_at === 'string'
+                    ? getLocalDayKey(new Date(row.completed_at)) : null;
+                  if (completionKey === todayDayKey || completedAt === todayDayKey)
+                    completedTodayIds.push(mid);
+                }
               });
 
               // Fallback local: se a página recarregar antes do DB refletir, ainda bloqueia "farm"
@@ -560,6 +614,9 @@ export default function MissionsPage() {
         } else {
           const list = ((mData as MissionRow[]) ?? []) as MissionRow[];
           setMissions(list);
+          const dailyDone = list.find(m => m.type === 'daily' &&
+            completedTodayIds.includes(String(m.id)));
+          setCompletedDailyTodayId(dailyDone ? String(dailyDone.id) : null);
 
           // missão semanal da semana (renova na segunda-feira)
           try {
@@ -1246,6 +1303,11 @@ Não minta para você mesmo só para coletar XP e moedas.`,
   const dailyMissionToday: MissionRow | null = useMemo(() => {
     if (!dailyMissionsRaw.length) return null;
 
+    // Se um desafio já foi feito hoje na versão anterior, mostre esse
+    // desafio concluído, em vez de oferecer outro ao recalcular o dia pessoal.
+    const alreadyDone = dailyMissionsRaw.find(m =>
+      String(m.id) === completedDailyTodayId);
+    if (alreadyDone) return alreadyDone;
     const byIndex = dailyMissionsRaw.find(
       (m) => (m.day_index || 0) === Math.min(todayIndex, 365),
     );
@@ -1253,7 +1315,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
 
     // fallback: se ninguém tem day_index igual ao dia, pega a primeira
     return dailyMissionsRaw[0];
-  }, [dailyMissionsRaw, todayIndex]);
+  }, [dailyMissionsRaw, todayIndex, completedDailyTodayId]);
 
   // ---------------- EFEITO: restaurar rascunho e garantir resposta visível após concluir ----------------
   useEffect(() => {
@@ -1423,7 +1485,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                 </h1>
               </div>
               <p className="text-xs text-purple-100/80 mt-0.5">
-                Complete missões diárias e semanais para ganhar XP e moedas dentro do Weed Reset.
+                Pequenos cuidados, conquistas reais. Sua evolução acontece no seu ritmo.
               </p>
             </div>
           </div>
@@ -1432,61 +1494,42 @@ Não minta para você mesmo só para coletar XP e moedas.`,
 
       {/* MAIN */}
       <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-        {/* RESUMO XP / NIVEL / COINS */}
-        <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 border border-purple-300/50 p-4 flex flex-col gap-2 shadow-2xl">
-            <div className="flex items-center justify-between">
-              <span className="text-xs uppercase tracking-wide text-purple-50">
-                Nível
-              </span>
-              <Trophy className="w-4 h-4 text-purple-50" />
-            </div>
-            <div className="text-2xl font-bold text-white">
-              {level}
-            </div>
-            <div className="text-[11px] text-purple-100/90">
-              {totalXP} XP • próximo nível em{' '}
-              {Math.max(0, level * XP_PER_LEVEL - totalXP)} XP
-            </div>
+        {/* INDICADORES CONCISOS: dados verificados, nunca zeros falsos em falhas. */}
+        <section className="grid grid-cols-3 gap-2.5 sm:gap-4" aria-label="Seu progresso e recompensas">
+          <div className="rounded-2xl border border-violet-400/25 bg-gradient-to-br from-violet-700/65 to-[#1c1640] p-3 sm:p-5 shadow-lg">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-violet-100"><Trophy className="h-4 w-4" /> Nível</div>
+            <div className="mt-2 text-2xl font-extrabold tabular-nums sm:text-3xl">{userId && xpVerified ? level : '—'}</div>
+            <p className="mt-1 hidden text-xs text-violet-200 sm:block">Um passo de cada vez.</p>
           </div>
-
-          <div className="rounded-2xl bg-white/95 border border-purple-100 p-4 flex flex-col gap-2 shadow-xl">
-            <div className="flex items-center justify-between">
-              <span className="text-xs uppercase tracking-wide text-purple-600">
-                XP Total
-              </span>
-              <Star className="w-4 h-4 text-purple-500" />
+          <div className="rounded-2xl border border-white/10 bg-[#17172a] p-3 sm:p-5 shadow-lg">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-300"><Star className="h-4 w-4 text-amber-300" /> XP total</div>
+            <div className="mt-2 text-2xl font-extrabold tabular-nums sm:text-3xl">{userId && xpVerified ? totalXP : '—'}</div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10" role="progressbar"
+              aria-label="Progresso para o próximo nível" aria-valuemin={0} aria-valuemax={XP_PER_LEVEL}
+              aria-valuenow={xpVerified ? totalXP % XP_PER_LEVEL : 0}>
+              <div className="h-full rounded-full bg-emerald-400" style={{width: `${xpVerified ? (totalXP % XP_PER_LEVEL) / XP_PER_LEVEL * 100 : 0}%`}} />
             </div>
-            <div className="text-2xl font-bold text-gray-900">
-              {totalXP}
-            </div>
-            <div className="text-[11px] text-gray-600">
-              Ganho de XP vem de missões, SOS e outras ações dentro do app.
-            </div>
+            <p className="mt-1 text-[10px] text-slate-400">{userId && xpVerified ? `${XP_PER_LEVEL - totalXP % XP_PER_LEVEL} XP para subir` : 'Entre para acompanhar'}</p>
           </div>
-
-          <div className="rounded-2xl bg-white/95 border border-amber-100 p-4 flex flex-col gap-2 shadow-xl">
-            <div className="flex items-center justify-between">
-              <span className="text-xs uppercase tracking-wide text-amber-600">
-                Moedas
-              </span>
-              <Coins className="w-4 h-4 text-amber-500" />
-            </div>
-            <div className="text-2xl font-bold text-gray-900">
-              {walletCoins}
-            </div>
-            <div className="text-[11px] text-gray-600">
-              Use suas moedas na loja para desbloquear temas, molduras e mais.
-            </div>
-          </div>
+          <Link href={userId ? '/rewards' : '/login?next=%2Fmissions'}
+            className="rounded-2xl border border-amber-400/20 bg-[#211a1c] p-3 shadow-lg transition hover:border-amber-300/60 hover:bg-[#2c2020] sm:p-5"
+            aria-label="Ver sua carteira e suas recompensas">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-200"><Coins className="h-4 w-4" /> Moedas</div>
+            <div className="mt-2 text-2xl font-extrabold tabular-nums sm:text-3xl">{userId && walletVerified ? walletCoins : '—'}</div>
+            <p className="mt-1 text-[10px] text-amber-200/80">Ver recompensas →</p>
+          </Link>
         </section>
+        {userId && (!xpVerified || !walletVerified) && (
+          <div role="status" className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">
+            Os saldos ainda não foram confirmados pela nuvem. Não mostramos zero até conseguir sincronizar.
+          </div>
+        )}
 
         {/* AVISO LOGIN */}
         {authChecked && !userId && (
           <section className="rounded-2xl border border-purple-500/30 bg-white/5 px-4 py-3 text-xs sm:text-sm text-purple-50 flex flex-col sm:flex-row sm:items-center gap-2">
             <span>
-              Para registrar suas missões e receber recompensas, é
-              recomendado fazer login ou criar uma conta.
+              Entre ou crie uma conta para salvar suas conquistas e receber XP e moedas.
             </span>
             <Link
               href="/login"
@@ -1525,11 +1568,11 @@ Não minta para você mesmo só para coletar XP e moedas.`,
             <div className="flex items-center gap-2">
               <Target className="w-5 h-5 text-emerald-400" />
               <h2 className="text-sm sm:text-base font-semibold text-white">
-                Missão diária de hoje
+                Desafio extra de hoje
               </h2>
             </div>
             <span className="text-[11px] text-purple-100/80">
-              {todayDayKey.split('-').reverse().join('/')}
+              {userId ? `Dia ${todayIndex} da sua jornada` : 'Seu primeiro passo'}
             </span>
           </div>
 
@@ -1562,7 +1605,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                       }`}
                     />
                     <h3 className="text-sm sm:text-base font-semibold text-white">
-                      {m.title}
+                      {m.title.replace(/^Dia\s*\d+\s*[-–—]\s*/i, '')}
                     </h3>
                   </div>
                   {m.description && (
@@ -1614,7 +1657,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                             return secs <= 3 ? 'Rascunho salvo ✓' : `Rascunho salvo há ${secs}s`;
                           })()}
                         </span>
-                        <span className="opacity-80">Após concluir, o texto fica travado.</span>
+                        <span className="opacity-80">Seu registro fica salvo na conta.</span>
                       </div>
 
                       {answerTooShort && (
@@ -1636,7 +1679,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                           const saved =
                             (getSavedAnswerText(key, todayDayKey) ||
                               (answers[key] || '')).trim();
-                          return saved || '—';
+                          return saved || 'Desafio concluído hoje. Veja seu registro no histórico.';
                         })()}
                       </div>
                     </div>
@@ -1667,7 +1710,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                       {done ? (
                         <>
                           <CheckCircle className="w-4 h-4" />
-                          Concluída
+                          Concluída hoje
                         </>
                       ) : processing[key] ? (
                         <>
@@ -1697,11 +1740,11 @@ Não minta para você mesmo só para coletar XP e moedas.`,
             <div className="flex items-center gap-2">
               <Crown className="w-5 h-5 text-yellow-400" />
               <h2 className="text-sm sm:text-base font-semibold text-white">
-                Missão Premium de hoje
+                {isPremium ? 'Seu desafio Premium' : 'Desafio Premium'}
               </h2>
             </div>
             <span className="text-[11px] text-purple-100/80">
-              Recompensas maiores para assinantes Weed Reset Premium
+              {isPremium ? 'Uma conquista extra para sua assinatura' : 'Desbloqueie experiências e recompensas extras'}
             </span>
           </div>
 
@@ -1720,7 +1763,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
 
               return (
                 <article
-                  className="rounded-3xl bg-white/5 border border-yellow-400/20 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 shadow-2xl"
+                  className="rounded-3xl bg-gradient-to-r from-amber-500/[.09] to-white/[.03] border border-amber-400/20 px-4 sm:px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 shadow-lg"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -1817,8 +1860,17 @@ Não minta para você mesmo só para coletar XP e moedas.`,
           )}
         </section>
 
-                {/* Histórico de respostas (missão diária) */}
-                <section className="mt-6">
+                {/* Histórico recolhível: mantém acesso, deixa a ação principal em destaque. */}
+                <details className="group mt-5 overflow-hidden rounded-3xl border border-white/10 bg-white/[.035]">
+                  <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 font-semibold text-white hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 [&::-webkit-details-marker]:hidden">
+                    <span className="flex flex-col">
+                      <span>Minhas conquistas e reflexões</span>
+                      <span className="mt-0.5 text-xs font-normal text-slate-400">Acesse seus registros anteriores quando quiser.</span>
+                    </span>
+                    <span className="text-xs text-violet-200 group-open:hidden">Abrir ↓</span>
+                    <span className="hidden text-xs text-violet-200 group-open:inline">Fechar ↑</span>
+                  </summary>
+                <section className="mt-1">
                   <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -1943,7 +1995,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                                 ) : null}
                               </div>
                               <div className="text-[11px] text-white/50">
-                                {it.source === 'db' ? 'sync' : 'local'}
+                                {it.source === 'db' ? '✓ Salvo na nuvem' : 'Salvo neste aparelho'}
                               </div>
                             </div>
 
@@ -1981,6 +2033,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                     )}
                   </div>
                 </section>
+                </details>
 
         {/* Aviso visível para visitantes: nenhum botão de missão deve falhar silenciosamente. */}
         {authChecked && !userId && showLoginNotice && (
