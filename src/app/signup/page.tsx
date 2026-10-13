@@ -15,10 +15,12 @@ export default function SignupPage() {
   const [nome, setNome] = useState('');
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [sucesso, setSucesso] = useState<string | null>(null);
 
   async function handleSignup(e: FormEvent) {
     e.preventDefault();
     setErro(null);
+    setSucesso(null);
     setLoading(true);
 
     try {
@@ -46,6 +48,13 @@ export default function SignupPage() {
       if (!data.user) {
         setErro('Erro inesperado ao criar conta.');
         setLoading(false);
+        return;
+      }
+
+      // Supabase pode exigir confirmação do e-mail e não criar sessão imediatamente.
+      // Nesse caso, as políticas RLS impedem os writes abaixo.
+      if (!data.session) {
+        setSucesso('Conta criada! Confira seu e-mail e confirme o cadastro antes de entrar.');
         return;
       }
 
@@ -175,6 +184,12 @@ export default function SignupPage() {
               Leva menos de 1 minuto para começar.
             </p>
           </div>
+
+          {sucesso && (
+            <div role="status" className="text-xs text-emerald-200 bg-emerald-950/70 border border-emerald-500/40 rounded-lg px-3 py-3 mb-3">
+              {sucesso} <Link href="/login" className="underline font-semibold">Ir para login</Link>
+            </div>
+          )}
 
           {erro && (
             <div className="text-xs text-red-300 bg-red-900/40 border border-red-600/50 rounded-lg px-3 py-2 mb-3">
