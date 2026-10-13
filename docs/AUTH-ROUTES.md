@@ -12,7 +12,7 @@ Essa alteração protege no **servidor (Next.js 15 middleware)**:
 Configurar na Vercel duas variáveis pertencentes ao **mesmo projeto** Supabase:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (ou `NEXT_PUBLIC_SUPABASE_ANON_KEY` na configuração legada).
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` com o MESMO valor público até a migração dos componentes legados.
 
 Nunca usar chave `service_role` ou `sb_secret_...` no navegador ou em `NEXT_PUBLIC_*`.
 
