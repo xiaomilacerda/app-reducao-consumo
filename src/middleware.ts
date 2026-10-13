@@ -74,10 +74,15 @@ export async function middleware(request: NextRequest) {
       authResponse.cookies.getAll().forEach((cookie) => response.cookies.set(cookie));
       return response;
     }
-    return new NextResponse('Acesso restrito: conta sem permissão administrativa.', {
-      status: 403,
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-    });
+    const response = new NextResponse(
+      'Acesso restrito: conta sem permissão administrativa.',
+      {
+        status: 403,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      }
+    );
+    authResponse.cookies.getAll().forEach((cookie) => response.cookies.set(cookie));
+    return response;
   }
 
   return authResponse;
