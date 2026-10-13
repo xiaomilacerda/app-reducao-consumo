@@ -58,6 +58,16 @@ function mondayOf(iso: string) {
 function money(value: number, currency: Currency) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency, maximumFractionDigits: 2 }).format(value);
 }
+async function withCloudTimeout<T>(request: PromiseLike<T>, ms = 12000): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve(request),
+      new Promise<T>((_, reject) => { timer = setTimeout(() =>
+        reject(new Error('A nuvem demorou para responder. Atualize e tente novamente.')), ms); }),
+    ]);
+  } finally { if (timer) clearTimeout(timer); }
+}
 function fieldNumber(value: string): number | null {
   if (value.trim() === '') return null;
   const number = Number(value.replace(',', '.'));
@@ -78,6 +88,8 @@ export default function ProfileGrowthHub({
   userId, timezone, currency,
 }: { userId: string | null; timezone: string; currency: Currency }) {
   const [loading, setLoading] = useState(true);
+  const [settingsReady, setSettingsReady] = useState(false);
+  const [reviewsReady, setReviewsReady] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [saving, setSaving] = useState<'goal' | 'review' | 'support' | 'export' | null>(null);
@@ -145,12 +157,14 @@ export default function ProfileGrowthHub({
   async function refresh() {
     if (!userId) { setLoading(false); return; }
     setLoading(true);
+    setSettingsReady(false);
+    setReviewsReady(false);
     setError('');
     try {
       // A sessão precisa pertencer ao usuário atual antes de buscar dados privados.
       const { data: auth, error: authError } = await supabase.auth.getUser();
       if (authError || auth?.user?.id !== userId) throw new Error('Sua sessão precisa ser renovada.');
-      const [growth, weekly, daily, profile, wallet, missions] = await Promise.all([
+      const [growth, weekly, daily, profile, wallet, missions] = await withCloudTimeout(Promise.all([
         supabase.from('profile_growth_settings').select('*').eq('user_id', userId).maybeSingle(),
         supabase.from('profile_weekly_reviews').select('week_start,sessions,spent,mood,money_currency')
           .eq('user_id', userId).order('week_start', { ascending: false }).limit(15),
@@ -161,7 +175,7 @@ export default function ProfileGrowthHub({
         supabase.from('user_missions').select('mission_id,completed_at',{ count:'exact',head:true })
           .eq('user_id',userId).eq('completed',true)
           .gte('completed_at',todayMinus29 + 'T00:00:00Z'),
-      ]);
+      ]), 12000);
       if (growth.error || weekly.error || daily.error)
         throw new Error('Não foi possível buscar metas, registros semanais ou check-ins.');
       const fromDb = growth.data as unknown as GrowthSettings | null;
@@ -183,6 +197,8 @@ export default function ProfileGrowthHub({
       }
       setGoalDirty(false);
       setSupportDirty(false);
+      setSettingsReady(true);
+      setReviewsReady(true);
       setReviewDirty(false);
       const weeklyData = (weekly.data ?? []) as WeeklyReview[];
       setReviews(weeklyData);
@@ -213,6 +229,7 @@ export default function ProfileGrowthHub({
 
   async function saveGoal() {
     if (!userId || saving) return;
+    if (!settingsReady) { setError('Atualize o Perfil e aguarde confirmar suas metas antes de salvar.'); return; }
     const target = Number(settings.goal_target);
     const max = settings.goal_kind === 'checkins' ? 7 :
       settings.goal_kind === 'sessions' ? 100 : 100000;
@@ -241,6 +258,7 @@ export default function ProfileGrowthHub({
 
   async function saveReview() {
     if (!userId || saving) return;
+    if (!reviewsReady) { setError('O histórico semanal ainda não foi sincronizado. Atualize e tente novamente.'); return; }
     const spent = fieldNumber(reviewSpend), sessions = fieldNumber(reviewSessions);
     if ((reviewSpend.trim() !== '' && (spent == null || spent < 0 || spent > 100000)) ||
         (reviewSessions.trim() !== '' && (sessions == null || sessions < 0 || sessions > 500 || sessions !== Math.floor(sessions))) ||
@@ -265,6 +283,7 @@ export default function ProfileGrowthHub({
 
   async function saveSupport() {
     if (!userId || saving) return;
+    if (!settingsReady) { setError('Atualize o Perfil e aguarde confirmar seu plano antes de salvar.'); return; }
     const t = triggers.map(x => x.trim()).filter(Boolean);
     const a = actions.map(x => x.trim()).filter(Boolean);
     if (t.some(x=>x.length>100) || a.some(x=>x.length>150) || contact.length>80) {
@@ -418,7 +437,7 @@ export default function ProfileGrowthHub({
                 className={'mt-1 ' + inputStyle()}/>
             </label>
           </div>
-          <button type="button" onClick={()=>void saveGoal()} disabled={saving!==null || !goalDirty || loading}
+          <button type="button" onClick={()=>void saveGoal()} disabled={saving!==null || !goalDirty || loading || !settingsReady}
             className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-violet-400 px-4 py-2.5 text-sm font-bold text-[#17102d] transition hover:bg-violet-300 disabled:opacity-50">
             <Save className="h-4 w-4"/> {saving==='goal'?'Salvando...':'Salvar minha meta'}
           </button>
@@ -444,7 +463,7 @@ export default function ProfileGrowthHub({
                 onChange={e=>{setBaselineInput(e.target.value);setGoalDirty(true);}}
                 placeholder="Ex.: 140" className={'mt-1 ' + inputStyle()}/>
             </label>
-            <button type="button" onClick={()=>void saveGoal()} disabled={saving!==null || !goalDirty || loading}
+            <button type="button" onClick={()=>void saveGoal()} disabled={saving!==null || !goalDirty || loading || !settingsReady}
               className="min-h-10 w-full rounded-xl border border-amber-300/40 px-3 text-xs font-bold text-amber-100 disabled:opacity-50">
               Salvar referência de comparação
             </button>
@@ -470,7 +489,7 @@ export default function ProfileGrowthHub({
                   <option value="dificil">Foi difícil</option>
                 </select>
               </label>
-              <button type="button" onClick={()=>void saveReview()} disabled={saving!==null || loading}
+              <button type="button" onClick={()=>void saveReview()} disabled={saving!==null || loading || !reviewsReady}
                 className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-amber-300 px-4 text-sm font-bold text-[#24180c] hover:bg-amber-200 disabled:opacity-50">
                 <Save className="h-4 w-4"/> {saving==='review'?'Salvando...':'Salvar registro semanal'}
               </button>
@@ -511,7 +530,7 @@ export default function ProfileGrowthHub({
             onChange={e=>{setContact(e.target.value);setSupportDirty(true);}}/>
         </label>
         <p className="mt-2 text-xs text-slate-400">Não é necessário informar telefone. Este plano não substitui atendimento profissional em situações de emergência.</p>
-        <button type="button" onClick={()=>void saveSupport()} disabled={saving!==null || !supportDirty || loading}
+        <button type="button" onClick={()=>void saveSupport()} disabled={saving!==null || !supportDirty || loading || !settingsReady}
           className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-300 px-5 text-sm font-bold text-[#073427] hover:bg-emerald-200 disabled:opacity-50">
           <Save className="h-4 w-4"/> {saving==='support'?'Salvando...':'Salvar meu plano de apoio'}
         </button>
