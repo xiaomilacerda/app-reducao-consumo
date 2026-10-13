@@ -702,7 +702,6 @@ if (lastIso) {
             await supabase.from('user_store_items').insert({
               user_id: user.id,
               item_id: 'avatar_A1',
-              qty: 1,
             });
           } catch {
             // ignora: provavelmente já existe
@@ -711,15 +710,13 @@ if (lastIso) {
           // Carrega inventário de avatares
           const { data: inv } = await supabase
             .from('user_store_items')
-            .select('item_id, qty')
+            .select('item_id')
             .eq('user_id', user.id)
             .like('item_id', 'avatar_%');
 
           const set = new Set<string>(['A1']);
           (inv ?? []).forEach((row: any) => {
             const id = String(row?.item_id ?? '');
-            const qty = Number(row?.qty ?? 0);
-            if (qty <= 0) return;
             if (!id.startsWith('avatar_')) return;
             const code = id.replace('avatar_', '').trim().toUpperCase();
             if (isAvatarCode(code)) set.add(code);
@@ -745,19 +742,16 @@ if (lastIso) {
         try {
           const { data: journey, error: journeyError } = await supabase
             .from('user_journey_progress')
-            .select('current_day, last_completed_day, started_at, completed_at')
+            .select('journey_day, status, completed_at')
             .eq('user_id', user.id)
             .maybeSingle();
 
           if (!journeyError && journey) {
             const anyJourney: any = journey;
-            const currentDay =
-              (anyJourney.current_day as number | null) ??
-              (anyJourney.last_completed_day as number | null) ??
-              null;
+            const currentDay = (anyJourney.journey_day as number | null) ?? null;
 
             setJourneyCurrentDay(currentDay);
-            setJourneyStartedAt(anyJourney.started_at ?? null);
+            setJourneyStartedAt(null);
             setJourneyCompletedAt(anyJourney.completed_at ?? null);
           }
         } catch (e: any) {
@@ -888,20 +882,13 @@ if (lastIso) {
               thc_potency: thcPotency,
               main_goal: mainGoal.trim() || DEFAULT_PROFILE_VALUES.mainGoal,
               timezone,
-              preferred_focus_area: preferredFocusArea,
-              notifications_enabled: notificationsEnabled,
-              dark_mode: darkMode,
               // Dados que antes ficavam só no localStorage.
               // Agora ficam também no Supabase para funcionar em outro navegador/celular.
               preferred_language: preferredLanguage,
               currency,
-              frequency_amount: frequencyAmount,
-              frequency_period: frequencyPeriod,
               grams_per_joint: gramsPerJoint,
               daily_cost: dailyCost,
-              price_per_gram: pricePerGram,
-              consumption_methods: consumptionMethods,
-              last_use_datetime: lastUseDateTime,
+              last_use: lastUseDateTime || null,
             });
 
           if (profileError) {

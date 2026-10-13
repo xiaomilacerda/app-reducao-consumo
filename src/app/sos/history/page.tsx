@@ -130,7 +130,7 @@ export default function SosHistoryPage() {
         const res = await supabase
           .from('sos_logs')
           .select(
-            'id, user_id, used_at, tool_id, duration, notes, result_summary, cravings_level_before, cravings_level_after, mood_before, mood_after',
+            'id, user_id, used_at, tool_id, duration',
           )
           .eq('user_id', userId)
           .order('used_at', { ascending: false });

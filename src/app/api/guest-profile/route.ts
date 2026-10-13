@@ -7,6 +7,11 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 export async function POST(req: NextRequest) {
+  // Sem autenticação e limitação de uso esta rota administrativa de escrita
+  // com service_role não deve estar disponível no ambiente de produção.
+  if (process.env.NODE_ENV === 'production') {
+    return new NextResponse(null, { status: 404 });
+  }
   try {
     const body = await req.json().catch(() => ({}));
     const guestId = uuidv4();
@@ -32,7 +37,7 @@ export async function POST(req: NextRequest) {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const { data, error } = await supabase.from('profiles').upsert(payload, { returning: 'representation' });
+    const { data, error } = await supabase.from('profiles').upsert(payload).select('id, display_name');
     if (error) {
       console.error('Error upserting guest profile:', error);
       return NextResponse.json({ error: error.message ?? error }, { status: 500 });

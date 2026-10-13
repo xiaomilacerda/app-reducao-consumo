@@ -2,24 +2,26 @@
 import { NextResponse } from 'next/server';
 
 type Params = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 export async function POST(req: Request, { params }: Params) {
   try {
+    const { id } = await params;
     const body = await req.json().catch(() => ({}));
     const action = body?.action as 'ban' | 'unban' | undefined;
 
-    if (!action) {
+    if (action !== 'ban' && action !== 'unban') {
       return new NextResponse('Ação inválida', { status: 400 });
     }
 
     // Aqui poderíamos atualizar um campo "is_banned" em profiles
     // ou inserir em uma tabela "community_bans".
     // Por enquanto só registramos no log:
-    console.log('Admin user status change:', params.id, action);
+    console.log('Admin user status change:', id, action);
 
-    return NextResponse.json({ success: true });
+    // Não afirme que um usuário foi banido sem alterar o banco de dados.
+    return NextResponse.json({ error: 'Bloqueio de usuários ainda não implementado.' }, { status: 501 });
   } catch (error) {
     console.error('POST /api/admin/users/[id]/status error', error);
     return new NextResponse('Erro ao atualizar status do usuário', {

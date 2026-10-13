@@ -8,9 +8,9 @@ import { getSupabaseBrowserClient } from '../_lib/supabase';
 type SosUsage = {
   id?: string;
   user_id?: string | null;
-  tool_id?: string | null;
+  sos_id?: number | null;
   created_at?: string | null;
-  outcome?: string | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 function cx(...classes: Array<string | false | null | undefined>) {
@@ -47,7 +47,7 @@ export default function AdminSosAnalyticsPage() {
       // recent
       const listRes = await supabase
         .from('sos_usage')
-        .select('id,user_id,tool_id,created_at,outcome')
+        .select('id,user_id,sos_id,created_at,metadata')
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -58,7 +58,7 @@ export default function AdminSosAnalyticsPage() {
 
       const map: Record<string, number> = {};
       for (const r of rows) {
-        const k = (r.outcome || 'unknown') as string;
+        const k = typeof r.metadata?.outcome === 'string' ? r.metadata.outcome : 'não informado';
         map[k] = (map[k] || 0) + 1;
       }
       setByOutcome(map);
@@ -130,7 +130,7 @@ export default function AdminSosAnalyticsPage() {
 
         <div className="rounded-2xl border border-slate-800 bg-slate-900/20 p-4 lg:col-span-2">
           <div className="flex items-center justify-between">
-            <div className="text-sm font-semibold">Outcomes (últimos 50)</div>
+            <div className="text-sm font-semibold">Resultados (últimos 50)</div>
             <BarChart3 className="h-5 w-5 text-indigo-300" />
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -159,9 +159,9 @@ export default function AdminSosAnalyticsPage() {
             <thead className="text-slate-300 bg-slate-900/40">
               <tr>
                 <th className="px-4 py-3 text-left">Data</th>
-                <th className="px-4 py-3 text-left">User</th>
-                <th className="px-4 py-3 text-left">Tool</th>
-                <th className="px-4 py-3 text-left">Outcome</th>
+                <th className="px-4 py-3 text-left">Usuário</th>
+                <th className="px-4 py-3 text-left">Ferramenta</th>
+                <th className="px-4 py-3 text-left">Resultado</th>
               </tr>
             </thead>
             <tbody className="bg-slate-950/30">
@@ -176,8 +176,8 @@ export default function AdminSosAnalyticsPage() {
                   <tr key={(r.id || String(idx))} className="border-t border-slate-900">
                     <td className="px-4 py-3 text-slate-300">{fmtDate(r.created_at)}</td>
                     <td className="px-4 py-3 text-slate-300">{r.user_id || '—'}</td>
-                    <td className="px-4 py-3 text-slate-300">{r.tool_id || '—'}</td>
-                    <td className="px-4 py-3 text-slate-300">{r.outcome || '—'}</td>
+                    <td className="px-4 py-3 text-slate-300">{r.sos_id ?? '—'}</td>
+                    <td className="px-4 py-3 text-slate-300">{typeof r.metadata?.outcome === 'string' ? r.metadata.outcome : '—'}</td>
                   </tr>
                 ))
               )}

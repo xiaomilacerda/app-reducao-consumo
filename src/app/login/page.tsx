@@ -52,16 +52,29 @@ export default function LoginPage() {
           email: user.email,
           is_premium: false,
           created_at: new Date().toISOString(),
+          full_name: typeof user.user_metadata?.full_name === 'string'
+            ? user.user_metadata.full_name : null,
+          display_name: typeof user.user_metadata?.display_name === 'string'
+            ? user.user_metadata.display_name : null,
         });
+      } else if (!profile.full_name && typeof user.user_metadata?.full_name === 'string') {
+        // O trigger de cadastro antigo criava perfis sem nome; recupere-o com
+        // os metadados da conta sem alterar moedas, XP ou o status premium.
+        const name = user.user_metadata.full_name.trim();
+        if (name) {
+          await supabase.from('profiles')
+            .update({ full_name: name, display_name: profile.display_name || name })
+            .eq('id', user.id);
+        }
       }
 
       // Garantir que exista uma carteira (evita moedas "0" em telas que leem user_wallet)
       try {
-        const { error: wErr } = await supabase.from('user_wallet').upsert({
-          user_id: user.id,
-          coins: 0,
-          updated_at: new Date().toISOString(),
-        } as any);
+        // Insere a carteira somente se ainda não existir: jamais zere moedas no login.
+        const { error: wErr } = await supabase.from('user_wallet').upsert(
+          { user_id: user.id, coins: 0, updated_at: new Date().toISOString() },
+          { onConflict: 'user_id', ignoreDuplicates: true }
+        );
         if (wErr) console.warn('user_wallet upsert (login) error:', wErr);
       } catch (err) {
         console.warn('user_wallet upsert (login) catch:', err);
@@ -75,10 +88,8 @@ export default function LoginPage() {
         });
       }
 
-      storage.saveUserData({
-        ...(storage.getUserData() ?? {}),
-        onboardingCompleted: true,
-      });
+      // O login não deve marcar o onboarding como concluído nem substituir
+      // os dados locais quando o usuário ainda não configurou sua jornada.
     } catch (err) {
       console.error('Erro syncProfile:', err);
     }

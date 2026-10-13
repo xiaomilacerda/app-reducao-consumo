@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
 export async function GET() {
+  // Rota diagnóstica: não expor testes de credenciais nem gerar custos em produção.
+  if (process.env.NODE_ENV === 'production') {
+    return new NextResponse(null, { status: 404 });
+  }
   try {
     const apiKey = process.env.OPENAI_API_KEY;
 

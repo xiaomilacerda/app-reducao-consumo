@@ -368,7 +368,7 @@ export default function RewardsPage() {
           try {
             await supabase
               .from('user_store_items')
-              .insert({ user_id: uid, item_id: 'avatar_A1', qty: 1, equipped: false })
+              .insert({ user_id: uid, item_id: 'avatar_A1', equipped: false })
           } catch {
             // ignore
           }
@@ -470,12 +470,17 @@ export default function RewardsPage() {
       const ins = await supabase.from('user_store_items').insert({
         user_id: userId,
         item_id: `avatar_${code}`,
-        qty: 1,
         equipped: false,
       })
       if (ins.error) {
-        // se já existia, tudo bem — não travar o usuário
-        console.warn('insert user_store_items:', ins.error)
+        // Nunca cobre por um item duplicado ou por uma gravação que falhou.
+        // A compra ideal deve ser transacional no banco; fazemos o estorno
+        // defensivo enquanto a operação atômica não for implementada.
+        const refund = await supabase.from('user_wallet')
+          .update({ coins: wallet.coins })
+          .eq('user_id', userId)
+        if (refund.error) console.error('Falha ao estornar moedas:', refund.error)
+        throw ins.error
       }
 
       setWallet({ coins: finalCoins })
