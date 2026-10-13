@@ -104,9 +104,10 @@ type Props = {
   userId: string | null;
   onReward?: () => void;
   onProgress?: (count: number) => void;
+  onRequireLogin?: () => void;
 };
 
-export default function MissionsEngagement({ userId, onReward, onProgress }: Props) {
+export default function MissionsEngagement({ userId, onReward, onProgress, onRequireLogin }: Props) {
   const supabase = useMemo(() => getSupabaseClient(), []);
   const [timezone, setTimezone] = useState('America/Sao_Paulo');
   const [goal, setGoal] = useState<string | null>(null);
@@ -186,7 +187,11 @@ export default function MissionsEngagement({ userId, onReward, onProgress }: Pro
   }, [refresh]);
 
   async function submit() {
-    if (!userId) { setError('Entre na sua conta para registrar seu check-in.'); return; }
+    if (!userId) {
+      onRequireLogin?.();
+      setError('Entre na sua conta para validar a missão e salvar suas recompensas.');
+      return;
+    }
     if (busy || recorded) return;
     setBusy(true);
     setError(null);
@@ -329,9 +334,10 @@ export default function MissionsEngagement({ userId, onReward, onProgress }: Pro
                 />
                 <p className="mt-1 text-right text-xs text-slate-400">{reflection.length}/500</p>
               </div>
-              <button type="button" onClick={() => void submit()} disabled={!userId || busy}
+              <button type="button" onClick={() => void submit()} disabled={loading || busy}
                 className="flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-emerald-400 px-5 py-3.5 text-base font-extrabold text-[#06271d] shadow-[0_10px_28px_rgba(52,211,153,.20)] transition-all hover:-translate-y-0.5 hover:bg-emerald-300 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300/50 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50">
-                {busy ? <><Loader2 className="h-5 w-5 animate-spin" /> Salvando seu check-in...</>
+                {!userId ? <><ShieldCheck className="h-5 w-5" /> Entrar para registrar minha vitória <ArrowRight className="h-4 w-4" /></>
+                  : busy ? <><Loader2 className="h-5 w-5 animate-spin" /> Salvando seu check-in...</>
                   : <><CheckCircle2 className="h-5 w-5" /> Registrar minha vitória de hoje <ArrowRight className="h-4 w-4" /></>}
               </button>
               <p className="text-center text-xs leading-relaxed text-slate-400">
