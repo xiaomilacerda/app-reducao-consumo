@@ -14,11 +14,17 @@ import {
   Flame,
   Search,
   Filter,
+  ChevronDown,
+  BookOpen,
+  ArrowRight,
+  Leaf,
+  Moon,
 } from 'lucide-react';
 
 import { supabase } from '@/lib/supabase';
 import { storage } from '@/lib/storage';
 import SosPlayer from '@/components/SosPlayer';
+import SosQuickHelp from '@/components/sos/SosQuickHelp';
 import ProfileSupportReminder from '@/components/profile/ProfileSupportReminder';
 import ProfileActionNotice from '@/components/profile/ProfileActionNotice';
 
@@ -75,16 +81,19 @@ function getEmojiForTool(tool: SosTool): string {
     ((tool.tags || []).join(' '))
   ).toLowerCase();
 
-  if (base.includes('visual')) return '👁️';
+  if (base.includes('grounding') || base.includes('visual')) return '👁️';
   if (base.includes('gatilho')) return '🛡️';
   if (base.includes('ansiedade') || base.includes('crise')) return '😰';
   if (base.includes('respira') || base.includes('respiração')) return '🌬️';
-  if (base.includes('sono') || base.includes('dormir')) return '🌙';
-  if (base.includes('corpo') || base.includes('tensão')) return '💆‍♂️';
-  if (base.includes('pensamento') || base.includes('mental')) return '🧠';
+  if (base.includes('sono') || base.includes('dormir') || base.includes('sleep')) return '🌙';
+  if (base.includes('corpo') || base.includes('tensão') || base.includes('relax')) return '🍃';
+  if (base.includes('pensamento') || base.includes('mental') || base.includes('cbt')) return '🧠';
   if (base.includes('urge') || base.includes('vontade')) return '🔥';
-
-  return '💜';
+  if (base.includes('meditação') || base.includes('mindfulness')) return '🪷';
+  if (base.includes('caminh') || base.includes('exercise')) return '🚶';
+  if (base.includes('audio') || base.includes('som')) return '🎧';
+  if (base.includes('distraction') || base.includes('distração')) return '🧩';
+  return '✨';
 }
 
 function normalizeCategory(s: string | null): string {
@@ -158,7 +167,8 @@ export default function SosPage() {
   const [recentLogs, setRecentLogs] = useState<SosLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
   const [visibleCount, setVisibleCount] = useState(12);
-  useEffect(() => setVisibleCount(12), [search, activeCategory, sortMode]);
+  const [quickFilter, setQuickFilter] = useState<'all' | 'free' | 'short' | 'guided'>('all');
+  useEffect(() => setVisibleCount(12), [search, activeCategory, sortMode, quickFilter]);
 
   // ---------------- EFFECTS BÁSICOS ----------------
 
@@ -568,6 +578,9 @@ export default function SosPage() {
     if (activeCategory !== 'Todas') {
       base = base.filter((t) => normalizeCategory(t.category) === activeCategory);
     }
+    if (quickFilter === 'free') base = base.filter(t => !t.premium_only);
+    if (quickFilter === 'short') base = base.filter(t => t.duration_minutes != null && t.duration_minutes > 0 && t.duration_minutes <= 3);
+    if (quickFilter === 'guided') base = base.filter(t => Array.isArray(t.steps_json) && t.steps_json.length >= 2);
 
     if (q) {
       base = base.filter((t) => {
@@ -598,7 +611,24 @@ export default function SosPage() {
     // recent (fallback por ID desc)
     base = [...base].sort((a, b) => Number(b.id) - Number(a.id));
     return base;
-  }, [tools, activeCategory, search, sortMode, myLikes]);
+  }, [tools, activeCategory, search, sortMode, myLikes, quickFilter]);
+
+  const featuredTools = useMemo(() => {
+    // Somente opções gratuitas com orientação estruturada: variedade acima de popularidade.
+    const eligible = tools.filter(t => !t.premium_only &&
+      Array.isArray(t.steps_json) && t.steps_json.length >= 2);
+    const selected: SosTool[] = [];
+    for (const category of ['grounding', 'breathing', 'distraction']) {
+      const match = eligible.find(t => (t.category || '').toLowerCase() === category &&
+        !selected.some(item => item.id === t.id));
+      if (match) selected.push(match);
+    }
+    for (const match of eligible) {
+      if (selected.length >= 3) break;
+      if (!selected.some(t => t.id === match.id)) selected.push(match);
+    }
+    return selected;
+  }, [tools]);
 
   // ---------------- RENDER ----------------
   if (!mounted) {
@@ -614,7 +644,7 @@ export default function SosPage() {
 
   return (
     <div
-      className={`min-h-screen ${
+      className={`min-h-screen w-full overflow-x-clip ${
         isFocusMode
           ? 'bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900'
           : 'bg-gradient-to-br from-red-50 via-orange-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900'
@@ -623,7 +653,7 @@ export default function SosPage() {
       <ProfileActionNotice success={sosSuccess} error={sosError} onDismiss={dismissSosNotice}/>
       {/* HEADER */}
       <header className="bg-black/40 backdrop-blur-xl shadow-lg sticky top-0 z-40 border-b border-white/10">
-        <div className="max-w-5xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 px-3 py-3 sm:gap-4 sm:px-6 sm:py-4">
           <div className="flex items-center gap-3">
             <Link
               href="/"
@@ -631,7 +661,7 @@ export default function SosPage() {
             >
               <ArrowLeft className="w-6 h-6 text-white/80" />
             </Link>
-            <Heart className="w-8 h-8 text-red-500 animate-pulse" />
+            <Heart className="h-6 w-6 shrink-0 text-fuchsia-400 sm:h-8 sm:w-8" />
             <div>
               <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-red-600 to-pink-600 bg-clip-text text-transparent flex items-center gap-2">
                 Modo SOS Anti-Fissura
@@ -642,7 +672,7 @@ export default function SosPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <Link
               href="/sos/history"
               className="hidden sm:inline-flex items-center gap-1 px-3 py-2 text-xs sm:text-sm rounded-full bg-white dark:bg-gray-900 border border-purple-500/30 text-purple-700 dark:text-purple-200 hover:bg-purple-50 dark:hover:bg-gray-800 transition-colors"
@@ -662,27 +692,15 @@ export default function SosPage() {
       </header>
 
       {/* MAIN */}
-      <main className="max-w-5xl mx-auto px-4 py-8 sm:px-6 lg:px-8 space-y-8">
-        <ProfileSupportReminder userId={supabaseUser?.id ?? null} />
-        {/* FRASE MOTIVACIONAL */}
-        <section className="bg-gradient-to-r from-red-500 to-pink-600 rounded-3xl p-6 sm:p-8 shadow-2xl text-white text-center">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <Sparkles className="w-6 h-6" />
-            <span className="uppercase tracking-wide text-xs sm:text-sm opacity-90">
-              Lembrete importante
-            </span>
+      <main className="mx-auto w-full max-w-5xl min-w-0 space-y-5 px-3 py-5 pb-28 sm:space-y-7 sm:px-6 sm:py-8">
+        <SosQuickHelp userId={supabaseUser?.id ?? null} />
+        <section aria-label="Técnicas rápidas e sem distração" className="space-y-3">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white sm:text-xl">Três formas de cuidar de você</h2>
+            <p className="mt-1 text-xs leading-relaxed text-slate-400">Escolha uma prática. Não é necessário concluir uma etapa perfeita.</p>
           </div>
-          <p className="text-2xl sm:text-3xl font-bold mb-4">
-            “{currentPhrase}”
-          </p>
-          <p className="text-sm sm:text-lg opacity-90">
-            Se você está em fissura agora, escolha um dos blocos abaixo e siga o
-            passo a passo.
-          </p>
-        </section>
-
         {/* CARTÕES DE EXERCÍCIO RÁPIDO */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
           {/* Respiração Guiada */}
           <button
             onClick={() => {
@@ -797,6 +815,7 @@ export default function SosPage() {
               Aterre sua atenção no presente, sem áudio nem conexão.
             </p>
           </button>
+        </div>
         </section>
 
         {/* BLOCO DO EXERCÍCIO ATIVO */}
