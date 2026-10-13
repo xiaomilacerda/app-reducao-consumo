@@ -15,11 +15,11 @@ type StoreItem = {
   icon?: string;
 };
 
-type WalletRow = { coins: number | null; xp: number | null };
+type WalletRow = { coins: number | null };
 type ProfileRow = {
   id: string;
   is_premium?: boolean | null;
-  is_vip?: boolean | null;
+  xp?: number | null;
   equipped_icon?: string | null;
   equipped_theme?: string | null;
   equipped_frame?: string | null;
@@ -192,21 +192,22 @@ export default function StoryPage() {
 
       const { data: w } = await supabase
         .from('user_wallet')
-        .select('coins,xp')
+        .select('coins')
         .eq('user_id', uid)
         .maybeSingle<WalletRow>();
       if (w) {
         setCoins(Number(w.coins ?? 0));
-        setXp(Number(w.xp ?? 0));
+
       }
 
       const { data: p } = await supabase
         .from('profiles')
-        .select('id,is_premium,is_vip,equipped_icon,equipped_theme,equipped_frame,equipped_card')
+        .select('id,is_premium,xp,equipped_icon,equipped_theme,equipped_frame,equipped_card')
         .eq('id', uid)
         .maybeSingle<ProfileRow>();
       if (p) {
-        setIsPremium(!!(p.is_premium || p.is_vip));
+        setIsPremium(!!p.is_premium);
+        setXp(Number(p.xp ?? 0));
         setEquippedIcon((p.equipped_icon ?? equippedIcon) as string);
         setEquippedTheme((p.equipped_theme ?? equippedTheme) as string);
         setEquippedFrame((p.equipped_frame ?? equippedFrame) as string);
