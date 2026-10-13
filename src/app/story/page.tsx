@@ -28,7 +28,7 @@ type ProfileRow = {
 
 type StoreOwnedRow = {
   item_id: string;
-  qty: number | null;
+  qty?: number | null;
   equipped: boolean | null;
 };
 
@@ -216,7 +216,7 @@ export default function StoryPage() {
 
       const { data: inv } = await supabase
         .from('user_store_items')
-        .select('item_id,qty,equipped')
+        .select('item_id,equipped')
         .eq('user_id', uid)
         .returns<StoreOwnedRow[]>();
       if (inv) {
