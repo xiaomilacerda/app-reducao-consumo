@@ -398,59 +398,18 @@ export default function MissionsPage() {
 
     let cancelled = false;
 
-    const tryHydrateFromLocalStorage = async () => {
-      try {
-        // Supabase stores session in localStorage under a key like: sb-<project-ref>-auth-token
-        const key = Object.keys(localStorage).find(
-          (k) => k.startsWith("sb-") && k.endsWith("-auth-token")
-        );
-        if (!key) return null;
-        const raw = localStorage.getItem(key);
-        if (!raw) return null;
-
-        const parsed = JSON.parse(raw);
-        const access_token = parsed?.access_token;
-        const refresh_token = parsed?.refresh_token;
-
-        // If we have tokens, we can re-hydrate the client session
-        if (access_token && refresh_token) {
-          const { data, error } = await supabase.auth.setSession({
-            access_token,
-            refresh_token,
-          });
-          if (!error && data?.session) return data.session;
-        }
-
-        return parsed?.user ? { user: parsed.user } : null;
-      } catch {
-        return null;
-      }
-    };
-
+    // Apenas identidade validada pelo Supabase Auth pode habilitar missões
+    // e mostrar o saldo. Nunca confiar em tokens de outro banco no localStorage.
     const loadAuth = async () => {
       try {
-        // 1) normal path
-        const { data } = await supabase.auth.getSession();
-        const s = data?.session ?? null;
-
+        const { data, error } = await supabase.auth.getUser();
         if (cancelled) return;
-
-        if (s?.user?.id) {
-          setUserId(s.user.id);
-          setAuthChecked(true);
-          return;
-        }
-
-        // 2) fallback: localStorage hydration (helps when session exists but client didn't pick it up yet)
-        const fallback = await tryHydrateFromLocalStorage();
-        if (cancelled) return;
-
-        const uid = (fallback as any)?.user?.id ?? null;
-        setUserId(uid);
+        if (error) console.warn('Falha ao validar sessão de missões:', error.message);
+        setUserId(error ? null : data?.user?.id ?? null);
         setAuthChecked(true);
-          } catch (e) {
+      } catch (err) {
         if (cancelled) return;
-        console.warn("Missions auth check failed:", e);
+        console.warn('Autenticação indisponível ao abrir missões:', err);
         setUserId(null);
         setAuthChecked(true);
       }
@@ -618,81 +577,21 @@ export default function MissionsPage() {
             completedTodayIds.includes(String(m.id)));
           setCompletedDailyTodayId(dailyDone ? String(dailyDone.id) : null);
 
-          // missão semanal da semana (renova na segunda-feira)
-          try {
-            let chosen: MissionRow | null = null;
-
-            // A tabela `missions` pode ter muitas linhas; então a semanal precisa ser buscada com filtro.
-            const { data: wExact, error: wExactErr } = await supabase
-              .from('missions')
-              .select('*')
-              .eq('type', 'weekly')
-              .eq('day_index', weeklyIndex)
-              .maybeSingle();
-
-            if (wExactErr) console.warn('weekly exact load error', wExactErr);
-            if (wExact) chosen = (wExact as MissionRow) ?? null;
-
-            // fallback: pega qualquer semanal cadastrada
-            if (!chosen) {
-              const { data: wAny, error: wAnyErr } = await supabase
-                .from('missions')
-                .select('*')
-                .eq('type', 'weekly')
-                .order('day_index', { ascending: true })
-                .limit(1)
-                .maybeSingle();
-
-              if (wAnyErr) console.warn('weekly fallback load error', wAnyErr);
-              if (wAny) chosen = (wAny as MissionRow) ?? null;
-            }
-
-            setWeeklyMission(chosen);
-
-            if (uid && chosen) {
-              // garante a linha em user_missions
-              try {
-                await supabase.rpc('ensure_user_mission', {
-                  p_user_id: uid,
-                  p_mission_id: Number(chosen.id),
-                  p_source: 'weekly',
-                } as any);
-                  } catch (e) {
-                console.warn('ensure_user_mission weekly falhou (ignorado):', e);
-              }
-
-              const { data: umw, error: umwErr } = await supabase
-                .from('user_missions')
-                .select('progress')
-                .eq('user_id', uid)
-                .eq('mission_id', Number(chosen.id))
-                .maybeSingle();
-
-              if (umwErr) console.warn('weekly user_missions load error', umwErr);
-
-              const norm = normalizeWeeklyProgress((umw as any)?.progress, weekInfo.weekKey);
-
-              // se mudou a semana, reseta no banco (mantendo rewarded_week_key antigo se tiver)
-              if ((umw as any)?.progress && String((umw as any).progress?.week_key ?? '') !== weekInfo.weekKey) {
-                try {
-                  await supabase
-                    .from('user_missions')
-                    .update({ progress: norm as any, status: 'pending', last_update: new Date().toISOString() })
-                    .eq('user_id', uid)
-                    .eq('mission_id', Number(chosen.id));
-                    } catch (e) {
-                  console.warn('weekly progress reset update falhou (ignorado):', e);
-                }
-              }
-
-              setWeeklyProgress(norm);
-              setWeeklyDoneThisWeek(norm.rewarded_week_key === weekInfo.weekKey);
-            } else {
-              setWeeklyProgress((prev) => ({ ...prev, week_key: weekInfo.weekKey }));
-              setWeeklyDoneThisWeek(false);
-            }
-              } catch (e) {
-            console.warn('weekly load catch', e);
+          // Carrega apenas o histórico da missão semanal antiga (somente leitura).
+          // Nunca mais cria linhas, reinicia progresso nem premia por este fluxo.
+          const legacyWeekly = list.find(m => m.type === 'weekly' &&
+            m.day_index === weeklyIndex) ?? null;
+          setWeeklyMission(legacyWeekly);
+          if (uid && legacyWeekly) {
+            const { data: legacyProgress } = await supabase.from('user_missions')
+              .select('progress').eq('user_id', uid)
+              .eq('mission_id', Number(legacyWeekly.id)).maybeSingle();
+            const normalized = normalizeWeeklyProgress(legacyProgress?.progress, weekInfo.weekKey);
+            setWeeklyProgress(normalized);
+            setWeeklyDoneThisWeek(normalized.rewarded_week_key === weekInfo.weekKey);
+          } else {
+            setWeeklyProgress({ week_key: weekInfo.weekKey, checkins: {}, count: 0 });
+            setWeeklyDoneThisWeek(false);
           }
         }
       } catch (err) {
@@ -1093,7 +992,7 @@ const requiresAnswer = missionRequiresAnswer(m);
       // Supabase realiza resposta, XP, moedas e recibo na mesma transação.
       // Não há fallback de crédito pelo navegador.
       const { data: claim, error: claimError } = await supabase.rpc(
-        'claim_mission_secure', {
+        'claim_personal_mission_secure', {
           p_mission_id: Number(m.id),
           p_answer: answerText,
         }
@@ -1572,7 +1471,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
               </h2>
             </div>
             <span className="text-[11px] text-purple-100/80">
-              {userId ? `Dia ${todayIndex} da sua jornada` : 'Seu primeiro passo'}
+              {userId ? `Dia ${dailyMissionToday?.day_index ?? todayIndex} da sua jornada` : 'Seu primeiro passo'}
             </span>
           </div>
 
@@ -1889,6 +1788,12 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                       </div>
                     </div>
 
+                    {userId && weeklyProgress.count > 0 && (
+                      <p className="mt-3 rounded-xl border border-violet-400/20 bg-violet-500/10 px-4 py-3 text-xs leading-relaxed text-slate-300">
+                        Seus {weeklyProgress.count} registros da missão semanal anterior continuam salvos.
+                        O novo ciclo de recompensas utiliza somente os check-ins confirmados no Ritual de Hoje.
+                      </p>
+                    )}
                     {userId && (
                       <div className="mt-4 space-y-3">
                         {isPremium && (
