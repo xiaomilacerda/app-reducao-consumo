@@ -1,3 +1,4 @@
+import { traduzirErro } from '@/lib/traduzir-erro';
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -79,7 +80,7 @@ export default function MissionsPanel({ userId }: { userId: string }) {
       }
     } catch (err:any) {
       console.error('Erro complete mission', err);
-      alert(err.message ?? String(err));
+      alert(traduzirErro(err));
     } finally {
       setProcessing(prev => ({ ...prev, [mission.id]: false }));
     }
