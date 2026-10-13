@@ -173,9 +173,9 @@ function getCoinsFromMission(m: any): number {
 
 // Dia do ano (1..366) para usarmos com day_index e rodízio
 function getDayOfYear(date: Date) {
-  const start = new Date(date.getFullYear(), 0, 0);
-  const diff = date.getTime() - start.getTime();
-  return Math.floor(diff / (1000 * 60 * 60 * 24));
+  const currentUTC = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  const janFirstUTC = Date.UTC(date.getFullYear(), 0, 1);
+  return Math.floor((currentUTC - janFirstUTC) / 86400000) + 1;
 }
 
 function getLocalDayKey(date: Date): string {
@@ -531,10 +531,26 @@ export default function MissionsPage() {
         }
 
         // missions
-        const { data: mData, error: mErr } = await supabase
-          .from('missions')
-          .select('*')
-          .order('id', { ascending: true });
+        // Consulta direta por dia e apenas o pequeno catálogo Premium.
+        // Evita o corte em 1.000 registros que exibia erroneamente o Dia 1.
+        const todayMissionIndex = Math.min(365, todayIndex);
+        const [dailyQuery, premiumQuery, weeklyQuery] = await Promise.all([
+          supabase.from('missions').select('*')
+            .eq('type', 'daily').eq('day_index', todayMissionIndex)
+            .order('id', { ascending: true }).limit(2),
+          supabase.from('missions').select('*')
+            .or('premium_only.eq.true,is_premium_only.eq.true,type.eq.premium')
+            .order('id', { ascending: true }).limit(150),
+          supabase.from('missions').select('*')
+            .eq('type', 'weekly').eq('day_index', weeklyIndex)
+            .order('id', { ascending: true }).limit(1),
+        ]);
+        const mErr = dailyQuery.error || premiumQuery.error || weeklyQuery.error;
+        const mData = [
+          ...(dailyQuery.data ?? []),
+          ...(premiumQuery.data ?? []),
+          ...(weeklyQuery.data ?? []),
+        ];
 
         if (mErr) {
           console.error('missions load error', mErr);
@@ -966,129 +982,6 @@ Você tem 1 tolerância por semana para evitar perder a sequência.`,
 
 
 
-  // ---------------- FALBACK PARA COMPLETAR MISSÃO ----------------
-
-  async function fallbackCompleteMission(
-    m: MissionRow,
-    answerText?: string,
-  ): Promise<{
-    success: boolean;
-    message?: string;
-  }> {
-    if (!userId) {
-      return { success: false, message: 'Faça login para completar missões.' };
-    }
-
-    const missionKey = String(m.id);
-    const xp = getXpFromMission(m);
-    const coins = getCoinsFromMission(m);
-
-    try {
-      const nowIso = new Date().toISOString();
-
-      // marca em user_missions (controle geral de missão concluída)
-      try {
-        await supabase.from('user_missions').upsert(
-          [
-            {
-              user_id: userId,
-              mission_id: m.id,
-              completed: true,
-              completed_at: nowIso,
-            } as any,
-          ],
-          { onConflict: 'user_id,mission_id' },
-        );
-      } catch (err) {
-        console.warn('user_missions upsert error (ignorado):', err);
-      }
-
-      // histórico textual da missão (não editável)
-      try {
-        if (answerText && answerText.trim().length >= MIN_ANSWER_LENGTH) {
-          await supabase.from('mission_journal').insert([
-            {
-              user_id: userId,
-              mission_id: m.id,
-              answered_text: answerText.trim(),
-              day_key: todayDayKey,
-            } as any,
-          ]);
-        }
-      } catch (err) {
-        console.warn('mission_journal insert error (ignorado):', err);
-      }
-
-      // atualiza XP no perfil
-      try {
-        if (xp > 0) {
-          const oldXp =
-            (profile?.xp != null ? Number(profile.xp) : totalXP) || 0;
-          const newXp = oldXp + xp;
-
-          const { error: upErr } = await supabase
-            .from('profiles')
-            .update({ xp: newXp })
-            .eq('id', userId);
-
-          if (upErr) {
-            console.warn('profiles xp update error:', upErr);
-          } else {
-            setTotalXP(newXp);
-            setLevel(Math.floor(newXp / XP_PER_LEVEL) + 1);
-            setProfile((prev) =>
-              prev ? { ...prev, xp: newXp } : { id: userId, xp: newXp },
-            );
-          }
-        }
-      } catch (err) {
-        console.warn('XP update catch:', err);
-      }
-
-      // atualiza coins na wallet
-      try {
-        if (coins > 0) {
-          const newCoins = walletCoins + coins;
-          const { error: wErr } = await supabase.from('user_wallet').upsert(
-            [{ user_id: userId, coins: newCoins } as any],
-            { onConflict: 'user_id' },
-          );
-          if (wErr) {
-            console.warn('user_wallet upsert error:', wErr);
-          } else {
-            setWalletCoins(newCoins);
-          }
-        }
-      } catch (err) {
-        console.warn('Coins update catch:', err);
-      }
-
-      // log em user_rewards_log (se a tabela/colunas baterem)
-      try {
-        if (xp > 0 || coins > 0) {
-          await supabase.from('user_rewards_log').insert([
-            {
-              user_id: userId,
-              source: 'missions',
-              event: 'mission_complete',
-              xp_delta: xp,
-              coins_delta: coins,
-              metadata: { mission_id: m.id, title: m.title },
-            } as any,
-          ]);
-        }
-      } catch (err) {
-        console.warn('user_rewards_log insert error (ignorado):', err);
-      }
-
-      setCompletedMap((prev) => ({ ...prev, [missionKey]: true }));
-      return { success: true };
-    } catch (err) {
-      console.error('fallbackCompleteMission erro:', err);
-      return { success: false, message: 'Erro ao completar missão (fallback).' };
-    }
-  }
-
   // ---------------- HANDLE COMPLETE ----------------
 
   async function handleCompleteMission(m: MissionRow) {
@@ -1139,29 +1032,18 @@ const requiresAnswer = missionRequiresAnswer(m);
     setErrorMsg(null);
 
     try {
-      let ok = false;
-
-      // tenta RPC (se existir), senão cai pro fallback
-      try {
-        const { error: rpcErr } = await supabase.rpc('complete_mission', {
-          // ✅ assinatura no seu banco: complete_mission(p_user uuid, p_mission_id bigint)
-          p_user: userId,
+      // Supabase realiza resposta, XP, moedas e recibo na mesma transação.
+      // Não há fallback de crédito pelo navegador.
+      const { data: claim, error: claimError } = await supabase.rpc(
+        'claim_mission_secure', {
           p_mission_id: Number(m.id),
-        } as any);
-        if (!rpcErr) {
-          ok = true;
-        } else {
-          console.warn('complete_mission RPC error, usando fallback:', rpcErr);
+          p_answer: answerText,
         }
-      } catch (err) {
-        console.warn('complete_mission RPC falhou, usando fallback:', err);
-      }
-
-      if (!ok) {
-        const fb = await fallbackCompleteMission(m, answerText);
-        if (!fb.success) {
-          throw new Error(fb.message || 'Não foi possível completar a missão.');
-        }
+      );
+      if (claimError) throw claimError;
+      if (!claim?.ok) {
+        if (claim?.already_completed) setCompletedMap((prev) => ({ ...prev, [key]: true }));
+        throw new Error(claim?.message || 'O servidor não confirmou a recompensa.');
       }
 
       // 🔄 Recarrega wallet + XP para refletir instantaneamente (senão só atualiza ao dar refresh)
@@ -1188,59 +1070,10 @@ const requiresAnswer = missionRequiresAnswer(m);
         console.warn('refresh wallet/xp falhou (ignorado):', e);
       }
 
-      // salva a resposta (se houver) e marca localmente como concluída
-      if ((answerText || '').trim().length >= MIN_ANSWER_LENGTH) {
-        await persistMissionAnswer(m, todayDayKey, answerText);
-        try {
-          if (userId) localStorage.removeItem(getDraftKey(userId, String(m.id)));
-            } catch (e) {
-          // ignore
-        }
-      }
-
+      // Reflexão e progresso já salvos pelo servidor.
+      try { localStorage.removeItem(getDraftKey(userId, String(m.id))); } catch {}
       setCompletedMap((prev) => ({ ...prev, [key]: true }));
-              // Anti-farm: registra local + marca como concluída no banco (caso a RPC não atualize o user_missions)
-              writeLocalCompleted(userId, key, todayDayKey);
-
-              try {
-                const nowIso = new Date().toISOString();
-
-                const { data: curRow } = await supabase
-                  .from('user_missions')
-                  .select('progress')
-                  .eq('user_id', userId)
-                  .eq('mission_id', Number(m.id))
-                  .maybeSingle();
-
-                const curProgress =
-                  (curRow as any)?.progress && typeof (curRow as any).progress === 'object'
-                    ? (curRow as any).progress
-                    : {};
-
-                const nextProgress: any = { ...curProgress, day_key: todayDayKey };
-
-                if (answerText.trim()) {
-                  nextProgress.answer_text = answerText.trim();
-                  nextProgress.answer_saved_at = nowIso;
-                }
-
-                await supabase.from('user_missions').upsert(
-                  [
-                    {
-                      user_id: userId,
-                      mission_id: Number(m.id),
-                      completed: true,
-                      status: 'completed',
-                      completed_at: nowIso,
-                      last_update: nowIso,
-                      progress: nextProgress,
-                    },
-                  ],
-                  { onConflict: 'user_id,mission_id' } as any
-                );
-              } catch (e) {
-                console.warn('Falha ao marcar missão como concluída no DB (ignorado):', e);
-              }
+      writeLocalCompleted(userId, key, todayDayKey);
 
       setAnswers((prev) => ({ ...prev, [key]: prev[key] ?? '' })); // mantém texto (travado após concluir)
 } catch (err: any) {
@@ -1680,11 +1513,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                 setTotalXP(profileData.data.xp);
                 setLevel(getLevelFromXp(profileData.data.xp));
               }
-              // O Ritual de Hoje também conta como o registro da ação semanal.
-              // Não cobra nenhuma recompensa extra e evita exigir dois cliques.
-              if (weeklyMission && !weeklyProgress.checkins?.[todayDayKey] && !weeklyDoneThisWeek) {
-                await handleWeeklyCheckin();
-              }
+              // O mesmo ritual alimenta o progresso de sete conquistas.
             })();
           }}
         />
@@ -1818,16 +1647,18 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                       disabled={
                         done ||
                         processing[key] ||
-                        (missionRequiresAnswer(m) && answerTooShort) ||
-                        !userId
+                        (userId !== null && missionRequiresAnswer(m) && answerTooShort)
                       }
-                      onClick={() => handleCompleteMission(m)}
+                      onClick={() => {
+                        if (!userId) { requestMissionLogin(); return; }
+                        void handleCompleteMission(m);
+                      }}
                       className={`px-4 py-2 rounded-full text-xs font-semibold inline-flex items-center gap-1 ${
                         done
                           ? 'bg-emerald-500/15 text-emerald-100 border border-emerald-400/20 cursor-default'
                           : processing[key]
                           ? 'bg-purple-500/15 text-purple-100 border border-purple-400/20 cursor-wait'
-                          : (missionRequiresAnswer(m) && answerTooShort) || !userId
+                          : (missionRequiresAnswer(m) && answerTooShort && !!userId)
                           ? 'bg-white/5 text-white/40 border border-white/10 cursor-not-allowed'
                           : 'bg-gradient-to-r from-purple-600 to-pink-600 text-white border border-purple-500/60 hover:opacity-90'
                       }`}
@@ -1844,8 +1675,8 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                         </>
                       ) : (
                         <>
-                          <Zap className="w-4 h-4" />
-                          Completar missão
+                          {!userId ? <LogIn className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+                          {!userId ? 'Entrar para completar' : 'Completar missão'}
                         </>
                       )}
                     </button>
@@ -1856,261 +1687,8 @@ Não minta para você mesmo só para coletar XP e moedas.`,
           )}
         </section>
 
-        {/* MISSÕES SEMANAIS */}
-        <section className="space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-sky-300" />
-              <h2 className="text-sm sm:text-base font-semibold text-white">
-                Missão semanal (renova toda segunda)
-              </h2>
-            </div>
-            <p className="text-[11px] text-zinc-300/80">
-              Semana {weekInfo.isoWeek} • {weekInfo.weekKey}
-            </p>
-          </div>
-
-          {!weeklyMission ? (
-            <div className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3 text-sm text-zinc-300">
-              Nenhuma missão semanal cadastrada no momento. (Crie missões com{' '}
-              <code className="mx-1">type = 'weekly'</code> e{' '}
-              <code className="mx-1">day_index = 1..55</code>)
-            </div>
-          ) : (
-            <article className="rounded-2xl bg-white/5 border border-white/10 px-4 sm:px-5 py-4 shadow-xl">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-sky-500/15 flex items-center justify-center text-sky-200">
-                  <Trophy className="w-5 h-5" />
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-white truncate">
-                      {weeklyMission.title}
-                    </h3>
-                    {weeklyDoneThisWeek ? (
-                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-100 border border-emerald-400/20">
-                        Concluída nesta semana
-                      </span>
-                    ) : (
-                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-100 border border-sky-400/20">
-                        Check-in diário
-                      </span>
-                    )}
-                  </div>
-
-                  {weeklyMission.description ? (
-                    <p className="text-sm text-white/70 mt-1 whitespace-pre-line">
-                      {weeklyMission.description}
-                    </p>
-                  ) : null}
-
-                  <div className="flex flex-wrap items-center gap-2 mt-3">
-                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-100 border border-purple-400/20 flex items-center gap-1">
-                      <Zap className="w-3.5 h-3.5" /> {getXpFromMission(weeklyMission)} XP
-                    </span>
-                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-100 border border-amber-400/20 flex items-center gap-1">
-                      <Coins className="w-3.5 h-3.5" /> {getCoinsFromMission(weeklyMission)} moedas
-                    </span>
-                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/10 text-white/70 border border-white/10">
-                      {weeklyProgress.count}/{weeklyRequiredDays} dias marcados
-                    </span>
-                  </div>
-
-                  {/* Ação principal: não depender dos pequenos quadrados para descobrir o check-in. */}
-                  <div className="mt-4 max-w-xl rounded-2xl border border-sky-400/30 bg-sky-400/[.07] p-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="text-sm font-bold text-white">
-                          {weeklyProgress.checkins?.[todayDayKey]
-                            ? 'Check-in semanal de hoje realizado!'
-                            : 'Já fez sua ação anti-gatilho hoje?'}
-                        </p>
-                        <p className="mt-1 text-xs leading-relaxed text-slate-300">
-                          {weeklyProgress.checkins?.[todayDayKey]
-                            ? 'Muito bem! Volte amanhã para dar o próximo passo.'
-                            : 'Marque seu dia e acompanhe o progresso da missão semanal.'}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!userId) { requestMissionLogin(); return; }
-                          void handleWeeklyCheckin();
-                        }}
-                        disabled={!authChecked || (userId !== null && (weeklyDoneThisWeek || !!weeklyProgress.checkins?.[todayDayKey] || !!processing[`weekly:${String(weeklyMission.id)}`]))}
-                        className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-sky-400 px-4 py-3 text-sm font-extrabold text-sky-950 shadow-[0_8px_20px_rgba(56,189,248,.18)] transition-all hover:bg-sky-300 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky-400/40 disabled:cursor-not-allowed disabled:bg-emerald-500/15 disabled:text-emerald-100 disabled:shadow-none"
-                      >
-                        {!userId ? <><LogIn className="h-4 w-4" /> Entrar para marcar hoje</>
-                        : !!processing[`weekly:${String(weeklyMission.id)}`]
-                          ? <><Clock className="h-4 w-4 animate-spin" /> Salvando...</>
-                          : weeklyProgress.checkins?.[todayDayKey]
-                            ? <><CheckCircle className="h-4 w-4" /> Dia marcado</>
-                            : <><CheckCircle className="h-4 w-4" /> Marcar dia de hoje</>}
-                      </button>
-                    </div>
-                    <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-slate-700" role="progressbar"
-                      aria-label="Progresso da missão semanal" aria-valuemin={0}
-                      aria-valuemax={weeklyRequiredDays} aria-valuenow={Math.min(weeklyRequiredDays, weeklyProgress.count)}>
-                      <div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-emerald-400 transition-[width] duration-500"
-                        style={{ width: `${Math.min(100, (weeklyProgress.count / Math.max(1,weeklyRequiredDays)) * 100)}%` }} />
-                    </div>
-                    <p className="mt-2 text-xs font-medium text-slate-300">
-                      {weeklyProgress.count} de {weeklyRequiredDays} dias marcados nesta missão.
-                    </p>
-                  </div>
-
-                  {/* Dias: hoje claramente clicável, concluídos com check e futuros bloqueados. */}
-                  <div className="mt-3 grid w-full max-w-xl grid-cols-7 gap-1.5 sm:gap-2">
-                    {(['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'] as const).map((label, idx) => {
-                      const dayKey = weekInfo.days[idx];
-                      const checked = !!weeklyProgress.checkins?.[dayKey];
-                      const isToday = dayKey === todayDayKey;
-
-                      const disabled =
-                        !authChecked ||
-                        (userId !== null && weeklyDoneThisWeek) ||
-                        checked ||
-                        !isToday ||
-                        !!processing[`weekly:${String(weeklyMission.id)}`];
-
-                      return (
-                        <button
-                          key={dayKey}
-                          type="button"
-                          disabled={disabled}
-                          onClick={() => {
-                            if (disabled) return;
-                            if (!userId) { requestMissionLogin(); return; }
-                            void handleWeeklyCheckin();
-                          }}
-                          className={[
-                            'relative flex min-h-[78px] flex-col items-center justify-center rounded-xl border px-1 py-2 text-center text-xs transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 sm:min-h-[86px]',
-                            checked
-                              ? 'bg-emerald-600/25 text-emerald-100 border-emerald-400/60'
-                              : isToday
-                                ? 'bg-sky-400/20 border-sky-300 text-sky-50 ring-2 ring-sky-400/20 hover:-translate-y-0.5 hover:bg-sky-400/30'
-                                : 'bg-slate-900 border-slate-700 text-slate-400 cursor-not-allowed',
-                          ].join(' ')}
-                          title={
-                            checked
-                              ? `Marcado (${dayKey})`
-                              : isToday
-                                ? userId
-                                  ? `Marcar hoje (${dayKey})`
-                                  : 'Entre na sua conta para registrar este dia'
-                                : `Volte no dia (${dayKey})`
-                          }
-                        >
-                          <div className="font-bold">{label}</div>
-                          <div className="mt-1 text-[10px] opacity-90">{dayKey.slice(8, 10)}/{dayKey.slice(5, 7)}</div>
-                          {checked ? <CheckCircle className="mt-1 h-4 w-4 text-emerald-200" />
-                            : isToday ? <span className="mt-1 text-[9px] font-extrabold text-sky-200">HOJE</span>
-                              : <span className="mt-1 h-4" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {(() => {
-                    const t = new Date();
-                    const y = new Date(t);
-                    y.setDate(t.getDate() - 1);
-                    const yKey = getLocalDayKey(y);
-
-                    const canRetro =
-                      !!userId &&
-                      !!weeklyMission &&
-                      !weeklyDoneThisWeek &&
-                      weekInfo.days.includes(yKey) &&
-                      !weeklyProgress.checkins?.[yKey] &&
-                      !weeklyProgress.retro_used;
-
-                    if (!canRetro) return null;
-
-                    const busy = !!processing[`weeklyRetro:${String(weeklyMission.id)}`];
-
-                    return (
-                      <div className="mt-3 max-w-md">
-                        <div className="rounded-2xl border border-amber-400/20 bg-amber-500/10 px-4 py-3">
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                            <div className="text-sm text-amber-100/90 leading-relaxed">
-                              Esqueceu de marcar <b>ontem</b>? Você tem <b>1 tolerância por semana</b>.
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => handleWeeklyRetroCheckin()}
-                              disabled={busy}
-                              className={[
-                                'rounded-xl px-3 py-2 text-xs font-semibold transition',
-                                busy
-                                  ? 'bg-amber-400/30 text-amber-100/80 cursor-not-allowed'
-                                  : 'bg-amber-500 text-black hover:bg-amber-400',
-                              ].join(' ')}
-                            >
-                              {busy ? 'Salvando...' : 'Marcar ontem'}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  <p className="mt-3 max-w-xl rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-xs leading-relaxed text-slate-200">
-                    <strong className="text-white">Como funciona:</strong> marque o dia atual após realizar a atividade.
-                    Se esquecer de registrar ontem, você tem uma tolerância por semana.
-                    Para liberar a recompensa semanal, registre os 7 check-ins reais no Ritual de Hoje.
-                    O dia perdido não apaga suas conquistas anteriores.
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  {weeklyDoneThisWeek ? (
-                    <button
-                      type="button"
-                      className="px-4 py-2 rounded-full bg-emerald-500/15 text-emerald-100 border border-emerald-400/20 font-medium text-sm"
-                      disabled
-                    >
-                      ✅ Concluída
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!userId) { requestMissionLogin(); return; }
-                        void handleWeeklyComplete();
-                      }}
-                      disabled={
-                        !authChecked ||
-                        (userId !== null && (
-                          !!processing[`weeklyComplete:${String(weeklyMission.id)}`] ||
-                          verifiedWeekCheckins < 7
-                        ))
-                      }
-                      className={[
-                        'px-4 py-2 rounded-full font-medium text-sm border transition',
-                        verifiedWeekCheckins >= 7
-                          ? 'bg-sky-600 text-white border-sky-600 hover:bg-sky-700'
-                          : 'bg-white/5 text-white/40 border-white/10 cursor-not-allowed',
-                      ].join(' ')}
-                      title={
-                        verifiedWeekCheckins >= 7
-                          ? 'Concluir semana e coletar recompensa'
-                          : `Registre ${7 - verifiedWeekCheckins} check-in(s) no Ritual de Hoje para liberar`
-                      }
-                    >
-                      {!userId ? 'Entrar para validar missão'
-                        : processing[`weeklyComplete:${String(weeklyMission.id)}`]
-                          ? 'Processando...'
-                          : 'Concluir semana'}
-                    </button>
-                  )}
-                </div>
-              </div>
-            </article>
-          )}
-        </section>
+        {/* A missão semanal foi integrada ao Ritual de Hoje.
+            O antigo histórico permanece preservado no banco. */}
 
         {/* MISSÕES PREMIUM */}
         <section className="space-y-3">
