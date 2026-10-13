@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight, CalendarDays, Check, CheckCircle2, Coins, Download, HeartHandshake,
   Loader2, RefreshCw, Save, ShieldCheck, Sparkles, Target, TrendingUp, Wallet,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import ProfileActionNotice from '@/components/profile/ProfileActionNotice';
 
 type GoalKind = 'checkins' | 'spending' | 'sessions';
 type Currency = 'BRL' | 'USD' | 'EUR';
@@ -57,6 +58,16 @@ function mondayOf(iso: string) {
 function money(value: number, currency: Currency) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency, maximumFractionDigits: 2 }).format(value);
 }
+async function withCloudTimeout<T>(request: PromiseLike<T>, ms = 12000): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve(request),
+      new Promise<T>((_, reject) => { timer = setTimeout(() =>
+        reject(new Error('A nuvem demorou para responder. Atualize e tente novamente.')), ms); }),
+    ]);
+  } finally { if (timer) clearTimeout(timer); }
+}
 function fieldNumber(value: string): number | null {
   if (value.trim() === '') return null;
   const number = Number(value.replace(',', '.'));
@@ -77,6 +88,8 @@ export default function ProfileGrowthHub({
   userId, timezone, currency,
 }: { userId: string | null; timezone: string; currency: Currency }) {
   const [loading, setLoading] = useState(true);
+  const [settingsReady, setSettingsReady] = useState(false);
+  const [reviewsReady, setReviewsReady] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [saving, setSaving] = useState<'goal' | 'review' | 'support' | 'export' | null>(null);
@@ -92,6 +105,8 @@ export default function ProfileGrowthHub({
   const [baselineInput, setBaselineInput] = useState('');
   const [goalDirty, setGoalDirty] = useState(false);
   const [supportDirty, setSupportDirty] = useState(false);
+  const [reviewDirty, setReviewDirty] = useState(false);
+  const dismissNotice = useCallback(() => { setError(''); setNotice(''); }, []);
   const [triggers, setTriggers] = useState<string[]>(['', '', '']);
   const [actions, setActions] = useState<string[]>(['', '', '']);
   const [contact, setContact] = useState('');
@@ -142,12 +157,14 @@ export default function ProfileGrowthHub({
   async function refresh() {
     if (!userId) { setLoading(false); return; }
     setLoading(true);
+    setSettingsReady(false);
+    setReviewsReady(false);
     setError('');
     try {
       // A sessão precisa pertencer ao usuário atual antes de buscar dados privados.
       const { data: auth, error: authError } = await supabase.auth.getUser();
       if (authError || auth?.user?.id !== userId) throw new Error('Sua sessão precisa ser renovada.');
-      const [growth, weekly, daily, profile, wallet, missions] = await Promise.all([
+      const [growth, weekly, daily, profile, wallet, missions] = await withCloudTimeout(Promise.all([
         supabase.from('profile_growth_settings').select('*').eq('user_id', userId).maybeSingle(),
         supabase.from('profile_weekly_reviews').select('week_start,sessions,spent,mood,money_currency')
           .eq('user_id', userId).order('week_start', { ascending: false }).limit(15),
@@ -158,7 +175,7 @@ export default function ProfileGrowthHub({
         supabase.from('user_missions').select('mission_id,completed_at',{ count:'exact',head:true })
           .eq('user_id',userId).eq('completed',true)
           .gte('completed_at',todayMinus29 + 'T00:00:00Z'),
-      ]);
+      ]), 12000);
       if (growth.error || weekly.error || daily.error)
         throw new Error('Não foi possível buscar metas, registros semanais ou check-ins.');
       const fromDb = growth.data as unknown as GrowthSettings | null;
@@ -180,6 +197,9 @@ export default function ProfileGrowthHub({
       }
       setGoalDirty(false);
       setSupportDirty(false);
+      setSettingsReady(true);
+      setReviewsReady(true);
+      setReviewDirty(false);
       const weeklyData = (weekly.data ?? []) as WeeklyReview[];
       setReviews(weeklyData);
       const current = weeklyData.find(r => r.week_start === weekStart);
@@ -188,8 +208,8 @@ export default function ProfileGrowthHub({
       setReviewSessions(current?.sessions == null ? '' : String(current.sessions));
       setReviewMood(current?.mood ?? '');
       setCheckins((daily.data ?? []) as Checkin[]);
-      setXp(profile.error ? null : Number(profile.data?.xp ?? 0));
-      setCoins(wallet.error ? null : Number(wallet.data?.coins ?? 0));
+      setXp(profile.error || !profile.data ? null : Number(profile.data.xp ?? 0));
+      setCoins(wallet.error || !wallet.data ? null : Number(wallet.data.coins ?? 0));
       setMissionsMonth(missions.error ? null : missions.count ?? 0);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Falha ao consultar sua evolução. Tente novamente.');
@@ -197,9 +217,19 @@ export default function ProfileGrowthHub({
   }
   useEffect(() => { void refresh(); /* recarrega ao entrar/trocar conta e na semana atual */ },
     [userId, weekStart]);
+  useEffect(() => {
+    const beforeLeave = (event: BeforeUnloadEvent) => {
+      if (!(goalDirty || supportDirty || reviewDirty)) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', beforeLeave);
+    return () => window.removeEventListener('beforeunload', beforeLeave);
+  }, [goalDirty, supportDirty, reviewDirty]);
 
   async function saveGoal() {
     if (!userId || saving) return;
+    if (!settingsReady) { setError('Atualize o Perfil e aguarde confirmar suas metas antes de salvar.'); return; }
     const target = Number(settings.goal_target);
     const max = settings.goal_kind === 'checkins' ? 7 :
       settings.goal_kind === 'sessions' ? 100 : 100000;
@@ -212,13 +242,14 @@ export default function ProfileGrowthHub({
     setSaving('goal'); setError(''); setNotice('');
     try {
       const next = { ...settings, goal_target: target, baseline_weekly_spend: baseline, money_currency: currency };
-      const { error: e } = await supabase.from('profile_growth_settings').upsert({
-        user_id: userId, goal_kind: next.goal_kind, goal_target: next.goal_target,
-        goal_deadline: next.goal_deadline || null, baseline_weekly_spend: next.baseline_weekly_spend,
-        money_currency: currency,
-        triggers: settings.triggers, coping_actions: settings.coping_actions,
-        support_label: settings.support_label, updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' });
+      const { data: result, error: e } = await supabase.rpc('update_profile_growth_goal', {
+        p_goal_kind: next.goal_kind,
+        p_goal_target: next.goal_target,
+        p_goal_deadline: next.goal_deadline,
+        p_baseline_weekly_spend: next.baseline_weekly_spend,
+        p_money_currency: currency,
+      });
+      if (!e && result?.ok !== true) throw new Error('Meta não confirmada.');
       if (e) throw e;
       setSettings(next); setGoalDirty(false); setNotice('Meta salva na sua conta com sucesso.');
     } catch { setError('Não foi possível salvar sua meta. Nada foi descartado.'); }
@@ -227,6 +258,7 @@ export default function ProfileGrowthHub({
 
   async function saveReview() {
     if (!userId || saving) return;
+    if (!reviewsReady) { setError('O histórico semanal ainda não foi sincronizado. Atualize e tente novamente.'); return; }
     const spent = fieldNumber(reviewSpend), sessions = fieldNumber(reviewSessions);
     if ((reviewSpend.trim() !== '' && (spent == null || spent < 0 || spent > 100000)) ||
         (reviewSessions.trim() !== '' && (sessions == null || sessions < 0 || sessions > 500 || sessions !== Math.floor(sessions))) ||
@@ -243,6 +275,7 @@ export default function ProfileGrowthHub({
       if (e) throw e;
       setReviews(prev => [{ week_start: weekStart, spent, sessions, mood: reviewMood || null,
         money_currency: currency }, ...prev.filter(r => r.week_start !== weekStart)]);
+      setReviewDirty(false);
       setNotice('Registro semanal salvo com segurança.');
     } catch { setError('O registro semanal não foi salvo. Tente novamente.'); }
     finally { setSaving(null); }
@@ -250,6 +283,7 @@ export default function ProfileGrowthHub({
 
   async function saveSupport() {
     if (!userId || saving) return;
+    if (!settingsReady) { setError('Atualize o Perfil e aguarde confirmar seu plano antes de salvar.'); return; }
     const t = triggers.map(x => x.trim()).filter(Boolean);
     const a = actions.map(x => x.trim()).filter(Boolean);
     if (t.some(x=>x.length>100) || a.some(x=>x.length>150) || contact.length>80) {
@@ -257,15 +291,10 @@ export default function ProfileGrowthHub({
     }
     setSaving('support'); setError(''); setNotice('');
     try {
-      const { error: e } = await supabase.from('profile_growth_settings').upsert({
-        user_id: userId,
-        goal_kind: settings.goal_kind, goal_target: settings.goal_target,
-        goal_deadline: settings.goal_deadline,
-        baseline_weekly_spend: settings.baseline_weekly_spend,
-        money_currency: settings.money_currency,
-        triggers: t, coping_actions: a,
-        support_label: contact.trim() || null, updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' });
+      const { data: result, error: e } = await supabase.rpc('update_profile_growth_support', {
+        p_triggers: t, p_coping_actions: a, p_support_label: contact.trim() || null,
+      });
+      if (!e && result?.ok !== true) throw new Error('Plano não confirmado.');
       if (e) throw e;
       setSettings(prev => ({ ...prev, triggers: t, coping_actions: a, support_label: contact.trim() || null }));
       setSupportDirty(false); setNotice('Plano de apoio salvo. Ele também aparecerá na área SOS.');
@@ -314,6 +343,7 @@ export default function ProfileGrowthHub({
   if (!userId) return null;
   return (
     <section className="min-w-0 space-y-4 text-white" aria-label="Minha evolução e metas pessoais">
+      <ProfileActionNotice success={notice} error={error} onDismiss={dismissNotice}/>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-widest text-violet-200">Sua jornada, do seu jeito</p>
@@ -325,8 +355,15 @@ export default function ProfileGrowthHub({
           <RefreshCw className={'h-4 w-4 ' + (loading ? 'animate-spin' : '')}/> Atualizar
         </button>
       </div>
-      {notice && <p role="status" className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">{notice}</p>}
-      {error && <p role="alert" className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</p>}
+      {(goalDirty || supportDirty || reviewDirty) && (
+        <p role="status" className="rounded-xl border border-amber-400/20 bg-amber-400/10 px-4 py-2 text-xs text-amber-100">
+          Existem alterações ainda não salvas em {[
+            goalDirty ? 'metas' : null,
+            supportDirty ? 'plano de apoio' : null,
+            reviewDirty ? 'registro semanal' : null,
+          ].filter(Boolean).join(', ')}.
+        </p>
+      )}
       {loading ? <div role="status" className="rounded-2xl border border-white/10 bg-[#17172a] p-6 text-sm text-slate-300">
         <Loader2 className="mr-2 inline h-4 w-4 animate-spin"/> Carregando dados confirmados da nuvem...
       </div> : <>
@@ -400,7 +437,7 @@ export default function ProfileGrowthHub({
                 className={'mt-1 ' + inputStyle()}/>
             </label>
           </div>
-          <button type="button" onClick={()=>void saveGoal()} disabled={saving!==null || !goalDirty || loading}
+          <button type="button" onClick={()=>void saveGoal()} disabled={saving!==null || !goalDirty || loading || !settingsReady}
             className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-violet-400 px-4 py-2.5 text-sm font-bold text-[#17102d] transition hover:bg-violet-300 disabled:opacity-50">
             <Save className="h-4 w-4"/> {saving==='goal'?'Salvando...':'Salvar minha meta'}
           </button>
@@ -426,7 +463,7 @@ export default function ProfileGrowthHub({
                 onChange={e=>{setBaselineInput(e.target.value);setGoalDirty(true);}}
                 placeholder="Ex.: 140" className={'mt-1 ' + inputStyle()}/>
             </label>
-            <button type="button" onClick={()=>void saveGoal()} disabled={saving!==null || !goalDirty || loading}
+            <button type="button" onClick={()=>void saveGoal()} disabled={saving!==null || !goalDirty || loading || !settingsReady}
               className="min-h-10 w-full rounded-xl border border-amber-300/40 px-3 text-xs font-bold text-amber-100 disabled:opacity-50">
               Salvar referência de comparação
             </button>
@@ -436,23 +473,23 @@ export default function ProfileGrowthHub({
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <label className="text-xs text-slate-200">Gastei ({currency})
                   <input value={reviewSpend} type="number" min="0" step="0.01" inputMode="decimal"
-                    onChange={e=>setReviewSpend(e.target.value)} placeholder="Sem registro"
+                    onChange={e=>{setReviewSpend(e.target.value);setReviewDirty(true);}} placeholder="Sem registro"
                     className={'mt-1 ' + inputStyle()}/>
                 </label>
                 <label className="text-xs text-slate-200">Sessões
                   <input value={reviewSessions} type="number" min="0" step="1" inputMode="numeric"
-                    onChange={e=>setReviewSessions(e.target.value)} placeholder="Sem registro"
+                    onChange={e=>{setReviewSessions(e.target.value);setReviewDirty(true);}} placeholder="Sem registro"
                     className={'mt-1 ' + inputStyle()}/>
                 </label>
               </div>
               <label className="mt-3 block text-xs text-slate-200">Como me senti (opcional)
-                <select value={reviewMood} onChange={e=>setReviewMood(e.target.value)} className={'mt-1 ' + inputStyle()}>
+                <select value={reviewMood} onChange={e=>{setReviewMood(e.target.value);setReviewDirty(true);}} className={'mt-1 ' + inputStyle()}>
                   <option value="">Prefiro não registrar</option>
                   <option value="bem">Bem</option><option value="normal">Um dia comum</option>
                   <option value="dificil">Foi difícil</option>
                 </select>
               </label>
-              <button type="button" onClick={()=>void saveReview()} disabled={saving!==null || loading}
+              <button type="button" onClick={()=>void saveReview()} disabled={saving!==null || loading || !reviewsReady}
                 className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-amber-300 px-4 text-sm font-bold text-[#24180c] hover:bg-amber-200 disabled:opacity-50">
                 <Save className="h-4 w-4"/> {saving==='review'?'Salvando...':'Salvar registro semanal'}
               </button>
@@ -493,7 +530,7 @@ export default function ProfileGrowthHub({
             onChange={e=>{setContact(e.target.value);setSupportDirty(true);}}/>
         </label>
         <p className="mt-2 text-xs text-slate-400">Não é necessário informar telefone. Este plano não substitui atendimento profissional em situações de emergência.</p>
-        <button type="button" onClick={()=>void saveSupport()} disabled={saving!==null || !supportDirty || loading}
+        <button type="button" onClick={()=>void saveSupport()} disabled={saving!==null || !supportDirty || loading || !settingsReady}
           className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-300 px-5 text-sm font-bold text-[#073427] hover:bg-emerald-200 disabled:opacity-50">
           <Save className="h-4 w-4"/> {saving==='support'?'Salvando...':'Salvar meu plano de apoio'}
         </button>
