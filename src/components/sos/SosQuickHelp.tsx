@@ -180,7 +180,7 @@ export default function SosQuickHelp({ userId }: { userId: string | null }) {
         </button>
         <div className="mt-4 flex flex-wrap items-center gap-3 text-[11px] text-slate-300">
           <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-emerald-300"/> Ajuda imediata gratuita</span>
-          <span>• 1 minuto • Funciona sem internet</span>
+          <span>• 1 minuto • Sem áudio obrigatório</span>
         </div>
         {recentSave && <p className="mt-3 text-xs text-emerald-200">Seu último registro de pausa guiada está salvo na conta.</p>}
       </div>
