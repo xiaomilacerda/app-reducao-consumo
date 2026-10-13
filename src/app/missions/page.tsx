@@ -327,6 +327,7 @@ export default function MissionsPage() {
   const [personalMissionDay, setPersonalMissionDay] = useState(1);
   const [xpVerified, setXpVerified] = useState(false);
   const [walletVerified, setWalletVerified] = useState(false);
+  const [completedDailyTodayId, setCompletedDailyTodayId] = useState<string | null>(null);
 
   const [missions, setMissions] = useState<MissionRow[]>([]);
   const [weeklyMission, setWeeklyMission] = useState<MissionRow | null>(null);
@@ -484,6 +485,7 @@ export default function MissionsPage() {
 
       try {
         const uid = userId;
+        let completedTodayIds: string[] = [];
         if (!uid || cancelled) {
           setProfile(null);
           setIsPremium(false);
@@ -492,6 +494,7 @@ export default function MissionsPage() {
           setXpVerified(false);
           setWalletVerified(false);
           setPersonalMissionDay(1);
+          setCompletedDailyTodayId(null);
         } else {
 
           // perfil
@@ -545,7 +548,7 @@ export default function MissionsPage() {
           try {
             const { data: um, error: umErr } = await supabase
               .from('user_missions')
-              .select('mission_id, completed, completed_at, status')
+              .select('mission_id, completed, completed_at, status, progress')
               .eq('user_id', uid);
 
             if (umErr) {
@@ -554,7 +557,14 @@ export default function MissionsPage() {
               const map: Record<string, boolean> = {};
               (um as any[]).forEach((row) => {
                 const mid = String(row.mission_id);
-                if (isDoneFromUserMissionRow(row)) map[mid] = true;
+                if (isDoneFromUserMissionRow(row)) {
+                  map[mid] = true;
+                  const completionKey = row.progress?.day_key || row.progress?.dayKey;
+                  const completedAt = typeof row.completed_at === 'string'
+                    ? getLocalDayKey(new Date(row.completed_at)) : null;
+                  if (completionKey === todayDayKey || completedAt === todayDayKey)
+                    completedTodayIds.push(mid);
+                }
               });
 
               // Fallback local: se a página recarregar antes do DB refletir, ainda bloqueia "farm"
@@ -604,6 +614,9 @@ export default function MissionsPage() {
         } else {
           const list = ((mData as MissionRow[]) ?? []) as MissionRow[];
           setMissions(list);
+          const dailyDone = list.find(m => m.type === 'daily' &&
+            completedTodayIds.includes(String(m.id)));
+          setCompletedDailyTodayId(dailyDone ? String(dailyDone.id) : null);
 
           // missão semanal da semana (renova na segunda-feira)
           try {
@@ -1290,6 +1303,11 @@ Não minta para você mesmo só para coletar XP e moedas.`,
   const dailyMissionToday: MissionRow | null = useMemo(() => {
     if (!dailyMissionsRaw.length) return null;
 
+    // Se um desafio já foi feito hoje na versão anterior, mostre esse
+    // desafio concluído, em vez de oferecer outro ao recalcular o dia pessoal.
+    const alreadyDone = dailyMissionsRaw.find(m =>
+      String(m.id) === completedDailyTodayId);
+    if (alreadyDone) return alreadyDone;
     const byIndex = dailyMissionsRaw.find(
       (m) => (m.day_index || 0) === Math.min(todayIndex, 365),
     );
@@ -1297,7 +1315,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
 
     // fallback: se ninguém tem day_index igual ao dia, pega a primeira
     return dailyMissionsRaw[0];
-  }, [dailyMissionsRaw, todayIndex]);
+  }, [dailyMissionsRaw, todayIndex, completedDailyTodayId]);
 
   // ---------------- EFEITO: restaurar rascunho e garantir resposta visível após concluir ----------------
   useEffect(() => {
@@ -1467,7 +1485,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                 </h1>
               </div>
               <p className="text-xs text-purple-100/80 mt-0.5">
-                Complete missões diárias e semanais para ganhar XP e moedas dentro do Weed Reset.
+                Pequenos cuidados, conquistas reais. Sua evolução acontece no seu ritmo.
               </p>
             </div>
           </div>
@@ -1476,61 +1494,42 @@ Não minta para você mesmo só para coletar XP e moedas.`,
 
       {/* MAIN */}
       <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-        {/* RESUMO XP / NIVEL / COINS */}
-        <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 border border-purple-300/50 p-4 flex flex-col gap-2 shadow-2xl">
-            <div className="flex items-center justify-between">
-              <span className="text-xs uppercase tracking-wide text-purple-50">
-                Nível
-              </span>
-              <Trophy className="w-4 h-4 text-purple-50" />
-            </div>
-            <div className="text-2xl font-bold text-white">
-              {level}
-            </div>
-            <div className="text-[11px] text-purple-100/90">
-              {totalXP} XP • próximo nível em{' '}
-              {Math.max(0, level * XP_PER_LEVEL - totalXP)} XP
-            </div>
+        {/* INDICADORES CONCISOS: dados verificados, nunca zeros falsos em falhas. */}
+        <section className="grid grid-cols-3 gap-2.5 sm:gap-4" aria-label="Seu progresso e recompensas">
+          <div className="rounded-2xl border border-violet-400/25 bg-gradient-to-br from-violet-700/65 to-[#1c1640] p-3 sm:p-5 shadow-lg">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-violet-100"><Trophy className="h-4 w-4" /> Nível</div>
+            <div className="mt-2 text-2xl font-extrabold tabular-nums sm:text-3xl">{userId && xpVerified ? level : '—'}</div>
+            <p className="mt-1 hidden text-xs text-violet-200 sm:block">Um passo de cada vez.</p>
           </div>
-
-          <div className="rounded-2xl bg-white/95 border border-purple-100 p-4 flex flex-col gap-2 shadow-xl">
-            <div className="flex items-center justify-between">
-              <span className="text-xs uppercase tracking-wide text-purple-600">
-                XP Total
-              </span>
-              <Star className="w-4 h-4 text-purple-500" />
+          <div className="rounded-2xl border border-white/10 bg-[#17172a] p-3 sm:p-5 shadow-lg">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-300"><Star className="h-4 w-4 text-amber-300" /> XP total</div>
+            <div className="mt-2 text-2xl font-extrabold tabular-nums sm:text-3xl">{userId && xpVerified ? totalXP : '—'}</div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10" role="progressbar"
+              aria-label="Progresso para o próximo nível" aria-valuemin={0} aria-valuemax={XP_PER_LEVEL}
+              aria-valuenow={xpVerified ? totalXP % XP_PER_LEVEL : 0}>
+              <div className="h-full rounded-full bg-emerald-400" style={{width: `${xpVerified ? (totalXP % XP_PER_LEVEL) / XP_PER_LEVEL * 100 : 0}%`}} />
             </div>
-            <div className="text-2xl font-bold text-gray-900">
-              {totalXP}
-            </div>
-            <div className="text-[11px] text-gray-600">
-              Ganho de XP vem de missões, SOS e outras ações dentro do app.
-            </div>
+            <p className="mt-1 text-[10px] text-slate-400">{userId && xpVerified ? `${XP_PER_LEVEL - totalXP % XP_PER_LEVEL} XP para subir` : 'Entre para acompanhar'}</p>
           </div>
-
-          <div className="rounded-2xl bg-white/95 border border-amber-100 p-4 flex flex-col gap-2 shadow-xl">
-            <div className="flex items-center justify-between">
-              <span className="text-xs uppercase tracking-wide text-amber-600">
-                Moedas
-              </span>
-              <Coins className="w-4 h-4 text-amber-500" />
-            </div>
-            <div className="text-2xl font-bold text-gray-900">
-              {walletCoins}
-            </div>
-            <div className="text-[11px] text-gray-600">
-              Use suas moedas na loja para desbloquear temas, molduras e mais.
-            </div>
-          </div>
+          <Link href={userId ? '/rewards' : '/login?next=%2Fmissions'}
+            className="rounded-2xl border border-amber-400/20 bg-[#211a1c] p-3 shadow-lg transition hover:border-amber-300/60 hover:bg-[#2c2020] sm:p-5"
+            aria-label="Ver sua carteira e suas recompensas">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-200"><Coins className="h-4 w-4" /> Moedas</div>
+            <div className="mt-2 text-2xl font-extrabold tabular-nums sm:text-3xl">{userId && walletVerified ? walletCoins : '—'}</div>
+            <p className="mt-1 text-[10px] text-amber-200/80">Ver recompensas →</p>
+          </Link>
         </section>
+        {userId && (!xpVerified || !walletVerified) && (
+          <div role="status" className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">
+            Os saldos ainda não foram confirmados pela nuvem. Não mostramos zero até conseguir sincronizar.
+          </div>
+        )}
 
         {/* AVISO LOGIN */}
         {authChecked && !userId && (
           <section className="rounded-2xl border border-purple-500/30 bg-white/5 px-4 py-3 text-xs sm:text-sm text-purple-50 flex flex-col sm:flex-row sm:items-center gap-2">
             <span>
-              Para registrar suas missões e receber recompensas, é
-              recomendado fazer login ou criar uma conta.
+              Entre ou crie uma conta para salvar suas conquistas e receber XP e moedas.
             </span>
             <Link
               href="/login"
