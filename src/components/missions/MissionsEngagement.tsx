@@ -84,6 +84,14 @@ function mondayOf(key: string) {
   return addUTCDate(key, -offset);
 }
 
+function recommendedChallenge(goal: string | null): ChallengeId {
+  const text = (goal || '').toLowerCase();
+  if (/ansiedade|estresse|calma|humor/.test(text)) return 'respirar';
+  if (/saúde|corpo|energia|sono/.test(text)) return 'movimento';
+  if (/parar|abstin|sem fumar|reduzir|consumo/.test(text)) return 'refletir';
+  return 'respirar';
+}
+
 function focusHint(goal: string | null) {
   const text = (goal || '').toLowerCase();
   if (/ansiedade|estresse|calma|humor/.test(text)) return 'Suas missões priorizam tranquilidade e autocuidado.';
@@ -127,9 +135,10 @@ export default function MissionsEngagement({ userId, onReward, onProgress }: Pro
   const completedSet = new Set(daysRecorded.map((r) => r.checkin_date));
   const total = daysRecorded.length;
   const percent = Math.min(100, Math.round((total / 7) * 100));
+  const recommended = recommendedChallenge(goal);
 
   const refresh = useCallback(async () => {
-    if (!userId) { setLoading(false); setRows([]); return; }
+    if (!userId) { setLoading(false); setRows([]); setAwardedWeek(false); onProgress?.(0); return; }
     setLoading(true);
     setError(null);
     try {
@@ -156,6 +165,7 @@ export default function MissionsEngagement({ userId, onReward, onProgress }: Pro
         .eq('user_id', userId).eq('week_start', monday).maybeSingle();
       if (bonusErr) throw bonusErr;
       setGoal(profile?.main_goal ?? null);
+      setSelected(recommendedChallenge(profile?.main_goal ?? null));
       setRows((checkins ?? []) as CheckinRow[]);
       setAwardedWeek(!!bonus);
       onProgress?.(checkins?.length ?? 0);
@@ -277,6 +287,11 @@ export default function MissionsEngagement({ userId, onReward, onProgress }: Pro
                           {active && <CheckCircle2 className="h-4 w-4 text-emerald-300" />}
                         </div>
                         <p className="mt-2 text-sm font-bold text-white">{option.title}</p>
+                        {goal && option.id === recommended && (
+                          <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-violet-400/20 px-2 py-0.5 text-[10px] font-bold text-violet-100">
+                            <Sparkles className="h-3 w-3" /> Recomendado para você
+                          </span>
+                        )}
                         <p className="text-[11px] font-medium text-emerald-200/85">{option.duration}</p>
                         <p className="mt-1 text-xs leading-relaxed text-slate-300">{option.description}</p>
                       </button>

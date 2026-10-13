@@ -15,6 +15,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import MissionsEngagement from '@/components/missions/MissionsEngagement';
 type MissionRow = {
   id: number | string;
@@ -422,7 +423,7 @@ export default function MissionsPage() {
 
     loadAuth();
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
       if (cancelled) return;
       setUserId(session?.user?.id ?? null);
       setAuthChecked(true);
