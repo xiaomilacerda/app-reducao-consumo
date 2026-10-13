@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -141,6 +141,7 @@ export default function SosPage() {
   const [tools, setTools] = useState<SosTool[]>([]);
   const [toolsLoading, setToolsLoading] = useState(true);
   const [selectedTool, setSelectedTool] = useState<SosTool | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
   const [sosSuccess, setSosSuccess] = useState<string | null>(null);
   const [sosError, setSosError] = useState<string | null>(null);
   const dismissSosNotice = useCallback(() => {
@@ -615,7 +616,18 @@ export default function SosPage() {
     if (!selectedTool) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const key = (event: KeyboardEvent) => { if (event.key === 'Escape') setSelectedTool(null); };
+    modalRef.current?.focus();
+    const key = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { setSelectedTool(null); return; }
+      if (event.key !== 'Tab') return;
+      const focusable = modalRef.current?.querySelectorAll<HTMLElement>(
+        'a[href],button:not([disabled]),input:not([disabled])'
+      );
+      if (!focusable?.length) return;
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault();last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault();first.focus(); }
+    };
     window.addEventListener('keydown', key);
     return () => { document.body.style.overflow = prev; window.removeEventListener('keydown', key); };
   }, [selectedTool]);
@@ -1294,7 +1306,7 @@ export default function SosPage() {
       </main>
       {selectedTool && (
         <div className="fixed inset-0 z-[140] flex items-center justify-center bg-[#080c1a]/90 p-3 backdrop-blur-md sm:p-6" role="presentation">
-          <div role="dialog" aria-modal="true" aria-label={'Técnica SOS: ' + selectedTool.title}
+          <div role="dialog" ref={modalRef} tabIndex={-1} aria-modal="true" aria-label={'Técnica SOS: ' + selectedTool.title}
             className="dark max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-white/15 bg-[#151d30] p-3 text-white shadow-2xl sm:p-5">
             <div className="flex justify-end">
               <button type="button" onClick={()=>setSelectedTool(null)}
