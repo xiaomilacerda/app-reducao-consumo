@@ -860,12 +860,11 @@ export default function BodyEvolutionPage() {
       const ins = await supabase.from('user_store_items').insert({
         user_id: userId,
         item_id: COMPLETION_REWARD.item_id,
-        qty: 1,
         equipped: false,
       });
 
-      if (ins.error) {
-        console.warn('insert user_store_items (reward):', ins.error);
+      if (ins.error && ins.error.code !== '23505') {
+        throw ins.error;
       }
 
       setRewardOwned(true);
