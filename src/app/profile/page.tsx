@@ -185,6 +185,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [cloudReady, setCloudReady] = useState(false);
+  const [profileReady, setProfileReady] = useState(false);
   const [settingsDirty, setSettingsDirty] = useState(false);
   // Protege ajustes ainda não salvos ao fechar/atualizar a aba.
   useEffect(() => {
@@ -308,6 +309,7 @@ export default function ProfilePage() {
         setLoading(true);
         setErrorMessage(null);
         setCloudReady(false);
+        setProfileReady(false);
 
         // Garantir sessão Supabase
         const {
@@ -539,12 +541,14 @@ if (lastIso) {
           ) as any;
 
           if (profileError) {
+            setProfileReady(false);
             console.warn(
               'Erro carregando profile do Supabase:',
               profileError?.message,
               profileError
             );
           } else if (profile) {
+            setProfileReady(true);
             if (profile.display_name) {
               setDisplayName(profile.display_name);
               if (typeof window !== 'undefined') {
@@ -657,6 +661,10 @@ if (lastIso) {
             if (typeof profile.is_premium === 'boolean') {
               premiumDetected = profile.is_premium;
             }
+          } else {
+            // Consulta confirmada: uma conta recém-criada pode ainda não ter
+            // linha na tabela de perfis.
+            setProfileReady(true);
           }
 
           // Nunca confiar em user_metadata editável para liberar Premium.
@@ -673,6 +681,7 @@ if (lastIso) {
             }
           }
         } catch (e: any) {
+          setProfileReady(false);
           console.warn(
             'Falha geral ao buscar profile no Supabase',
             e?.message ?? e
@@ -813,8 +822,8 @@ if (lastIso) {
       setErrorMessage('Faça login para sincronizar seus dados.');
       return;
     }
-    if (!cloudReady) {
-      setErrorMessage('A nuvem não foi confirmada. Atualize o Perfil e aguarde a sincronização antes de salvar, para não substituir dados de outro dispositivo.');
+    if (!cloudReady || !profileReady) {
+      setErrorMessage('A sincronização da conta não foi confirmada. Atualize o Perfil e aguarde antes de salvar, para não sobrescrever dados de outro dispositivo.');
       return;
     }
     setErrorMessage(null);
