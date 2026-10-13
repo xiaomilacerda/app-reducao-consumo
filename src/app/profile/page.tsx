@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { prepareLocalAccount, readPrivateState, restoreJourney, snapshotJourney, updatePrivateState, type PrivateState } from '@/lib/private-state';
 import { storage } from '@/lib/storage';
 import {
   ArrowLeft,
@@ -300,6 +301,7 @@ export default function ProfilePage() {
 
         setUserId(user.id);
         setUserEmail(user.email ?? null);
+        prepareLocalAccount(user.id);
 
         // Nome padrão amigável quando o usuário entra em outro navegador
         // e ainda não existe localStorage naquele dispositivo.
@@ -330,6 +332,29 @@ export default function ProfilePage() {
   storage.initUserData(data);
 }
 
+
+        // Estado privado do Supabase tem prioridade sobre este dispositivo.
+        // Se não houver rede, não descartamos os dados locais já existentes.
+        let cloudState: PrivateState | null = null;
+        try {
+          cloudState = await readPrivateState(user.id);
+          data = restoreJourney(cloudState, data);
+          if (cloudState?.displayName) setDisplayName(cloudState.displayName);
+          if (cloudState?.preferredFocusArea && isPreferredFocusArea(cloudState.preferredFocusArea)) {
+            setPreferredFocusArea(cloudState.preferredFocusArea);
+          }
+          if (typeof cloudState?.notificationsEnabled === 'boolean') {
+            setNotificationsEnabled(cloudState.notificationsEnabled);
+          }
+          if (typeof cloudState?.darkMode === 'boolean') setDarkMode(cloudState.darkMode);
+          if (isPreferredLanguage(cloudState?.preferredLanguage)) {
+            setPreferredLanguage(cloudState.preferredLanguage);
+          }
+          if (typeof cloudState?.timezone === 'string') setTimezone(cloudState.timezone);
+        } catch (cloudError) {
+          console.error('Falha ao carregar dados privados:', cloudError);
+          setErrorMessage('Não foi possível sincronizar seus dados. Confira a conexão antes de salvar.');
+        }
 
         setUserData(data);
 
@@ -437,7 +462,7 @@ if (lastIso) {
 
   setLastUseDate(`${yyyy}-${mm}-${dd}`);
   // Horário fica em branco, já que a pessoa pode não lembrar
-  setLastUseTime('');
+  setLastUseTime('12:00');
 }
 
 
@@ -495,28 +520,7 @@ if (lastIso) {
         try {
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
-            .select(
-              [
-                'display_name',
-                'is_premium',
-                'thc_potency',
-                'main_goal',
-                'timezone',
-                'preferred_focus_area',
-                'notifications_enabled',
-                'dark_mode',
-                // Campos persistentes do perfil/onboarding
-                'preferred_language',
-                'currency',
-                'frequency_amount',
-                'frequency_period',
-                'grams_per_joint',
-                'daily_cost',
-                'price_per_gram',
-                'consumption_methods',
-                'last_use_datetime',
-              ].join(', ')
-            )
+            .select('display_name, full_name, is_premium, thc_potency, main_goal, timezone, preferred_language, currency, grams_per_joint, daily_cost, last_use, equipped_avatar, equipped_icon, xp')
             .eq('id', user.id)
             .maybeSingle();
 
@@ -623,10 +627,13 @@ if (lastIso) {
               setConsumptionMethods((profile as any).consumption_methods);
             }
 
-            if (typeof (profile as any).last_use_datetime === 'string') {
-              const formatted = formatDateInputFromIso(
-                (profile as any).last_use_datetime
-              );
+            if (!cloudState?.userData?.lastUseDateTime && typeof profile.last_use === 'string') {
+              if (data) {
+                data = { ...data, startDate: profile.last_use, lastUseDateTime: profile.last_use } as UserData;
+                storage.saveUserData(data);
+                setUserData(data);
+              }
+              const formatted = formatDateInputFromIso(profile.last_use);
               if (formatted.date) {
                 setLastUseDate(formatted.date);
                 setLastUseTime(formatted.time);
@@ -651,17 +658,15 @@ if (lastIso) {
             }
           }
 
-          // Se ainda não detectou, tenta metadata do usuário (app_metadata / user_metadata)
+          // Nunca confiar em user_metadata editável para liberar Premium.
           if (!premiumDetected && user) {
             const anyUser: any = user;
             const appMeta = anyUser.app_metadata || {};
-            const userMeta = anyUser.user_metadata || {};
 
             if (
               appMeta.is_premium === true ||
               appMeta.plan === 'premium' ||
-              appMeta.role === 'premium' ||
-              userMeta.is_premium === true
+              appMeta.role === 'premium'
             ) {
               premiumDetected = true;
             }
@@ -685,7 +690,7 @@ if (lastIso) {
             .eq('id', user.id)
             .maybeSingle();
 
-          const rawEquipped = String((p as any)?.equipped_icon ?? '').trim();
+          const rawEquipped = String((p as any)?.equipped_icon || cloudState?.equippedAvatar || '').trim();
           const initial = isAvatarCode(rawEquipped) ? rawEquipped.toUpperCase() : 'A1';
 
           setEquippedAvatar(initial);
@@ -799,125 +804,94 @@ if (lastIso) {
 
   // salvar configurações gerais
   const handleSave = async () => {
-    if (!userData) return;
-
+    if (!userData || !userId) {
+      setErrorMessage('Faça login para sincronizar seus dados.');
+      return;
+    }
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    if (Number.isNaN(thcPotency) || thcPotency < 5 || thcPotency > 40) {
+    if (!Number.isFinite(thcPotency) || thcPotency < 5 || thcPotency > 40) {
       setErrorMessage('Informe uma porcentagem de THC entre 5% e 40%.');
       return;
     }
-
-    // campo obrigatório: pelo menos a data do último uso
     if (!lastUseDate) {
-      setErrorMessage(
-        'Informe pelo menos a data em "Última vez que você fumou" antes de salvar.'
-      );
+      setErrorMessage('Informe a data da última vez que você fumou.');
       return;
     }
 
-    // monta ISO do último uso
-    let lastUseDateTime: string | null = null;
-
-    if (lastUseDate) {
-      const base = `${lastUseDate}T${lastUseTime || '00:00'}:00`;
-      const d = new Date(base);
-      if (!Number.isNaN(d.getTime())) {
-        lastUseDateTime = d.toISOString();
-      }
+    const lastUseDateTime = buildIsoFromDateAndTime(lastUseDate, lastUseTime || '12:00');
+    if (!lastUseDateTime) {
+      setErrorMessage('A data ou o horário informado é inválido.');
+      return;
     }
+
+    const previousLastUse = userData.lastUseDateTime;
+    const updated: UserData = {
+      ...userData,
+      thcPotency,
+      goal: mainGoal,
+      onboardingCompleted: true,
+      currency,
+      frequencyAmount,
+      frequencyPeriod,
+      gramsPerJoint,
+      dailyCost,
+      pricePerGram,
+      consumptionMethods,
+      lastUseDateTime,
+      // O contador de tempo limpo deve seguir a data e hora informadas.
+      startDate: lastUseDateTime,
+      lastRelapseDate: previousLastUse !== lastUseDateTime ? null : userData.lastRelapseDate,
+    } as UserData;
 
     try {
       setSaving(true);
 
-      const updated: UserData = {
-        ...userData,
-        thcPotency,
-        goal: mainGoal,
-        onboardingCompleted: true,
-        currency,
-        frequencyAmount,
-        frequencyPeriod,
-        gramsPerJoint,
-        dailyCost,
-        pricePerGram,
-        consumptionMethods,
-        lastUseDateTime: lastUseDateTime ?? (userData as any).lastUseDateTime ?? null,
-      };
-
-      // Salva no storage local (mantendo defaults importantes)
-      storage.initUserData({
-        ...updated,
-        ...DEFAULT_CORE_VALUES,
-        thcPotency,
-        currency,
-        frequencyAmount,
-        frequencyPeriod,
-        gramsPerJoint,
-        dailyCost,
-        pricePerGram,
-        consumptionMethods,
+      // Primeiro confirma o registro privado. Dados ainda não salvos ficam no formulário.
+      await updatePrivateState({
+        userData: snapshotJourney(updated),
+        displayName: displayName.trim(),
+        equippedAvatar,
+        preferredFocusArea,
+        notificationsEnabled,
+        darkMode,
+        preferredLanguage,
+        timezone,
       });
 
-      // Mantém nome no localStorage (opcional)
+      // Campos de compatibilidade usados por outras telas do aplicativo.
+      const { error: profileError } = await supabase.from('profiles').upsert({
+        id: userId,
+        display_name: displayName.trim() || null,
+        thc_potency: thcPotency,
+        main_goal: mainGoal.trim() || DEFAULT_PROFILE_VALUES.mainGoal,
+        timezone,
+        preferred_language: preferredLanguage,
+        currency,
+        grams_per_joint: gramsPerJoint,
+        daily_cost: dailyCost,
+        last_use: lastUseDateTime,
+      });
+
+      if (profileError) throw profileError;
+
+      storage.saveUserData(updated);
       if (typeof window !== 'undefined') {
-        if (displayName.trim()) {
-          localStorage.setItem('weedreset_display_name', displayName.trim());
-        } else {
-          localStorage.removeItem('weedreset_display_name');
-        }
+        localStorage.setItem('weedreset_display_name', displayName.trim());
       }
-
       setUserData(updated);
-
-      // Salvar também na tabela "profiles" do Supabase
-      if (userId) {
-        try {
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .upsert({
-              id: userId,
-              display_name: displayName.trim() || null,
-              thc_potency: thcPotency,
-              main_goal: mainGoal.trim() || DEFAULT_PROFILE_VALUES.mainGoal,
-              timezone,
-              // Dados que antes ficavam só no localStorage.
-              // Agora ficam também no Supabase para funcionar em outro navegador/celular.
-              preferred_language: preferredLanguage,
-              currency,
-              grams_per_joint: gramsPerJoint,
-              daily_cost: dailyCost,
-              last_use: lastUseDateTime || null,
-            });
-
-          if (profileError) {
-            console.warn(
-              'Erro ao salvar profile no Supabase:',
-              profileError?.message,
-              profileError
-            );
-          }
-        } catch (e: any) {
-          console.warn(
-            'Falha ao salvar profile no Supabase',
-            e?.message ?? e
-          );
-        }
-      }
-
-      setSuccessMessage('Dados atualizados com sucesso!');
-    } catch (err: any) {
-      console.error(err?.message ?? err);
-      setErrorMessage('Não foi possível salvar as alterações.');
+      setLastUseTime(lastUseTime || '12:00');
+      setSuccessMessage('Dados salvos na nuvem! Você pode acessar em outro dispositivo.');
+    } catch (err) {
+      console.error('Erro ao salvar perfil na nuvem:', err);
+      setErrorMessage('Não foi possível confirmar o salvamento no Supabase. Suas alterações continuam nesta tela; tente novamente.');
     } finally {
       setSaving(false);
     }
   };
 
-
-
-  const handleEquipAvatar = async (code: string) => {
+    const handleEquipAvatar = async (code: string) => {
     if (!userId) return;
     const target = isAvatarCode(code) ? code.toUpperCase() : 'A1';
 
@@ -941,6 +915,7 @@ if (lastIso) {
         setErrorMessage('Não foi possível equipar esse avatar agora.');
         return;
       }
+      await updatePrivateState({ equippedAvatar: target });
 
       setEquippedAvatar(target);
       setAvatarPickerOpen(false);
@@ -1859,8 +1834,8 @@ if (lastIso) {
                 />
               </div>
               <p className="text-[11px] text-gray-500">
-                Se você não lembrar o horário exato, pode deixar em branco ou
-                colocar um horário aproximado.
+                Caso não saiba a hora exata, o aplicativo utiliza 12h como horário aproximado.
+                Você pode alterar esse valor antes de salvar.
               </p>
             </div>
           </div>

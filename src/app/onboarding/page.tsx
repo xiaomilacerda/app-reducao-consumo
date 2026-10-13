@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { storage } from '@/lib/storage';
+import { supabase } from '@/lib/supabase';
+import { prepareLocalAccount, snapshotJourney, updatePrivateState } from '@/lib/private-state';
 import { ArrowRight, DollarSign, Calendar, Cigarette, Leaf, Zap, Clock, Bell } from 'lucide-react';
 
 export default function OnboardingPage() {
@@ -20,7 +22,9 @@ export default function OnboardingPage() {
   const [pricePerGram, setPricePerGram] = useState('');
   const [consumptionMethods, setConsumptionMethods] = useState<string[]>([]);
   const [lastUseDate, setLastUseDate] = useState('');
-  const [lastUseTime, setLastUseTime] = useState('');
+  const [lastUseTime, setLastUseTime] = useState('12:00');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const handleMethodToggle = (method: string) => {
     if (consumptionMethods.includes(method)) {
@@ -30,25 +34,63 @@ export default function OnboardingPage() {
     }
   };
 
-  const handleComplete = () => {
-    const lastUseDateTime = `${lastUseDate}T${lastUseTime}:00`;
-    
-    storage.initUserData({
+  const handleComplete = async () => {
+    setSaveError(null);
+    if (!lastUseDate) {
+      setSaveError('Informe a data do último uso para calcular seu progresso.');
+      setStep(8);
+      return;
+    }
+    const parsedDate = new Date(`${lastUseDate}T${lastUseTime || '12:00'}:00`);
+    if (!Number.isFinite(parsedDate.getTime())) {
+      setSaveError('Informe uma data válida.');
+      return;
+    }
+    const lastUseDateTime = parsedDate.toISOString();
+    const payload = {
       currency,
-      frequencyAmount: parseFloat(frequencyAmount) || 1,
+      frequencyAmount: Number(frequencyAmount) || 1,
       frequencyPeriod,
-      gramsPerJoint: parseFloat(gramsPerJoint) || 0.5,
-      thcPotency: parseFloat(thcPotency) || 15,
-      dailyCost: parseFloat(dailyCost) || 0,
-      pricePerGram: parseFloat(pricePerGram) || 0,
+      gramsPerJoint: Number(gramsPerJoint) || 0.5,
+      thcPotency: Number(thcPotency) || 15,
+      dailyCost: Number(dailyCost) || 0,
+      pricePerGram: Number(pricePerGram) || 0,
       consumptionMethods,
       lastUseDateTime,
       startDate: lastUseDateTime,
+      lastRelapseDate: null,
       onboardingCompleted: true,
-      isPremium: false,
-    });
-    
-    router.push('/');
+    };
+
+    setSaving(true);
+    try {
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+
+      if (auth.user) {
+        prepareLocalAccount(auth.user.id);
+        // A nuvem confirma o registro antes do aplicativo considerar concluído.
+        await updatePrivateState({ userData: snapshotJourney(payload) });
+        const { error: profileError } = await supabase.from('profiles')
+          .upsert({
+            id: auth.user.id,
+            currency: payload.currency,
+            grams_per_joint: payload.gramsPerJoint,
+            thc_potency: payload.thcPotency,
+            daily_cost: payload.dailyCost,
+            last_use: lastUseDateTime,
+          });
+        if (profileError) throw profileError;
+      }
+
+      storage.initUserData(payload);
+      router.push('/');
+    } catch (error) {
+      console.error('Não foi possível sincronizar o onboarding:', error);
+      setSaveError('Não foi possível salvar sua jornada na nuvem. Verifique sua internet e tente novamente.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -507,7 +549,7 @@ export default function OnboardingPage() {
               </button>
               <button
                 onClick={() => setStep(9)}
-                disabled={!lastUseDate || !lastUseTime}
+                disabled={!lastUseDate}
                 className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold py-3 px-6 rounded-xl hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Continuar
@@ -561,13 +603,23 @@ export default function OnboardingPage() {
               </button>
               <button
                 onClick={handleComplete}
+                disabled={saving}
                 className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold py-3 px-6 rounded-xl hover:shadow-lg transition-all duration-300"
               >
-                Finalizar e Começar! 🚀
+                {saving ? 'Salvando sua jornada...' : 'Finalizar e Começar! 🚀'}
               </button>
             </div>
           </div>
         )}
+
+        {saveError && (
+          <p role="alert" className="mt-4 rounded-lg border border-red-400 bg-red-950/80 px-4 py-3 text-sm text-white">
+            {saveError}
+          </p>
+        )}
+        <p className="mt-3 text-xs text-center text-gray-500 dark:text-gray-400">
+          Para manter seus dados em outros dispositivos, entre na sua conta WeedReset.
+        </p>
 
         {/* Indicador de progresso */}
         <div className="flex justify-center gap-2 mt-8">
