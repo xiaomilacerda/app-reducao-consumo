@@ -16,8 +16,6 @@ import {
   ChevronDown,
   BookOpen,
   ArrowRight,
-  Leaf,
-  Moon,
 } from 'lucide-react';
 
 import { supabase } from '@/lib/supabase';
@@ -1235,27 +1233,16 @@ export default function SosPage() {
                           )}
 
                           <div className="mt-3 flex flex-wrap items-center gap-2">
-                            <button
-                              onClick={() => !locked && setSelectedTool(t)}
-                              disabled={locked}
-                              className={`px-3 py-1.5 rounded-full text-xs sm:text-sm inline-flex items-center gap-2 border ${
-                                locked
-                                  ? 'border-gray-300 dark:border-gray-600 text-gray-400 cursor-not-allowed bg-gray-50 dark:bg-gray-900'
-                                  : 'border-purple-500/60 text-purple-700 dark:text-purple-200 bg-purple-50/60 dark:bg-purple-900/40 hover:bg-purple-100 dark:hover:bg-purple-900/60'
-                              }`}
-                            >
-                              {locked ? (
-                                <>
-                                  <Lock className="w-3 h-3" />
-                                  Somente Premium
-                                </>
-                              ) : (
-                                <>
-                                  <Heart className="w-3 h-3 fill-red-500/80 text-red-500/80" />
-                                  Iniciar agora
-                                </>
-                              )}
-                            </button>
+                            {locked ? (
+                              <Link href="/premium" className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-xs font-semibold text-amber-200">
+                                <Lock className="h-3.5 w-3.5" /> Conhecer Premium
+                              </Link>
+                            ) : (
+                              <button type="button" onClick={() => setSelectedTool(t)}
+                                className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-violet-400/30 bg-violet-400/10 px-3 py-2 text-xs font-semibold text-violet-200 hover:bg-violet-400/20">
+                                <Heart className="h-3.5 w-3.5" /> Iniciar agora
+                              </button>
+                            )}
 
                             {isToolPremium && (
                               <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-200 border border-yellow-300/60 dark:border-yellow-800/80">
