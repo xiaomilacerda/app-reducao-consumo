@@ -33,7 +33,7 @@ type Mission = {
 type JournalEntry = {
   id: number;
   journey_day: number | null;
-  answered_text: string | null;
+  answer_text: string | null;
   content: string | null;
   day_key: string | null;
   created_at: string | null;
@@ -115,7 +115,7 @@ export default function JourneyHistoryPage() {
 
     const { data: journalData, error: journalError } = await supabaseClient
       .from('mission_journal')
-      .select('id, journey_day, answered_text, content, day_key, created_at')
+      .select('id, journey_day, answer_text, content, day_key, created_at')
       .eq('user_id', user.id)
       .not('journey_day', 'is', null)
       .order('day_key', { descending: true });
@@ -197,7 +197,7 @@ export default function JourneyHistoryPage() {
           mission?.title,
           mission?.description,
           entry.content,
-          entry.answered_text,
+          entry.answer_text,
         ];
         return parts.some((p) => p && p.toLowerCase().includes(term));
       });
@@ -441,7 +441,7 @@ export default function JourneyHistoryPage() {
               'Descrição da missão não encontrada para este dia.';
             const text =
               entry.content ||
-              entry.answered_text ||
+              entry.answer_text ||
               '(Reflexão vazia ou não encontrada)';
 
             return (
