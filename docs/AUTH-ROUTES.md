@@ -7,6 +7,19 @@ Essa alteração protege no **servidor (Next.js 15 middleware)**:
 - Login + permissão administrativa: `/admin/**` e `/api/admin/**`.
 - `/login`, `/signup`, `/`, `/onboarding` e a experiência de visitante existente continuam públicos.
 
+## Atenção: projeto de produção confirmado
+
+Em 2026-10-12, a configuração Vercel do projeto `app-reducao-consumo`
+tinha `NEXT_PUBLIC_SUPABASE_URL` apontando para
+`symdsbdwsuoshdthtphn`, **não** para `wlujqtxnlmyncdvsaumw`.
+O banco de produção também apresenta 14 tabelas públicas com RLS desativada.
+
+**Antes de mesclar:** nenhum dos 27 usuários do Auth de produção tem
+`app_metadata` de administrador atualmente. Um administrador legítimo
+deve receber essa permissão por ação administrativa segura; NÃO copie
+automaticamente `profiles.is_admin` porque essa coluna é editável nas
+políticas atuais e pode ter sido manipulada.
+
 ## Ambiente
 
 Configurar na Vercel duas variáveis pertencentes ao **mesmo projeto** Supabase:
