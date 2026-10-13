@@ -398,59 +398,18 @@ export default function MissionsPage() {
 
     let cancelled = false;
 
-    const tryHydrateFromLocalStorage = async () => {
-      try {
-        // Supabase stores session in localStorage under a key like: sb-<project-ref>-auth-token
-        const key = Object.keys(localStorage).find(
-          (k) => k.startsWith("sb-") && k.endsWith("-auth-token")
-        );
-        if (!key) return null;
-        const raw = localStorage.getItem(key);
-        if (!raw) return null;
-
-        const parsed = JSON.parse(raw);
-        const access_token = parsed?.access_token;
-        const refresh_token = parsed?.refresh_token;
-
-        // If we have tokens, we can re-hydrate the client session
-        if (access_token && refresh_token) {
-          const { data, error } = await supabase.auth.setSession({
-            access_token,
-            refresh_token,
-          });
-          if (!error && data?.session) return data.session;
-        }
-
-        return parsed?.user ? { user: parsed.user } : null;
-      } catch {
-        return null;
-      }
-    };
-
+    // Apenas identidade validada pelo Supabase Auth pode habilitar missões
+    // e mostrar o saldo. Nunca confiar em tokens de outro banco no localStorage.
     const loadAuth = async () => {
       try {
-        // 1) normal path
-        const { data } = await supabase.auth.getSession();
-        const s = data?.session ?? null;
-
+        const { data, error } = await supabase.auth.getUser();
         if (cancelled) return;
-
-        if (s?.user?.id) {
-          setUserId(s.user.id);
-          setAuthChecked(true);
-          return;
-        }
-
-        // 2) fallback: localStorage hydration (helps when session exists but client didn't pick it up yet)
-        const fallback = await tryHydrateFromLocalStorage();
-        if (cancelled) return;
-
-        const uid = (fallback as any)?.user?.id ?? null;
-        setUserId(uid);
+        if (error) console.warn('Falha ao validar sessão de missões:', error.message);
+        setUserId(error ? null : data?.user?.id ?? null);
         setAuthChecked(true);
-          } catch (e) {
+      } catch (err) {
         if (cancelled) return;
-        console.warn("Missions auth check failed:", e);
+        console.warn('Autenticação indisponível ao abrir missões:', err);
         setUserId(null);
         setAuthChecked(true);
       }
