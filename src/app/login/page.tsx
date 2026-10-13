@@ -52,7 +52,20 @@ export default function LoginPage() {
           email: user.email,
           is_premium: false,
           created_at: new Date().toISOString(),
+          full_name: typeof user.user_metadata?.full_name === 'string'
+            ? user.user_metadata.full_name : null,
+          display_name: typeof user.user_metadata?.display_name === 'string'
+            ? user.user_metadata.display_name : null,
         });
+      } else if (!profile.full_name && typeof user.user_metadata?.full_name === 'string') {
+        // O trigger de cadastro antigo criava perfis sem nome; recupere-o com
+        // os metadados da conta sem alterar moedas, XP ou o status premium.
+        const name = user.user_metadata.full_name.trim();
+        if (name) {
+          await supabase.from('profiles')
+            .update({ full_name: name, display_name: profile.display_name || name })
+            .eq('id', user.id);
+        }
       }
 
       // Garantir que exista uma carteira (evita moedas "0" em telas que leem user_wallet)
