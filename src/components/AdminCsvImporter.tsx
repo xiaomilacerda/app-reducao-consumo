@@ -1,5 +1,7 @@
 'use client';
 
+import { traduzirErro } from '@/lib/traduzir-erro';
+
 import React, { useState, useRef } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 
@@ -203,7 +205,7 @@ export default function AdminCsvImporter({ defaultTable = 'missions' }: { defaul
           for (const row of transformed) {
             const { data: d2, error: e2 } = await supabase.from(targetTable).insert([row]);
             if (e2) {
-              fails++; setErrors(prev => [...prev, `Linha com title="${row.title ?? '—'}" falhou: ${e2.message}`]);
+              fails++; setErrors(prev => [...prev, `Linha com title="${row.title ?? '—'}" falhou: ${traduzirErro(e2, 'Erro ao importar esta linha.')}`]);
             } else {
               successes++;
             }
@@ -220,7 +222,7 @@ export default function AdminCsvImporter({ defaultTable = 'missions' }: { defaul
       }
     } catch (err:any) {
       console.error('import error', err);
-      setErrors([String(err.message ?? err)]);
+      setErrors([traduzirErro(err, 'Erro ao importar o arquivo.')]);
     } finally {
       setLoading(false);
     }
@@ -287,7 +289,7 @@ export default function AdminCsvImporter({ defaultTable = 'missions' }: { defaul
             <button onClick={() => handleImport({ chunkSize: 50 })} className="px-4 py-2 bg-purple-600 text-white rounded" disabled={loading}>
               {loading ? 'Importando...' : 'Importar CSV'}
             </button>
-            <button onClick={resetAll} className="px-4 py-2 border rounded">Reset</button>
+            <button onClick={resetAll} className="px-4 py-2 border rounded">Limpar</button>
           </div>
         </div>
       )}

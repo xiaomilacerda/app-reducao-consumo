@@ -1,5 +1,7 @@
 'use client';
 
+import { traduzirErro } from '@/lib/traduzir-erro';
+
 import React, { useEffect, useMemo, useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { Check, Star, Coin } from 'lucide-react';
@@ -79,7 +81,7 @@ export default function MissionsPanel({ userId }: { userId: string }) {
       }
     } catch (err:any) {
       console.error('Erro complete mission', err);
-      alert(err.message ?? String(err));
+      alert(traduzirErro(err));
     } finally {
       setProcessing(prev => ({ ...prev, [mission.id]: false }));
     }

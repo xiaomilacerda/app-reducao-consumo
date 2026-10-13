@@ -1,4 +1,6 @@
 'use client';
+
+import { traduzirErro } from '@/lib/traduzir-erro';
 import { useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 
@@ -22,7 +24,7 @@ export function useProcessSosTriggers() {
     try {
       const { data, error: rpcErr } = await supabase.rpc('process_sos_triggers_with_logging', { p_user: userId, p_sos_id: sosId });
       if (rpcErr) {
-        setError(rpcErr.message || 'Erro ao processar triggers');
+        setError(traduzirErro(rpcErr, 'Não foi possível processar os gatilhos.'));
         setLoading(false);
         return { success: false, error: rpcErr };
       }
@@ -32,7 +34,7 @@ export function useProcessSosTriggers() {
       setLoading(false);
       return { success: true, data: items };
     } catch (err:any) {
-      setError(err.message ?? String(err));
+      setError(traduzirErro(err));
       setLoading(false);
       return { success: false, error: err };
     }

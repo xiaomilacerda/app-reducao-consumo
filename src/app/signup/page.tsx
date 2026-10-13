@@ -1,5 +1,7 @@
 'use client';
 
+import { traduzirErro } from '@/lib/traduzir-erro';
+
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -40,7 +42,7 @@ export default function SignupPage() {
       });
 
       if (error) {
-        setErro(error.message);
+        setErro(traduzirErro(error));
         setLoading(false);
         return;
       }

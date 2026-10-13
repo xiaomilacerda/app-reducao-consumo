@@ -41,7 +41,7 @@ export default function ShareProgressPage() {
         console.log('Compartilhamento cancelado');
       }
     } else {
-      alert('Compartilhamento não suportado neste navegador. Use o botão de Download!');
+      alert('Compartilhamento não suportado neste navegador. Use o botão de baixar!');
     }
   };
 
