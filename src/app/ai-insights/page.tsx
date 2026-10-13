@@ -46,7 +46,7 @@ type JournalRow = {
   user_id?: string;
   journey_day?: number | null;
   answer_text?: string | null; // ✅ schema atual
-  answered_text?: string | null; // fallback legado
+  content?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 };
@@ -208,7 +208,7 @@ function safeNumber(n: any, d = 0) {
 }
 
 function journalText(r: JournalRow) {
-  return (r.answer_text ?? r.answered_text ?? '') || '';
+  return (r.content || r.answer_text || '') || '';
 }
 
 function moodNoteText(r: MoodEntry) {
@@ -787,44 +787,16 @@ export default function AiInsightsPage() {
         try {
           const { data, error } = await supabase
             .from('mission_journal')
-            .select('id, user_id, journey_day, answer_text, updated_at, created_at')
+            .select('id, user_id, journey_day, answer_text, content, updated_at, created_at')
             .eq('user_id', supabaseUser.id)
             .order('journey_day', { ascending: false })
             .limit(365);
 
           if (error) throw error;
           return (data as JournalRow[]) ?? [];
-        } catch (error1: any) {
-          console.error('Erro mission_journal (answer_text):', formatDbError(error1), error1);
-
-          try {
-            const { data, error } = await supabase
-              .from('mission_journal')
-              .select('id, user_id, journey_day, answered_text, updated_at, created_at')
-              .eq('user_id', supabaseUser.id)
-              .order('journey_day', { ascending: false })
-              .limit(365);
-
-            if (error) throw error;
-            return (data as JournalRow[]) ?? [];
-          } catch (error2: any) {
-            console.error('Erro mission_journal (answered_text):', formatDbError(error2), error2);
-
-            try {
-              const { data, error } = await supabase
-                .from('mission_journal')
-                .select('id, user_id, journey_day, updated_at, created_at')
-                .eq('user_id', supabaseUser.id)
-                .order('journey_day', { ascending: false })
-                .limit(365);
-
-              if (error) throw error;
-              return (data as JournalRow[]) ?? [];
-            } catch (error3: any) {
-              console.error('Erro mission_journal (simples):', formatDbError(error3), error3);
-              return [];
-            }
-          }
+        } catch (error: any) {
+          console.error('Erro ao carregar o diário de missões:', formatDbError(error));
+          return [];
         }
       }
 
