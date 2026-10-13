@@ -1363,7 +1363,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-black to-gray-900 text-white">
+    <div className="min-h-screen w-full overflow-x-clip bg-gradient-to-br from-purple-900 via-black to-gray-900 text-white">
       {/* HEADER */}
       <header className="sticky top-0 z-40 bg-black/40 backdrop-blur-sm border-b border-purple-500/20">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
@@ -1392,15 +1392,15 @@ Não minta para você mesmo só para coletar XP e moedas.`,
       </header>
 
       {/* MAIN */}
-      <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+      <main className="mx-auto w-full max-w-5xl min-w-0 space-y-5 px-3 py-5 pb-28 sm:space-y-6 sm:px-6 sm:py-6 sm:pb-28">
         {/* INDICADORES CONCISOS: dados verificados, nunca zeros falsos em falhas. */}
-        <section className="grid grid-cols-3 gap-2.5 sm:gap-4" aria-label="Seu progresso e recompensas">
-          <div className="rounded-2xl border border-violet-400/25 bg-gradient-to-br from-violet-700/65 to-[#1c1640] p-3 sm:p-5 shadow-lg">
+        <section className="grid min-w-0 grid-cols-3 gap-2 sm:gap-4" aria-label="Seu progresso e recompensas">
+          <div className="min-w-0 rounded-2xl border border-violet-400/25 bg-gradient-to-br from-violet-700/65 to-[#1c1640] p-3 shadow-lg sm:p-5">
             <div className="flex items-center gap-1.5 text-[11px] font-semibold text-violet-100"><Trophy className="h-4 w-4" /> Nível</div>
             <div className="mt-2 text-2xl font-extrabold tabular-nums sm:text-3xl">{userId && xpVerified ? level : '—'}</div>
             <p className="mt-1 hidden text-xs text-violet-200 sm:block">Um passo de cada vez.</p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-[#17172a] p-3 sm:p-5 shadow-lg">
+          <div className="min-w-0 rounded-2xl border border-white/10 bg-[#17172a] p-3 shadow-lg sm:p-5">
             <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-300"><Star className="h-4 w-4 text-amber-300" /> XP total</div>
             <div className="mt-2 text-2xl font-extrabold tabular-nums sm:text-3xl">{userId && xpVerified ? totalXP : '—'}</div>
             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10" role="progressbar"
@@ -1411,7 +1411,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
             <p className="mt-1 text-[10px] text-slate-400">{userId && xpVerified ? `${XP_PER_LEVEL - totalXP % XP_PER_LEVEL} XP para subir` : 'Entre para acompanhar'}</p>
           </div>
           <Link href={userId ? '/rewards' : '/login?next=%2Fmissions'}
-            className="rounded-2xl border border-amber-400/20 bg-[#211a1c] p-3 shadow-lg transition hover:border-amber-300/60 hover:bg-[#2c2020] sm:p-5"
+            className="min-w-0 rounded-2xl border border-amber-400/20 bg-[#211a1c] p-3 shadow-lg transition hover:border-amber-300/60 hover:bg-[#2c2020] sm:p-5"
             aria-label="Ver sua carteira e suas recompensas">
             <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-200"><Coins className="h-4 w-4" /> Moedas</div>
             <div className="mt-2 text-2xl font-extrabold tabular-nums sm:text-3xl">{userId && walletVerified ? walletCoins : '—'}</div>
@@ -1466,7 +1466,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Target className="w-5 h-5 text-emerald-400" />
-              <h2 className="text-sm sm:text-base font-semibold text-white">
+              <h2 className="min-w-0 break-words text-sm font-semibold text-white sm:text-base">
                 Desafio extra de hoje
               </h2>
             </div>
@@ -1496,7 +1496,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                 !done;
 
               return (
-                <article className="rounded-3xl bg-white/5 border border-white/10 px-4 py-4 flex flex-col gap-3 shadow-2xl">
+                <article className="flex min-w-0 flex-col gap-3 overflow-hidden rounded-3xl border border-white/10 bg-white/5 px-4 py-4 shadow-lg sm:px-5">
                   <div className="flex items-center gap-2">
                     <CheckCircle
                       className={`w-4 h-4 ${
@@ -1508,7 +1508,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                     </h3>
                   </div>
                   {m.description && (
-                    <p className="text-xs sm:text-sm text-white/70">
+                    <p className="break-words text-xs leading-relaxed text-white/70 sm:text-sm">
                       {m.description}
                     </p>
                   )}
@@ -1547,7 +1547,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                         placeholder="Exemplo: Hoje eu..."
                         disabled={done}
                       />
-                      <div className="mt-2 flex items-center justify-between text-[11px] text-white/60">
+                      <div className="mt-2 flex flex-wrap items-start justify-between gap-2 text-[11px] text-white/60">
                         <span>
                           {(() => {
                             const t = draftSavedAt[key];
@@ -1584,7 +1584,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                     </div>
                   )}
 
-<div className="mt-3 flex items-center justify-end">
+<div className="mt-3 flex flex-wrap items-center justify-end gap-2">
                     <button
                       type="button"
                       disabled={
@@ -1635,14 +1635,14 @@ Não minta para você mesmo só para coletar XP e moedas.`,
 
         {/* MISSÕES PREMIUM */}
         <section className="space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <Crown className="w-5 h-5 text-yellow-400" />
               <h2 className="text-sm sm:text-base font-semibold text-white">
                 {isPremium ? 'Seu desafio Premium' : 'Desafio Premium'}
               </h2>
             </div>
-            <span className="text-[11px] text-purple-100/80">
+            <span className="max-w-full text-[11px] leading-relaxed text-purple-100/80 sm:max-w-[18rem] sm:text-right">
               {isPremium ? 'Uma conquista extra para sua assinatura' : 'Desbloqueie experiências e recompensas extras'}
             </span>
           </div>
@@ -1662,17 +1662,17 @@ Não minta para você mesmo só para coletar XP e moedas.`,
 
               return (
                 <article
-                  className="rounded-3xl bg-gradient-to-r from-amber-500/[.09] to-white/[.03] border border-amber-400/20 px-4 sm:px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 shadow-lg"
+                  className="flex min-w-0 flex-col gap-4 overflow-hidden rounded-3xl border border-amber-400/20 bg-gradient-to-r from-amber-500/[.09] to-white/[.03] px-4 py-4 shadow-lg sm:flex-row sm:items-center sm:px-5"
                 >
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <Crown className="w-4 h-4 text-yellow-500" />
-                      <h3 className="text-sm font-semibold text-white truncate">
+                      <h3 className="min-w-0 break-words text-sm font-semibold leading-snug text-white">
                         {m.title}
                       </h3>
                     </div>
                     {m.description && (
-                      <p className="mt-1 text-xs text-white/70 line-clamp-3">
+                      <p className="mt-1 break-words text-xs leading-relaxed text-white/70">
                         {m.description}
                       </p>
                     )}
@@ -1713,7 +1713,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                     </div>
                   </div>
 
-                  <div className="flex-shrink-0 flex items-center gap-2">
+                  <div className="flex min-w-0 flex-shrink-0 flex-wrap items-center gap-2">
                     <button
                       type="button"
                       disabled={locked || done || processing[key] || !userId}
@@ -1760,9 +1760,9 @@ Não minta para você mesmo só para coletar XP e moedas.`,
         </section>
 
                 {/* Histórico recolhível: mantém acesso, deixa a ação principal em destaque. */}
-                <details className="group mt-5 overflow-hidden rounded-3xl border border-white/10 bg-white/[.035]">
+                <details className="group mt-5 min-w-0 overflow-hidden rounded-3xl border border-white/10 bg-white/[.035]">
                   <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 font-semibold text-white hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 [&::-webkit-details-marker]:hidden">
-                    <span className="flex flex-col">
+                    <span className="min-w-0 flex flex-col">
                       <span>Minhas conquistas e reflexões</span>
                       <span className="mt-0.5 text-xs font-normal text-slate-400">Acesse seus registros anteriores quando quiser.</span>
                     </span>
@@ -1853,7 +1853,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                           </div>
                         )}
 
-                        <div className="relative">
+                        <div className="relative min-w-0">
                           <input
                             value={historyQuery}
                             onChange={(e) => setHistoryQuery(e.target.value)}
@@ -1863,7 +1863,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                                 : 'Buscar no histórico (Premium)'
                             }
                             disabled={!isPremium}
-                            className="w-full rounded-2xl bg-black/30 border border-white/10 px-4 py-3 text-sm text-white/90 placeholder:text-white/40 outline-none focus:ring-2 focus:ring-fuchsia-500/40 disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="min-w-0 w-full rounded-2xl bg-black/30 border border-white/10 px-4 py-3 text-sm text-white/90 placeholder:text-white/40 outline-none focus:ring-2 focus:ring-fuchsia-500/40 disabled:opacity-60 disabled:cursor-not-allowed"
                           />
                           {!isPremium && (
                             <div className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50">
@@ -1890,8 +1890,8 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                             key={`${it.day_key}:${it.mission_id}`}
                             className="rounded-2xl border border-white/10 bg-black/20 p-4"
                           >
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="text-xs text-white/70">
+                            <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
+                              <div className="min-w-0 break-words text-xs text-white/70">
                                 <span className="font-semibold text-white/90">
                                   {it.day_key}
                                 </span>
@@ -1942,7 +1942,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
 
         {/* Aviso visível para visitantes: nenhum botão de missão deve falhar silenciosamente. */}
         {authChecked && !userId && showLoginNotice && (
-          <div role="alert" aria-live="assertive" className="fixed inset-x-4 bottom-4 z-[70] mx-auto max-w-md rounded-2xl border border-violet-300/50 bg-[#171228] p-4 text-white shadow-[0_15px_60px_rgba(0,0,0,.75)] sm:bottom-6 sm:p-5">
+          <div role="alert" aria-live="assertive" className="fixed inset-x-4 bottom-20 z-[70] mx-auto max-w-md rounded-2xl border border-violet-300/50 bg-[#171228] p-4 text-white shadow-[0_15px_60px_rgba(0,0,0,.75)] sm:bottom-6 sm:p-5">
             <button type="button" onClick={() => setShowLoginNotice(false)}
               aria-label="Fechar aviso de login"
               className="absolute right-3 top-3 rounded-lg p-2 text-violet-100 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">

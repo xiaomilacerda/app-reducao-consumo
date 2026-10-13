@@ -242,11 +242,11 @@ export default function MissionsEngagement({ userId, onReward, onProgress, onReq
       : 'Dar nome ao que você sente ajuda a reconhecer padrões.';
 
   return (
-    <section className="space-y-5" aria-label="Seu ritual diário e jornada de sete dias">
-      <div className="overflow-hidden rounded-3xl border border-violet-400/25 bg-gradient-to-br from-violet-950 via-[#111124] to-[#071a17] shadow-[0_16px_48px_rgba(0,0,0,.30)]">
-        <div className="relative px-5 py-6 sm:px-7 sm:py-7">
+    <section className="min-w-0 space-y-5" aria-label="Seu ritual diário e jornada de sete dias">
+      <div className="min-w-0 overflow-hidden rounded-3xl border border-violet-400/25 bg-gradient-to-br from-violet-950 via-[#111124] to-[#071a17] shadow-[0_16px_48px_rgba(0,0,0,.30)]">
+        <div className="relative min-w-0 px-4 py-5 sm:px-7 sm:py-7">
           <div className="absolute right-0 top-0 h-36 w-36 rounded-full bg-emerald-400/10 blur-[56px]" aria-hidden="true" />
-          <div className="relative flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="relative flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[.14em] text-emerald-300">
                 <Sparkles className="h-4 w-4" /> Seu ritual de hoje
@@ -287,7 +287,7 @@ export default function MissionsEngagement({ userId, onReward, onProgress, onReq
             <div className="mt-6 space-y-5">
               <div>
                 <h3 className="text-sm font-semibold text-white">1. O que faz mais sentido para você hoje?</h3>
-                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                <div className="mt-3 grid min-w-0 gap-2 sm:grid-cols-3">
                   {CHALLENGES.map((option) => {
                     const Icon = option.icon;
                     const active = selected === option.id;
@@ -370,7 +370,7 @@ export default function MissionsEngagement({ userId, onReward, onProgress, onReq
         </div>
       </div>
 
-      <div className="rounded-3xl border border-white/15 bg-[#10121c] p-5 shadow-xl sm:p-7">
+      <div className="min-w-0 overflow-hidden rounded-3xl border border-white/15 bg-[#10121c] p-4 shadow-xl sm:p-7">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[.13em] text-violet-300">
@@ -390,22 +390,22 @@ export default function MissionsEngagement({ userId, onReward, onProgress, onReq
             style={{ width: `${percent}%` }} />
         </div>
 
-        <div className="mt-4 grid grid-cols-7 gap-1.5 sm:gap-2" aria-label="Etapas do ciclo">
+        <div className="mt-4 grid min-w-0 grid-cols-7 gap-1 sm:gap-2" aria-label="Etapas do ciclo">
           {WEEK_STORY.map((chapter, i) => {
             const done = i < total;
             const active = i === total && !recorded;
             return (
               <div key={i} title={`Etapa ${i + 1}: ${chapter.title}`}
-                className={`flex min-h-[78px] flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-center sm:min-h-[90px] ${done
+                className={`flex min-h-[64px] min-w-0 flex-col items-center justify-center gap-1 overflow-hidden rounded-lg border px-0.5 py-2 text-center sm:min-h-[90px] sm:rounded-xl sm:px-1 ${done
                   ? 'border-emerald-400/60 bg-emerald-500/20 text-emerald-100'
                   : active ? 'border-violet-300 bg-violet-500/20 text-white ring-2 ring-violet-400/30'
                     : 'border-white/10 bg-white/[.035] text-slate-400'}`}>
-                <span className="text-[10px] font-bold sm:text-xs">Passo {i + 1}</span>
+                <span className="whitespace-nowrap text-[9px] font-bold sm:text-xs">Passo {i + 1}</span>
                 {done ? <CheckCircle2 className="h-5 w-5 text-emerald-300"/>
-                  : active ? <span className="text-[9px] font-bold text-violet-200">PRÓXIMO</span>
+                  : active ? <span className="text-[10px] font-bold text-violet-200" aria-label="Próxima etapa">›</span>
                     : <span className="h-5"/>}
                 {done && cycleDates[i]?.checkin_date && (
-                  <span className="text-[9px] text-emerald-100/80">{cycleDates[i].checkin_date.slice(8,10)}/{cycleDates[i].checkin_date.slice(5,7)}</span>
+                  <span className="whitespace-nowrap text-[9px] text-emerald-100/80">{cycleDates[i].checkin_date.slice(8,10)}/{cycleDates[i].checkin_date.slice(5,7)}</span>
                 )}
               </div>
             );
@@ -430,7 +430,7 @@ export default function MissionsEngagement({ userId, onReward, onProgress, onReq
           </p>
         </div>
 
-        <div className="mt-4 flex flex-col gap-2 rounded-xl border border-amber-400/20 bg-amber-500/[.06] p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-4 flex min-w-0 flex-col gap-2 rounded-xl border border-amber-400/20 bg-amber-500/[.06] p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-2 text-sm text-slate-200">
             <Coins className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
             <div>
