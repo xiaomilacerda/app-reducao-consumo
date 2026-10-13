@@ -97,13 +97,13 @@ export default function SosHistoryPage() {
         if (cancelled) return;
 
         if (error || !data?.user) {
-          router.push('/login?redirect=/sos/history');
+          router.push('/login?next=%2Fsos%2Fhistory');
           return;
         }
         setUserId(data.user.id);
       } catch (err) {
         console.error('Erro ao verificar sessão SOS:', err);
-        router.push('/login?redirect=/sos/history');
+        router.push('/login?next=%2Fsos%2Fhistory');
       } finally {
         if (!cancelled) setCheckingSession(false);
       }
