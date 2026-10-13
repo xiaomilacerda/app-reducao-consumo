@@ -714,6 +714,12 @@ export default function SosPage() {
       {/* MAIN */}
       <main className="mx-auto w-full max-w-5xl min-w-0 space-y-5 px-3 py-5 pb-28 sm:space-y-7 sm:px-6 sm:py-8">
         <SosQuickHelp userId={supabaseUser?.id ?? null} />
+        <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+          <p className="text-xs text-slate-400">Sem pressão. Você escolhe seu próximo passo.</p>
+          <Link href="/sos/history" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 text-xs font-semibold text-slate-200 hover:bg-white/10">
+            <Clock className="h-4 w-4"/> Meu histórico
+          </Link>
+        </div>
         <section aria-label="Técnicas rápidas e sem distração" className="space-y-3">
           <div>
             <h2 className="text-lg font-bold text-gray-900 dark:text-white sm:text-xl">Três formas de cuidar de você</h2>
