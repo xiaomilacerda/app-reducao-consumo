@@ -10,7 +10,7 @@ export async function GET() {
 
     if (error) throw error;
 
-    const rows = data ?? [];
+    const rows = (data ?? []) as Array<{ id: string; is_premium: boolean | null }>;
 
     const totalUsers = rows.length;
     const activeUsers = rows.filter(r => r.is_premium === true).length;
