@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight, CalendarDays, Check, CheckCircle2, Coins, Download, HeartHandshake,
   Loader2, RefreshCw, Save, ShieldCheck, Sparkles, Target, TrendingUp, Wallet,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import ProfileActionNotice from '@/components/profile/ProfileActionNotice';
 
 type GoalKind = 'checkins' | 'spending' | 'sessions';
 type Currency = 'BRL' | 'USD' | 'EUR';
@@ -92,6 +93,8 @@ export default function ProfileGrowthHub({
   const [baselineInput, setBaselineInput] = useState('');
   const [goalDirty, setGoalDirty] = useState(false);
   const [supportDirty, setSupportDirty] = useState(false);
+  const [reviewDirty, setReviewDirty] = useState(false);
+  const dismissNotice = useCallback(() => { setError(''); setNotice(''); }, []);
   const [triggers, setTriggers] = useState<string[]>(['', '', '']);
   const [actions, setActions] = useState<string[]>(['', '', '']);
   const [contact, setContact] = useState('');
@@ -180,6 +183,7 @@ export default function ProfileGrowthHub({
       }
       setGoalDirty(false);
       setSupportDirty(false);
+      setReviewDirty(false);
       const weeklyData = (weekly.data ?? []) as WeeklyReview[];
       setReviews(weeklyData);
       const current = weeklyData.find(r => r.week_start === weekStart);
@@ -197,6 +201,15 @@ export default function ProfileGrowthHub({
   }
   useEffect(() => { void refresh(); /* recarrega ao entrar/trocar conta e na semana atual */ },
     [userId, weekStart]);
+  useEffect(() => {
+    const beforeLeave = (event: BeforeUnloadEvent) => {
+      if (!(goalDirty || supportDirty || reviewDirty)) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', beforeLeave);
+    return () => window.removeEventListener('beforeunload', beforeLeave);
+  }, [goalDirty, supportDirty, reviewDirty]);
 
   async function saveGoal() {
     if (!userId || saving) return;
@@ -212,13 +225,14 @@ export default function ProfileGrowthHub({
     setSaving('goal'); setError(''); setNotice('');
     try {
       const next = { ...settings, goal_target: target, baseline_weekly_spend: baseline, money_currency: currency };
-      const { error: e } = await supabase.from('profile_growth_settings').upsert({
-        user_id: userId, goal_kind: next.goal_kind, goal_target: next.goal_target,
-        goal_deadline: next.goal_deadline || null, baseline_weekly_spend: next.baseline_weekly_spend,
-        money_currency: currency,
-        triggers: settings.triggers, coping_actions: settings.coping_actions,
-        support_label: settings.support_label, updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' });
+      const { data: result, error: e } = await supabase.rpc('update_profile_growth_goal', {
+        p_goal_kind: next.goal_kind,
+        p_goal_target: next.goal_target,
+        p_goal_deadline: next.goal_deadline,
+        p_baseline_weekly_spend: next.baseline_weekly_spend,
+        p_money_currency: currency,
+      });
+      if (!e && result?.ok !== true) throw new Error('Meta não confirmada.');
       if (e) throw e;
       setSettings(next); setGoalDirty(false); setNotice('Meta salva na sua conta com sucesso.');
     } catch { setError('Não foi possível salvar sua meta. Nada foi descartado.'); }
@@ -243,6 +257,7 @@ export default function ProfileGrowthHub({
       if (e) throw e;
       setReviews(prev => [{ week_start: weekStart, spent, sessions, mood: reviewMood || null,
         money_currency: currency }, ...prev.filter(r => r.week_start !== weekStart)]);
+      setReviewDirty(false);
       setNotice('Registro semanal salvo com segurança.');
     } catch { setError('O registro semanal não foi salvo. Tente novamente.'); }
     finally { setSaving(null); }
@@ -257,15 +272,10 @@ export default function ProfileGrowthHub({
     }
     setSaving('support'); setError(''); setNotice('');
     try {
-      const { error: e } = await supabase.from('profile_growth_settings').upsert({
-        user_id: userId,
-        goal_kind: settings.goal_kind, goal_target: settings.goal_target,
-        goal_deadline: settings.goal_deadline,
-        baseline_weekly_spend: settings.baseline_weekly_spend,
-        money_currency: settings.money_currency,
-        triggers: t, coping_actions: a,
-        support_label: contact.trim() || null, updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' });
+      const { data: result, error: e } = await supabase.rpc('update_profile_growth_support', {
+        p_triggers: t, p_coping_actions: a, p_support_label: contact.trim() || null,
+      });
+      if (!e && result?.ok !== true) throw new Error('Plano não confirmado.');
       if (e) throw e;
       setSettings(prev => ({ ...prev, triggers: t, coping_actions: a, support_label: contact.trim() || null }));
       setSupportDirty(false); setNotice('Plano de apoio salvo. Ele também aparecerá na área SOS.');
@@ -314,6 +324,7 @@ export default function ProfileGrowthHub({
   if (!userId) return null;
   return (
     <section className="min-w-0 space-y-4 text-white" aria-label="Minha evolução e metas pessoais">
+      <ProfileActionNotice success={notice} error={error} onDismiss={dismissNotice}/>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-widest text-violet-200">Sua jornada, do seu jeito</p>
@@ -325,8 +336,15 @@ export default function ProfileGrowthHub({
           <RefreshCw className={'h-4 w-4 ' + (loading ? 'animate-spin' : '')}/> Atualizar
         </button>
       </div>
-      {notice && <p role="status" className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">{notice}</p>}
-      {error && <p role="alert" className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</p>}
+      {(goalDirty || supportDirty || reviewDirty) && (
+        <p role="status" className="rounded-xl border border-amber-400/20 bg-amber-400/10 px-4 py-2 text-xs text-amber-100">
+          Existem alterações ainda não salvas em {[
+            goalDirty ? 'metas' : null,
+            supportDirty ? 'plano de apoio' : null,
+            reviewDirty ? 'registro semanal' : null,
+          ].filter(Boolean).join(', ')}.
+        </p>
+      )}
       {loading ? <div role="status" className="rounded-2xl border border-white/10 bg-[#17172a] p-6 text-sm text-slate-300">
         <Loader2 className="mr-2 inline h-4 w-4 animate-spin"/> Carregando dados confirmados da nuvem...
       </div> : <>
@@ -436,17 +454,17 @@ export default function ProfileGrowthHub({
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <label className="text-xs text-slate-200">Gastei ({currency})
                   <input value={reviewSpend} type="number" min="0" step="0.01" inputMode="decimal"
-                    onChange={e=>setReviewSpend(e.target.value)} placeholder="Sem registro"
+                    onChange={e=>{setReviewSpend(e.target.value);setReviewDirty(true);}} placeholder="Sem registro"
                     className={'mt-1 ' + inputStyle()}/>
                 </label>
                 <label className="text-xs text-slate-200">Sessões
                   <input value={reviewSessions} type="number" min="0" step="1" inputMode="numeric"
-                    onChange={e=>setReviewSessions(e.target.value)} placeholder="Sem registro"
+                    onChange={e=>{setReviewSessions(e.target.value);setReviewDirty(true);}} placeholder="Sem registro"
                     className={'mt-1 ' + inputStyle()}/>
                 </label>
               </div>
               <label className="mt-3 block text-xs text-slate-200">Como me senti (opcional)
-                <select value={reviewMood} onChange={e=>setReviewMood(e.target.value)} className={'mt-1 ' + inputStyle()}>
+                <select value={reviewMood} onChange={e=>{setReviewMood(e.target.value);setReviewDirty(true);}} className={'mt-1 ' + inputStyle()}>
                   <option value="">Prefiro não registrar</option>
                   <option value="bem">Bem</option><option value="normal">Um dia comum</option>
                   <option value="dificil">Foi difícil</option>
