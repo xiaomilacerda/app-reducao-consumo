@@ -297,7 +297,7 @@ export default function ProfilePage() {
         const {
           data: { session },
           error: sessionError,
-        } = await waitForCloud(supabase.auth.getSession(), 8500);
+        } = (await waitForCloud(supabase.auth.getSession(), 8500)) as any;
 
         if (sessionError) {
           console.error(
@@ -525,7 +525,7 @@ if (lastIso) {
               .select('display_name, full_name, is_premium, thc_potency, main_goal, timezone, preferred_language, currency, grams_per_joint, daily_cost, last_use, equipped_avatar, equipped_icon, xp')
               .eq('id', user.id)
               .maybeSingle()
-          );
+          ) as any;
 
           if (profileError) {
             console.warn(
