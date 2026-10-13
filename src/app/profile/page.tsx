@@ -163,6 +163,20 @@ const PROFILE_LIGHT_VARS = {
 } as const;
 
 
+async function waitForCloud<T>(request: PromiseLike<T>, timeoutMs = 8500): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve(request),
+      new Promise<T>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error('Tempo de espera da nuvem excedido.')), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 export default function ProfilePage() {
   const router = useRouter();
 
@@ -283,7 +297,7 @@ export default function ProfilePage() {
         const {
           data: { session },
           error: sessionError,
-        } = await supabase.auth.getSession();
+        } = await waitForCloud(supabase.auth.getSession(), 8500);
 
         if (sessionError) {
           console.error(
@@ -337,7 +351,7 @@ export default function ProfilePage() {
         // Se não houver rede, não descartamos os dados locais já existentes.
         let cloudState: PrivateState | null = null;
         try {
-          cloudState = await readPrivateState(user.id);
+          cloudState = await waitForCloud(readPrivateState(user.id));
           data = restoreJourney(cloudState, data);
           if (cloudState?.displayName) setDisplayName(cloudState.displayName);
           if (cloudState?.preferredFocusArea && isPreferredFocusArea(cloudState.preferredFocusArea)) {
@@ -506,11 +520,12 @@ if (lastIso) {
         let premiumDetected = false;
 
         try {
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('display_name, full_name, is_premium, thc_potency, main_goal, timezone, preferred_language, currency, grams_per_joint, daily_cost, last_use, equipped_avatar, equipped_icon, xp')
-            .eq('id', user.id)
-            .maybeSingle();
+          const { data: profile, error: profileError } = await waitForCloud(
+            supabase.from('profiles')
+              .select('display_name, full_name, is_premium, thc_potency, main_goal, timezone, preferred_language, currency, grams_per_joint, daily_cost, last_use, equipped_avatar, equipped_icon, xp')
+              .eq('id', user.id)
+              .maybeSingle()
+          );
 
           if (profileError) {
             console.warn(
@@ -655,6 +670,10 @@ if (lastIso) {
 
         setIsPremium(premiumDetected);
 
+        // Nome, progresso, datas e preferências essenciais já foram tratados.
+        // Inventário e estatísticas adicionais não devem deixar o Perfil
+        // indefinidamente na tela de carregamento se PostgREST estiver lento.
+        setLoading(false);
 
         // Avatar: equipado + inventário (somente símbolos)
         try {
