@@ -1,13 +1,12 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
   Heart,
   Wind,
   Target,
-  Volume2,
   Crown,
   Lock,
   Clock,
@@ -21,6 +20,7 @@ import { supabase } from '@/lib/supabase';
 import { storage } from '@/lib/storage';
 import SosPlayer from '@/components/SosPlayer';
 import ProfileSupportReminder from '@/components/profile/ProfileSupportReminder';
+import ProfileActionNotice from '@/components/profile/ProfileActionNotice';
 
 type ThemeMode = 'default' | 'focus';
 
@@ -135,10 +135,17 @@ export default function SosPage() {
   const [tools, setTools] = useState<SosTool[]>([]);
   const [toolsLoading, setToolsLoading] = useState(true);
   const [selectedTool, setSelectedTool] = useState<SosTool | null>(null);
+  const [sosSuccess, setSosSuccess] = useState<string | null>(null);
+  const [sosError, setSosError] = useState<string | null>(null);
+  const dismissSosNotice = useCallback(() => {
+    setSosSuccess(null);
+    setSosError(null);
+  }, []);
 
   // ----- NOVO: Curtidas globais + minhas curtidas -----
   const [myLikes, setMyLikes] = useState<Set<number>>(new Set());
   const [likesReady, setLikesReady] = useState(false);
+  const [likesBusy, setLikesBusy] = useState<Set<number>>(new Set());
 
   // ----- NOVO: Organização (busca, categoria, filtro) -----
   const [search, setSearch] = useState('');
@@ -150,6 +157,8 @@ export default function SosPage() {
   // ----- NOVO: Histórico breve (mais claro) -----
   const [recentLogs, setRecentLogs] = useState<SosLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(12);
+  useEffect(() => setVisibleCount(12), [search, activeCategory, sortMode]);
 
   // ---------------- EFFECTS BÁSICOS ----------------
 
@@ -412,10 +421,12 @@ export default function SosPage() {
   // ---------------- Curtir (global) ----------------
   async function toggleLike(toolId: number) {
     if (!supabaseUser) {
-      alert('Faça login para curtir ferramentas e salvar seu histórico.');
+      setSosError('Entre em sua conta para salvar favoritas e sessões no histórico.');
       return;
     }
-
+    if (likesBusy.has(toolId) || !likesReady) return;
+    setLikesBusy(prev => new Set(prev).add(toolId));
+    setSosError(null);
     const already = myLikes.has(toolId);
 
     // UI otimista
@@ -479,56 +490,65 @@ export default function SosPage() {
             : t,
         ),
       );
+      setSosError('Não foi possível atualizar esta favorita. Confira a conexão e tente novamente.');
+    } finally {
+      setLikesBusy(prev => {
+        const next = new Set(prev);
+        next.delete(toolId);
+        return next;
+      });
     }
   }
 
   // ---------------- LÓGICA PARA REGISTRAR NO HISTÓRICO ----------------
-  async function handleSosComplete(tool: SosTool, seconds: number) {
+  async function handleSosComplete(tool: SosTool, seconds: number): Promise<boolean> {
     if (!supabaseUser) {
-      console.log('[SOS] Usuário não logado, sessão não será salva em sos_logs.');
-      return;
+      setSosSuccess('Técnica concluída. Para guardar as sessões em outros aparelhos, entre na sua conta.');
+      return true;
     }
 
     const duration = Math.max(0, Math.round(seconds || 0));
 
     if (duration < MIN_SECONDS_TO_LOG) {
-      console.log(
-        `[SOS] Sessão muito curta (${duration}s). Não será registrada em sos_logs.`,
-      );
-      return;
+      setSosError('Conclua pelo menos 30 segundos para registrar esta técnica.');
+      return false;
     }
 
     try {
-      // CORRIGIDO para seu schema: duration + used_at default
-      const { error } = await supabase.from('sos_logs').insert([
-        {
-          user_id: supabaseUser.id,
-          tool_id: tool.id,
-          duration: duration,
-        },
-      ]);
+      // Salva e retorna o recibo real do banco, associado ao usuário.
+      const { data: saved, error } = await supabase.from('sos_logs')
+        .insert({ user_id: supabaseUser.id, tool_id: tool.id, duration })
+        .select('id,tool_id,duration,used_at')
+        .single();
 
-      if (error) {
+      if (error || !saved) {
+        setSosError('O registro não foi confirmado. Você pode tentar salvar novamente.');
         console.error('Erro ao salvar sessão em sos_logs:', {
           message: (error as any)?.message,
           details: (error as any)?.details,
           hint: (error as any)?.hint,
           code: (error as any)?.code,
         });
+        return false;
       } else {
-        const nowIso = new Date().toISOString();
+        const nowIso = saved.used_at || new Date().toISOString();
         console.log(
           `[SOS] Sessão da ferramenta "${tool.title}" registrada em sos_logs com ~${duration}s.`,
         );
 
         // Atualiza histórico rápido local
         setRecentLogs((prev) => [
-          { id: `tmp-${nowIso}`, tool_id: tool.id, duration: duration, used_at: nowIso },
+          { id: saved.id, tool_id: Number(saved.tool_id), duration: Number(saved.duration), used_at: nowIso },
           ...prev,
         ].slice(0, 3));
+        setSosError(null);
+        setSosSuccess('Sessão concluída e salva no seu histórico da nuvem.');
+        return true;
       }
     } catch (err: any) {
       console.error('Erro inesperado ao registrar sessão SOS:', err?.message || err);
+      setSosError('Falha de conexão ao salvar a sessão. Tente novamente.');
+      return false;
     }
   }
 
@@ -600,6 +620,7 @@ export default function SosPage() {
           : 'bg-gradient-to-br from-red-50 via-orange-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900'
       }`}
     >
+      <ProfileActionNotice success={sosSuccess} error={sosError} onDismiss={dismissSosNotice}/>
       {/* HEADER */}
       <header className="bg-black/40 backdrop-blur-xl shadow-lg sticky top-0 z-40 border-b border-white/10">
         <div className="max-w-5xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
@@ -741,7 +762,7 @@ export default function SosPage() {
             </p>
           </button>
 
-          {/* Áudio de Calma (placeholder) */}
+          {/* Pausa guiada, disponível mesmo sem áudio ou conexão. */}
           <button
             onClick={() =>
               setActiveExercise((prev) => (prev === 'calm' ? null : 'calm'))
@@ -752,7 +773,7 @@ export default function SosPage() {
                 : 'bg-white dark:bg-gray-800 hover:shadow-2xl'
             }`}
           >
-            <Volume2
+            <Heart
               className={`w-10 h-10 mb-3 ${
                 activeExercise === 'calm' ? 'text-white' : 'text-green-500'
               }`}
@@ -764,7 +785,7 @@ export default function SosPage() {
                   : 'text-gray-900 dark:text-gray-100'
               }`}
             >
-              Áudio de Calma
+              Pausa de Calma
             </h3>
             <p
               className={`text-sm ${
@@ -773,7 +794,7 @@ export default function SosPage() {
                   : 'text-gray-600 dark:text-gray-400'
               }`}
             >
-              Escolha sons relaxantes para desacelerar o corpo.
+              Aterre sua atenção no presente, sem áudio nem conexão.
             </p>
           </button>
         </section>
@@ -871,43 +892,31 @@ export default function SosPage() {
         )}
 
         {activeExercise === 'calm' && (
-          <section className="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-xl space-y-8">
-            <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-gray-100 mb-4">
-              Áudio de Calma
-            </h2>
-
-            <div className="flex flex-col items-center gap-8">
-              <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center animate-pulse shadow-lg">
-                <Volume2 className="w-14 h-14 sm:w-16 h-16 text-white" />
-              </div>
-
-              <div className="text-center space-y-3 max-w-xl">
-                <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  Sons relaxantes para desacelerar o corpo
-                </p>
-                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">
-                  Feche os olhos, coloque um fone e escolha um tipo de som.
-                  Enquanto ouve, mantenha a atenção na respiração e no corpo.
-                </p>
-              </div>
-
-              <div className="w-full max-w-md space-y-3">
-                <button className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 text-white font-semibold hover:shadow-lg transition-all">
-                  🌊 Som de Ondas (em breve)
-                </button>
-                <button className="w-full py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold hover:shadow-lg transition-all">
-                  🌲 Floresta / Natureza (em breve)
-                </button>
-                <button className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-600 text-white font-semibold hover:shadow-lg transition-all">
-                  🌧️ Chuva Suave (em breve)
-                </button>
-              </div>
-
-              <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                **Nesta versão, os botões são placeholders visuais. Você pode
-                conectar esses botões a áudios reais depois.**
-              </p>
-            </div>
+          <section className="rounded-3xl border border-emerald-300/20 bg-white p-5 shadow-xl dark:bg-gray-800 sm:p-8" aria-label="Pausa guiada de calma">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Pausa de Calma</h2>
+            <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+              Um exercício sem áudio, disponível imediatamente. Faça no seu ritmo e mantenha a respiração confortável.
+            </p>
+            <ol className="mt-5 grid gap-3 sm:grid-cols-3">
+              {[
+                ['Apoie os pés', 'Perceba o contato dos pés com o chão. Sinta o peso do corpo.'],
+                ['Olhe ao redor', 'Identifique três coisas que você consegue ver neste momento.'],
+                ['Solte a tensão', 'Relaxe os ombros e respire suavemente algumas vezes, sem prender o ar.'],
+              ].map(([title, guidance], index) => (
+                <li key={title} className="rounded-2xl border border-emerald-300/20 bg-emerald-50 p-4 dark:bg-emerald-950/20">
+                  <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300">PASSO {index + 1}</p>
+                  <h3 className="mt-1 font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
+                  <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">{guidance}</p>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-4 text-xs text-gray-600 dark:text-gray-300">
+              Você pode repetir a sequência ou escolher outra técnica. Não é necessário se sentir melhor imediatamente.
+            </p>
+            <button type="button" onClick={() => setActiveExercise(null)}
+              className="mt-4 min-h-11 rounded-xl border border-emerald-600/25 bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+              Encerrar minha pausa
+            </button>
           </section>
         )}
 
@@ -920,7 +929,7 @@ export default function SosPage() {
               </h2>
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                 Escolha uma técnica, clique em <strong>“Iniciar agora”</strong> e siga o passo a passo.
-                Se você gostar, curta ❤️ — as mais curtidas ficam no topo.
+                Se encontrar uma técnica útil, salve como favorita. Mostramos opções aos poucos para facilitar sua escolha.
               </p>
             </div>
 
@@ -953,7 +962,7 @@ export default function SosPage() {
               </div>
             ) : recentLogs.length === 0 ? (
               <div className="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300">
-                Nenhuma sessão registrada ainda. Conclua uma técnica por pelo menos {MIN_SECONDS_TO_LOG}s para salvar.
+                Nenhuma sessão registrada ainda. Depois de praticar pelo menos {MIN_SECONDS_TO_LOG}s, confirme a conclusão para guardar no seu histórico.
               </div>
             ) : (
               <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -1063,7 +1072,7 @@ export default function SosPage() {
 
               {/* Lista */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredTools.map((t) => {
+                {filteredTools.slice(0, visibleCount).map((t) => {
                   const isToolPremium = !!t.premium_only;
                   const locked = isToolPremium && !isPremium;
 
@@ -1095,7 +1104,9 @@ export default function SosPage() {
 
                             {/* Curtidas globais */}
                             <button
-                              onClick={() => toggleLike(t.id)}
+                              onClick={() => void toggleLike(t.id)}
+                              disabled={likesBusy.has(t.id) || !likesReady}
+                              aria-label={likedByMe ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
                               className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-[11px] transition ${
                                 likedByMe
                                   ? 'border-rose-400/60 bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-200'
@@ -1175,8 +1186,9 @@ export default function SosPage() {
                               console.log(
                                 `Sessão SOS "${t.title}" concluída em ~${secs}s`,
                               );
-                              await handleSosComplete(t, secs ?? 0);
-                              setSelectedTool(null);
+                              const saved = await handleSosComplete(t, secs ?? 0);
+                              if (saved) setSelectedTool(null);
+                              return saved;
                             }}
                             onCancel={() => setSelectedTool(null)}
                           />
@@ -1186,6 +1198,16 @@ export default function SosPage() {
                   );
                 })}
               </div>
+
+              {filteredTools.length > visibleCount && (
+                <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
+                  <p className="text-xs text-slate-400">Mostrando {Math.min(visibleCount, filteredTools.length)} de {filteredTools.length} técnicas.</p>
+                  <button type="button" onClick={() => setVisibleCount(count => count + 12)}
+                    className="min-h-11 rounded-xl border border-violet-400/40 bg-violet-500/15 px-5 py-2 text-sm font-semibold text-violet-200 hover:bg-violet-500/25">
+                    Ver mais 12 técnicas
+                  </button>
+                </div>
+              )}
 
               {filteredTools.length === 0 && (
                 <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 text-center text-sm text-gray-600 dark:text-gray-300">
