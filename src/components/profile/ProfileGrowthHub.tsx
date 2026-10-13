@@ -165,7 +165,9 @@ export default function ProfileGrowthHub({
       if (fromDb) {
         const next = { ...initialSettings, ...fromDb };
         setSettings(next);
-        setBaselineInput(next.baseline_weekly_spend == null ? '' : String(next.baseline_weekly_spend));
+        // Referências monetárias não são convertidas automaticamente entre moedas.
+        setBaselineInput(next.money_currency !== currency || next.baseline_weekly_spend == null
+          ? '' : String(next.baseline_weekly_spend));
         setTriggers([...next.triggers.slice(0,3), '', '', ''].slice(0,3));
         setActions([...next.coping_actions.slice(0,3), '', '', ''].slice(0,3));
         setContact(next.support_label ?? '');
@@ -181,7 +183,8 @@ export default function ProfileGrowthHub({
       const weeklyData = (weekly.data ?? []) as WeeklyReview[];
       setReviews(weeklyData);
       const current = weeklyData.find(r => r.week_start === weekStart);
-      setReviewSpend(current?.spent == null ? '' : String(current.spent));
+      setReviewSpend(!current || current.money_currency !== currency || current.spent == null
+        ? '' : String(current.spent));
       setReviewSessions(current?.sessions == null ? '' : String(current.sessions));
       setReviewMood(current?.mood ?? '');
       setCheckins((daily.data ?? []) as Checkin[]);
