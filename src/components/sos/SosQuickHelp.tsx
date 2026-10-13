@@ -291,7 +291,10 @@ export default function SosQuickHelp({ userId }: { userId: string | null }) {
                   className="min-h-12 rounded-xl bg-white/10 px-3 text-sm font-semibold">Voltar ao SOS</button>
               </div>
             </>}
-            <p className="mt-4 text-center text-[11px] leading-relaxed text-slate-500">Este exercício oferece apoio, mas não substitui atendimento profissional ou serviços de emergência.</p>
+            <p className="mt-4 text-center text-[11px] leading-relaxed text-slate-400">
+              Este exercício não substitui atendimento profissional. Em situação de perigo imediato no Brasil,
+              procure ajuda presencial ou ligue para <a href="tel:192" className="font-semibold text-violet-200 underline underline-offset-2">SAMU 192</a>.
+            </p>
           </div>
         </div>
       )}
