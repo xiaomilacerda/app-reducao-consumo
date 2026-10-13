@@ -125,6 +125,17 @@ export default function HomePage() {
               } as UserData;
             }
           }
+
+          // Plano e XP devem vir da tabela oficial, nunca de dados editáveis locais.
+          const { data: officialProfile } = await supabase.from('profiles')
+            .select('is_premium, xp').eq('id', auth.user.id).maybeSingle();
+          if (data && officialProfile) {
+            data = {
+              ...data,
+              isPremium: !!officialProfile.is_premium,
+              xp: Number(officialProfile.xp ?? data.xp ?? 0),
+            };
+          }
         }
       } catch (err) {
         console.error('Não foi possível carregar a jornada da nuvem:', err);
