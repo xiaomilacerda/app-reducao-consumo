@@ -812,24 +812,9 @@ export default function AiInsightsPage() {
 
           if (error) throw error;
           return (data as SosLog[]) ?? [];
-        } catch (error1: any) {
-          console.error('Erro sos_logs (used_at):', formatDbError(error1), error1);
-
-          try {
-            const { data, error } = await supabase
-              .from('sos_logs')
-              .select('id, user_id, tool_id, duration_seconds, created_at')
-              .eq('user_id', supabaseUser.id)
-              .gte('created_at', iso90)
-              .order('created_at', { ascending: false })
-              .limit(250);
-
-            if (error) throw error;
-            return (data as SosLog[]) ?? [];
-          } catch (error2: any) {
-            console.error('Erro sos_logs (created_at):', formatDbError(error2), error2);
-            return [];
-          }
+        } catch (error: any) {
+          console.error('Erro ao carregar histórico SOS:', formatDbError(error));
+          return [];
         }
       }
 
