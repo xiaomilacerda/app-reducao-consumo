@@ -26,6 +26,7 @@ export default function SosQuickHistory({userId}:{userId:string|null}) {
   useEffect(()=>{
     if(!userId){setRows([]);setLoading(false);return;}
     let live=true;
+    setRows([]);
     setLoading(true);setError('');
     (async()=>{
       try {
