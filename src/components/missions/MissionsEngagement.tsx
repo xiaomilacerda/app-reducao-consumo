@@ -95,9 +95,10 @@ function focusHint(goal: string | null) {
 type Props = {
   userId: string | null;
   onReward?: () => void;
+  onProgress?: (count: number) => void;
 };
 
-export default function MissionsEngagement({ userId, onReward }: Props) {
+export default function MissionsEngagement({ userId, onReward, onProgress }: Props) {
   const supabase = useMemo(() => getSupabaseClient(), []);
   const [timezone, setTimezone] = useState('America/Sao_Paulo');
   const [goal, setGoal] = useState<string | null>(null);
@@ -111,7 +112,7 @@ export default function MissionsEngagement({ userId, onReward }: Props) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [celebration, setCelebration] = useState(false);
-  const [dayClock, setDayClock] = useState(() => localDayKey('America/Sao_Paulo'));
+  const [dayClock, setDayClock] = useState(() => new Date().toISOString());
 
   const today = useMemo(() => {
     try { return localDayKey(timezone); }
@@ -157,21 +158,22 @@ export default function MissionsEngagement({ userId, onReward }: Props) {
       setGoal(profile?.main_goal ?? null);
       setRows((checkins ?? []) as CheckinRow[]);
       setAwardedWeek(!!bonus);
+      onProgress?.(checkins?.length ?? 0);
     } catch (e) {
       console.error('Erro ao carregar check-ins:', e);
       setError('Não foi possível sincronizar seus check-ins. Confira a conexão e tente novamente.');
     } finally {
       setLoading(false);
     }
-  }, [supabase, userId]);
+  }, [supabase, userId, onProgress]);
 
   useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => {
     // Atualiza o dia quando a página volta ao primeiro plano.
-    function onVisible() { if (document.visibilityState === 'visible') setDayClock(localDayKey('America/Sao_Paulo')); }
+    function onVisible() { if (document.visibilityState === 'visible') { setDayClock(new Date().toISOString()); void refresh(); } }
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
-  }, []);
+  }, [refresh]);
 
   async function submit() {
     if (!userId) { setError('Entre na sua conta para registrar seu check-in.'); return; }
