@@ -15,6 +15,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase';
+import MissionsEngagement from '@/components/missions/MissionsEngagement';
 type MissionRow = {
   id: number | string;
   title: string;
@@ -1687,6 +1688,25 @@ Não minta para você mesmo só para coletar XP e moedas.`,
           </section>
         )}
 
+        {/* RITUAL DIÁRIO, DESAFIOS PESSOAIS E PROGRESSO REAL NA NUVEM */}
+        <MissionsEngagement
+          userId={userId}
+          onReward={() => {
+            void (async () => {
+              if (!userId) return;
+              const [wallet, profileData] = await Promise.all([
+                supabase.from('user_wallet').select('coins').eq('user_id', userId).maybeSingle(),
+                supabase.from('profiles').select('xp').eq('id', userId).maybeSingle(),
+              ]);
+              if (typeof wallet.data?.coins === 'number') setWalletCoins(wallet.data.coins);
+              if (typeof profileData.data?.xp === 'number') {
+                setTotalXP(profileData.data.xp);
+                setLevel(getLevelFromXp(profileData.data.xp));
+              }
+            })();
+          }}
+        />
+
         {/* MISSÃO DIÁRIA DO DIA */}
         <section className="space-y-3">
           <div className="flex items-center justify-between gap-2">
@@ -1915,8 +1935,47 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                     </span>
                   </div>
 
-                  {/* check-ins */}
-                  <div className="mt-3 grid grid-cols-7 gap-2 max-w-md">
+                  {/* Ação principal: não depender dos pequenos quadrados para descobrir o check-in. */}
+                  <div className="mt-4 max-w-xl rounded-2xl border border-sky-400/30 bg-sky-400/[.07] p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-bold text-white">
+                          {weeklyProgress.checkins?.[todayDayKey]
+                            ? 'Check-in semanal de hoje realizado!'
+                            : 'Já fez sua ação anti-gatilho hoje?'}
+                        </p>
+                        <p className="mt-1 text-xs leading-relaxed text-slate-300">
+                          {weeklyProgress.checkins?.[todayDayKey]
+                            ? 'Muito bem! Volte amanhã para dar o próximo passo.'
+                            : 'Marque seu dia e acompanhe o progresso da missão semanal.'}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void handleWeeklyCheckin()}
+                        disabled={!userId || weeklyDoneThisWeek || !!weeklyProgress.checkins?.[todayDayKey] || !!processing[`weekly:${String(weeklyMission.id)}`]}
+                        className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-sky-400 px-4 py-3 text-sm font-extrabold text-sky-950 shadow-[0_8px_20px_rgba(56,189,248,.18)] transition-all hover:bg-sky-300 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky-400/40 disabled:cursor-not-allowed disabled:bg-emerald-500/15 disabled:text-emerald-100 disabled:shadow-none"
+                      >
+                        {!!processing[`weekly:${String(weeklyMission.id)}`]
+                          ? <><Clock className="h-4 w-4 animate-spin" /> Salvando...</>
+                          : weeklyProgress.checkins?.[todayDayKey]
+                            ? <><CheckCircle className="h-4 w-4" /> Dia marcado</>
+                            : <><CheckCircle className="h-4 w-4" /> Marcar dia de hoje</>}
+                      </button>
+                    </div>
+                    <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-slate-700" role="progressbar"
+                      aria-label="Progresso da missão semanal" aria-valuemin={0}
+                      aria-valuemax={weeklyRequiredDays} aria-valuenow={Math.min(weeklyRequiredDays, weeklyProgress.count)}>
+                      <div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-emerald-400 transition-[width] duration-500"
+                        style={{ width: `${Math.min(100, (weeklyProgress.count / Math.max(1,weeklyRequiredDays)) * 100)}%` }} />
+                    </div>
+                    <p className="mt-2 text-xs font-medium text-slate-300">
+                      {weeklyProgress.count} de {weeklyRequiredDays} dias marcados nesta missão.
+                    </p>
+                  </div>
+
+                  {/* Dias: hoje claramente clicável, concluídos com check e futuros bloqueados. */}
+                  <div className="mt-3 grid w-full max-w-xl grid-cols-7 gap-1.5 sm:gap-2">
                     {(['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'] as const).map((label, idx) => {
                       const dayKey = weekInfo.days[idx];
                       const checked = !!weeklyProgress.checkins?.[dayKey];
@@ -1936,12 +1995,12 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                             if (!disabled) handleWeeklyCheckin();
                           }}
                           className={[
-                            'rounded-xl border text-xs py-2 px-2 transition',
+                            'relative flex min-h-[78px] flex-col items-center justify-center rounded-xl border px-1 py-2 text-center text-xs transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 sm:min-h-[86px]',
                             checked
-                              ? 'bg-emerald-600 text-white border-emerald-500'
+                              ? 'bg-emerald-600/25 text-emerald-100 border-emerald-400/60'
                               : isToday
-                                ? 'bg-white/10 border-white/10 text-white hover:bg-white/15'
-                                : 'bg-white/5 border-white/10 text-white/40 cursor-not-allowed',
+                                ? 'bg-sky-400/20 border-sky-300 text-sky-50 ring-2 ring-sky-400/20 hover:-translate-y-0.5 hover:bg-sky-400/30'
+                                : 'bg-slate-900 border-slate-700 text-slate-400 cursor-not-allowed',
                           ].join(' ')}
                           title={
                             checked
@@ -1951,8 +2010,11 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                                 : `Volte no dia (${dayKey})`
                           }
                         >
-                          <div className="font-semibold">{label}</div>
-                          <div className="text-[10px] opacity-70">{dayKey.slice(8, 10)}/{dayKey.slice(5, 7)}</div>
+                          <div className="font-bold">{label}</div>
+                          <div className="mt-1 text-[10px] opacity-90">{dayKey.slice(8, 10)}/{dayKey.slice(5, 7)}</div>
+                          {checked ? <CheckCircle className="mt-1 h-4 w-4 text-emerald-200" />
+                            : isToday ? <span className="mt-1 text-[9px] font-extrabold text-sky-200">HOJE</span>
+                              : <span className="mt-1 h-4" />}
                         </button>
                       );
                     })}
@@ -2003,12 +2065,10 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                     );
                   })()}
 
-                  <p className="text-[12px] text-white/60 mt-3 leading-relaxed">
-                    Dica: você só consegue marcar o <b>dia de hoje</b>. Para concluir, complete{' '}
-                    <b>
-                      {weeklyProgress.count}/{weeklyRequiredDays}
-                    </b>{' '}
-                    nesta semana (e você tem <b>1 tolerância</b> para marcar ontem).
+                  <p className="mt-3 max-w-xl rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-xs leading-relaxed text-slate-200">
+                    <strong className="text-white">Como funciona:</strong> marque o dia atual após realizar a atividade.
+                    Se esquecer de registrar ontem, você tem uma tolerância por semana.
+                    Um dia não marcado não apaga suas conquistas anteriores.
                   </p>
                 </div>
 
