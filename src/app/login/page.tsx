@@ -46,7 +46,7 @@ export default function LoginPage() {
       try {
         const cloud = await readPrivateState(user.id);
         const local = storage.getUserData();
-        if (cloud) {
+        if (cloud?.userData && Object.keys(cloud.userData).length > 0) {
           restoreJourney(cloud, local);
         } else if (local?.onboardingCompleted) {
           // Migra dados locais antigos somente quando ainda não existe registro na nuvem.
