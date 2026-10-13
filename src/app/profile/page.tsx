@@ -24,6 +24,7 @@ import {
   Globe2,
 } from 'lucide-react';
 import Link from 'next/link';
+import ProfileGrowthHub from '@/components/profile/ProfileGrowthHub';
 
 type UserData = ReturnType<typeof storage.getUserData> extends infer T ? T : any;
 
@@ -182,6 +183,17 @@ export default function ProfilePage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [settingsDirty, setSettingsDirty] = useState(false);
+  // Protege ajustes ainda não salvos ao fechar/atualizar a aba.
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (!settingsDirty) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [settingsDirty]);
 
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -809,18 +821,17 @@ if (lastIso) {
       setErrorMessage('Informe uma porcentagem de THC entre 5% e 40%.');
       return;
     }
-    if (!lastUseDate) {
-      setErrorMessage('Informe a data da última vez que você fumou.');
-      return;
-    }
-
-    const lastUseDateTime = buildIsoFromDateAndTime(lastUseDate, lastUseTime || '12:00');
-    if (!lastUseDateTime) {
+    // Ajustar apenas o nome, idioma ou preferências não deve exigir
+    // informar uma nova data de consumo nem redefinir a jornada.
+    const selectedLastUse = lastUseDate
+      ? buildIsoFromDateAndTime(lastUseDate, lastUseTime || '12:00') : null;
+    if (lastUseDate && !selectedLastUse) {
       setErrorMessage('A data ou o horário informado é inválido.');
       return;
     }
-
     const previousLastUse = userData.lastUseDateTime;
+    const lastUseDateTime = selectedLastUse || previousLastUse || null;
+    const lastUseChanged = Boolean(selectedLastUse && selectedLastUse !== previousLastUse);
     const updated: UserData = {
       ...userData,
       thcPotency,
@@ -833,10 +844,10 @@ if (lastIso) {
       dailyCost,
       pricePerGram,
       consumptionMethods,
-      lastUseDateTime,
-      // O contador de tempo limpo deve seguir a data e hora informadas.
-      startDate: lastUseDateTime,
-      lastRelapseDate: previousLastUse !== lastUseDateTime ? null : userData.lastRelapseDate,
+      lastUseDateTime: lastUseDateTime || userData.lastUseDateTime,
+      // Preserva a data original da jornada se a pessoa apenas ajustou configurações.
+      startDate: lastUseChanged ? lastUseDateTime : userData.startDate,
+      lastRelapseDate: lastUseChanged ? null : userData.lastRelapseDate,
     } as UserData;
 
     try {
@@ -877,6 +888,7 @@ if (lastIso) {
       setUserData(updated);
       setLastUseTime(lastUseTime || '12:00');
       setSuccessMessage('Dados salvos na nuvem! Você pode acessar em outro dispositivo.');
+      setSettingsDirty(false);
     } catch (err) {
       console.error('Erro ao salvar perfil na nuvem:', err);
       setErrorMessage('Não foi possível confirmar o salvamento no Supabase. Suas alterações continuam nesta tela; tente novamente.');
@@ -1104,7 +1116,7 @@ if (lastIso) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-black to-gray-900">
+    <div className="min-h-screen w-full overflow-x-clip bg-gradient-to-br from-purple-900 via-black to-gray-900">
       <header className="bg-black/40 backdrop-blur-sm shadow-sm sticky top-0 z-30 border-b border-purple-500/20">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-3">
           <button
@@ -1123,8 +1135,7 @@ if (lastIso) {
               <div>
                 <h1 className="text-lg font-bold text-white">Seu perfil</h1>
                 <p className="text-xs text-purple-100/80">
-                  Ajuste nome, consumo, dinheiro e configurações principais em
-                  um único lugar.
+                  Sua jornada, suas conquistas e seu próximo passo.
                 </p>
               </div>
             </div>
@@ -1133,7 +1144,7 @@ if (lastIso) {
       </header>
 
       {/* Conteúdo */}
-      <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+      <main className="mx-auto w-full max-w-4xl min-w-0 space-y-5 px-3 py-5 pb-28 sm:space-y-6 sm:px-6 sm:py-6">
         {/* Mensagens */}
         {(errorMessage || successMessage) && (
           <div className="space-y-2">
@@ -1366,121 +1377,23 @@ if (lastIso) {
           )}
         </section>
 
-        {/* 5) Gamificação & atalhos */}
-        <section style={PROFILE_LIGHT_VARS} className="bg-white/95 rounded-3xl shadow-2xl p-5 space-y-6 border border-purple-500/10">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* Gamificação */}
-            <div className="rounded-2xl bg-gradient-to-r from-purple-500 to-pink-600 px-4 py-4 text-white space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide opacity-90">
-                Gamificação & progresso
-              </p>
-              <p className="text-2xl font-bold">Nível {currentLevel}</p>
-              <p className="text-sm opacity-90">
-                XP total aproximado: <strong>{safeXp}</strong>
-              </p>
+        {/* Evolução, metas, registros financeiros e apoio privado. */}
+        <ProfileGrowthHub userId={userId} timezone={timezone} currency={currency} />
 
-              <div className="space-y-1.5 mt-2">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span>Progresso para o próximo nível</span>
-                  <span>{xpToNextLevel} XP restantes</span>
-                </div>
-                <div className="w-full bg-white/30 rounded-full h-2 overflow-hidden">
-                  <div
-                    className="h-full bg-white rounded-full transition-all duration-500"
-                    style={{
-                      width: `${Math.min(100, xpProgressPercent)}%`,
-                    }}
-                  />
-                </div>
-              </div>
-
-              {!xp && (
-                <p className="text-[11px] opacity-80 mt-2">
-                  Assim que você começar a completar missões, o XP acumulado
-                  aparece aqui.
-                </p>
-              )}
-            </div>
-
-            {/* Atalhos rápidos */}
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-gray-800">
-                Atalhos rápidos da sua jornada
-              </p>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <Link
-                  href="/missions"
-                  className="rounded-2xl border border-purple-200 bg-purple-50 px-3 py-3 hover:border-purple-400 hover:bg-purple-100 transition"
-                >
-                  <p className="font-semibold text-purple-800 mb-1">
-                    Missões & XP
-                  </p>
-                  <p className="text-[11px] text-purple-700">
-                    Complete desafios diários e semanais para ganhar XP.
-                  </p>
-                </Link>
-
-                <Link
-                  href="/rewards"
-                  className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 hover:border-amber-400 hover:bg-amber-100 transition"
-                >
-                  <p className="font-semibold text-amber-800 mb-1">
-                    Loja & recompensas
-                  </p>
-                  <p className="text-[11px] text-amber-700">
-                    Troque seu progresso por itens especiais do app.
-                  </p>
-                </Link>
-
-                <Link
-                  href="/jornada"
-                  className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-3 hover:border-emerald-400 hover:bg-emerald-100 transition"
-                >
-                  <p className="font-semibold text-emerald-800 mb-1">
-                    Jornada 365
-                  </p>
-                  <p className="text-[11px] text-emerald-700">
-                    Acompanhe seu dia da jornada e escreva no diário.
-                  </p>
-                </Link>
-
-                <Link
-                  href="/sos"
-                  className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-3 hover:border-rose-400 hover:bg-rose-100 transition"
-                >
-                  <p className="font-semibold text-rose-800 mb-1">SOS</p>
-                  <p className="text-[11px] text-rose-700">
-                    Use nas horas mais difíceis para não ceder à vontade.
-                  </p>
-                </Link>
-
-                <Link
-                  href="/body-evolution"
-                  className="rounded-2xl border border-blue-200 bg-blue-50 px-3 py-3 hover:border-blue-400 hover:bg-blue-100 transition"
-                >
-                  <p className="font-semibold text-blue-800 mb-1">
-                    Evolução do corpo
-                  </p>
-                  <p className="text-[11px] text-blue-700">
-                    Acompanhe os benefícios físicos da redução no consumo.
-                  </p>
-                </Link>
-
-                <Link
-                  href="/cant-stop"
-                  className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 hover:border-slate-400 hover:bg-slate-100 transition"
-                >
-                  <p className="font-semibold text-slate-800 mb-1">
-                    Não consigo parar
-                  </p>
-                  <p className="text-[11px] text-slate-700">
-                    Use quando estiver muito difícil para lembrar seus recursos.
-                  </p>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </section>
+        {/* Dados da conta ficam disponíveis sob demanda, sem ocupar toda a tela. */}
+        <details id="profile-preferences" className="group overflow-hidden rounded-3xl border border-white/15 bg-[#19162a] shadow-lg">
+          <summary className="flex min-h-20 cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-white hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 sm:px-5 [&::-webkit-details-marker]:hidden">
+            <span className="flex min-w-0 items-center gap-3">
+              <span className="rounded-xl bg-violet-400/15 p-2.5"><Settings className="h-5 w-5 text-violet-200"/></span>
+              <span>
+                <strong className="block text-base">Meus dados e preferências</strong>
+                <span className="mt-1 block text-xs leading-relaxed text-slate-300">Nome, consumo, idioma, notificações e referências.</span>
+              </span>
+            </span>
+            <span className="shrink-0 text-xs font-semibold text-violet-200 group-open:hidden">Editar ↓</span>
+            <span className="hidden shrink-0 text-xs font-semibold text-violet-200 group-open:inline">Fechar ↑</span>
+          </summary>
+          <div className="space-y-4 px-2 pb-3 sm:px-4" onChange={() => setSettingsDirty(true)}>
 
         {/* 3) CONFIGURAÇÕES – tudo que altera o app em uma caixa só */}
         <section style={PROFILE_LIGHT_VARS} className="bg-white/95 rounded-3xl shadow-2xl p-5 space-y-6 border border-purple-500/10">
@@ -1641,7 +1554,7 @@ if (lastIso) {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setDarkMode(false)}
+                  onClick={() => { setDarkMode(false); setSettingsDirty(true); }}
                   className={`flex-1 px-3 py-2 rounded-xl border text-xs font-medium flex items-center justify-center gap-1 ${
                     !darkMode
                       ? 'bg-purple-600 text-white border-purple-700'
@@ -1652,7 +1565,7 @@ if (lastIso) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setDarkMode(true)}
+                  onClick={() => { setDarkMode(true); setSettingsDirty(true); }}
                   className={`flex-1 px-3 py-2 rounded-xl border text-xs font-medium flex items-center justify-center gap-1 ${
                     darkMode
                       ? 'bg-purple-600 text-white border-purple-700'
@@ -1850,7 +1763,7 @@ if (lastIso) {
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={() => toggleMethod(opt.value)}
+                  onClick={() => { toggleMethod(opt.value); setSettingsDirty(true); }}
                   className={`px-3 py-1.5 rounded-full border text-xs ${
                     consumptionMethods.includes(opt.value)
                       ? 'bg-purple-600 text-white border-purple-600'
@@ -1933,6 +1846,20 @@ if (lastIso) {
           </div>
         </section>
 
+          </div>
+          {errorMessage && <p role="alert" className="mx-3 mb-3 rounded-xl border border-rose-300/40 bg-rose-900/50 px-4 py-3 text-sm text-rose-100">{errorMessage}</p>}
+          {successMessage && <p role="status" className="mx-3 mb-3 rounded-xl border border-emerald-300/40 bg-emerald-900/40 px-4 py-3 text-sm text-emerald-100">{successMessage}</p>}
+          {settingsDirty && (
+            <div role="status" className="sticky bottom-20 z-20 mx-2 mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300/30 bg-[#292037] px-4 py-3 text-sm text-white shadow-xl sm:mx-4">
+              <span>Você tem alterações ainda não salvas.</span>
+              <button type="button" disabled={saving} onClick={() => void handleSave()}
+                className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-violet-400 px-4 text-xs font-bold text-[#1c1032] disabled:opacity-50">
+                <Save className="h-4 w-4"/> {saving ? 'Salvando...' : 'Salvar alterações'}
+              </button>
+            </div>
+          )}
+        </details>
+
         {/* 6) Status da conta + ações */}
         <section style={PROFILE_LIGHT_VARS} className="bg-white/95 rounded-3xl shadow-2xl p-5 space-y-5 border border-purple-500/10">
           <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -1973,9 +1900,8 @@ if (lastIso) {
           <div className="pt-3 border-t border-gray-100 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
             <div className="space-y-1 text-[11px] text-gray-500">
               <p>
-                • O reset do app limpa apenas os dados deste dispositivo
-                (progresso e projeções) e volta para valores padrão
-                recomendados.
+                • Redefinir os dados locais afeta somente este dispositivo; o conteúdo
+                salvo na nuvem não é apagado.
               </p>
               <p>• Sair da conta encerra sua sessão neste dispositivo.</p>
             </div>
