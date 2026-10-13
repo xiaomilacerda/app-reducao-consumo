@@ -4,11 +4,8 @@ import { traduzirErro } from '@/lib/traduzir-erro';
 
 import type { FormEvent } from 'react';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { storage } from '@/lib/storage';
-import { prepareLocalAccount, readPrivateState, restoreJourney, snapshotJourney, updatePrivateState } from '@/lib/private-state';
 
 function getSafeAfterLoginPath(): string {
   if (typeof window === 'undefined') return '/profile';
@@ -21,8 +18,6 @@ function getSafeAfterLoginPath(): string {
 }
 
 export default function LoginPage() {
-  const router = useRouter();
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -33,83 +28,8 @@ export default function LoginPage() {
   // pode causar um loop com a proteção SSR de /profile.
   // O usuário sempre terá acesso ao formulário de login.
 
-  // 2) Após login, garantir perfil & status premium sincronizados
-  const syncProfile = async () => {
-    try {
-      const { data } = await supabase.auth.getUser();
-      if (!data?.user) return;
-
-      const user = data.user;
-      prepareLocalAccount(user.id);
-
-      // Ao entrar, a conta no Supabase assume a prioridade sobre o cache local.
-      try {
-        const cloud = await readPrivateState(user.id);
-        const local = storage.getUserData();
-        if (cloud?.userData && Object.keys(cloud.userData).length > 0) {
-          restoreJourney(cloud, local);
-        } else if (local?.onboardingCompleted) {
-          // Migra dados locais antigos somente quando ainda não existe registro na nuvem.
-          await updatePrivateState({ userData: snapshotJourney(local) });
-        }
-      } catch (syncError) {
-        console.warn('Sincronização da jornada pendente:', syncError);
-      }
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (!profile) {
-        await supabase.from('profiles').upsert({
-          id: user.id,
-          email: user.email,
-          is_premium: false,
-          created_at: new Date().toISOString(),
-          full_name: typeof user.user_metadata?.full_name === 'string'
-            ? user.user_metadata.full_name : null,
-          display_name: typeof user.user_metadata?.display_name === 'string'
-            ? user.user_metadata.display_name : null,
-        });
-      } else if (!profile.full_name && typeof user.user_metadata?.full_name === 'string') {
-        // O trigger de cadastro antigo criava perfis sem nome; recupere-o com
-        // os metadados da conta sem alterar moedas, XP ou o status premium.
-        const name = user.user_metadata.full_name.trim();
-        if (name) {
-          await supabase.from('profiles')
-            .update({ full_name: name, display_name: profile.display_name || name })
-            .eq('id', user.id);
-        }
-      }
-
-      // Garantir que exista uma carteira (evita moedas "0" em telas que leem user_wallet)
-      try {
-        // Insere a carteira somente se ainda não existir: jamais zere moedas no login.
-        const { error: wErr } = await supabase.from('user_wallet').upsert(
-          { user_id: user.id, coins: 0, updated_at: new Date().toISOString() },
-          { onConflict: 'user_id', ignoreDuplicates: true }
-        );
-        if (wErr) console.warn('user_wallet upsert (login) error:', wErr);
-      } catch (err) {
-        console.warn('user_wallet upsert (login) catch:', err);
-      }
-
-      const current = storage.getUserData();
-      if (current) {
-        storage.saveUserData({
-          ...current,
-          isPremium: profile?.is_premium ?? false,
-        });
-      }
-
-      // O login não deve marcar o onboarding como concluído nem substituir
-      // os dados locais quando o usuário ainda não configurou sua jornada.
-    } catch (err) {
-      console.error('Erro syncProfile:', err);
-    }
-  };
+  // Login não pode aguardar dados auxiliares: o Perfil tem seu próprio
+  // carregamento e trata eventuais falhas da API sem impedir a autenticação.
 
   // 3) Função de login
   const handleSubmit = async (e: FormEvent) => {
@@ -135,8 +55,11 @@ export default function LoginPage() {
         return;
       }
 
-      await syncProfile();
-      router.replace(getSafeAfterLoginPath());
+      // @supabase/ssr persiste a sessão em cookies. Uma navegação completa
+      // garante que o middleware receba os cookies novos após trocar de projeto.
+      // Não bloquear o redirecionamento com consultas do Perfil/PostgREST.
+      window.location.replace(getSafeAfterLoginPath());
+      return;
     } catch (err: any) {
       console.error(err);
       setErrorMsg(traduzirErro(err, 'Não foi possível entrar. Tente novamente.'));
