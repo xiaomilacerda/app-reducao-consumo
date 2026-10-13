@@ -289,7 +289,7 @@ export default function AdminCsvImporter({ defaultTable = 'missions' }: { defaul
             <button onClick={() => handleImport({ chunkSize: 50 })} className="px-4 py-2 bg-purple-600 text-white rounded" disabled={loading}>
               {loading ? 'Importando...' : 'Importar CSV'}
             </button>
-            <button onClick={resetAll} className="px-4 py-2 border rounded">Reset</button>
+            <button onClick={resetAll} className="px-4 py-2 border rounded">Limpar</button>
           </div>
         </div>
       )}
