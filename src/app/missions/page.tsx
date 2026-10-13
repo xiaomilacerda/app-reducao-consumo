@@ -231,6 +231,26 @@ function getRequiredDaysForWeek(weekDays: string[], startDayKey: string | undefi
   return Math.max(1, 7 - idx); // seg=7, ter=6, ..., dom=1
 }
 
+/** Calcula o dia da jornada a partir do início escolhido pela pessoa. */
+function personalJourneyDay(startISO: string | null | undefined, timezone: string) {
+  if (!startISO) return 1;
+  const start = new Date(startISO);
+  if (Number.isNaN(start.getTime())) return 1;
+  const key = (date: Date) => {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: timezone || 'America/Sao_Paulo',
+      day: '2-digit', month: '2-digit', year: 'numeric',
+    }).formatToParts(date);
+    const part = (name: string) => parts.find(p => p.type === name)?.value ?? '';
+    return `${part('year')}-${part('month')}-${part('day')}`;
+  };
+  try {
+    const from = Date.parse(key(start) + 'T12:00:00Z');
+    const until = Date.parse(key(new Date()) + 'T12:00:00Z');
+    return Math.max(1, Math.min(365, Math.floor((until - from) / 86400000) + 1));
+  } catch { return 1; }
+}
+
 type WeeklyProgress = {
   week_key: string;
   checkins: Record<string, boolean>;
@@ -304,6 +324,9 @@ export default function MissionsPage() {
   const [walletCoins, setWalletCoins] = useState(0);
   const [totalXP, setTotalXP] = useState(0);
   const [level, setLevel] = useState(1);
+  const [personalMissionDay, setPersonalMissionDay] = useState(1);
+  const [xpVerified, setXpVerified] = useState(false);
+  const [walletVerified, setWalletVerified] = useState(false);
 
   const [missions, setMissions] = useState<MissionRow[]>([]);
   const [weeklyMission, setWeeklyMission] = useState<MissionRow | null>(null);
@@ -358,7 +381,7 @@ export default function MissionsPage() {
 
   const today = new Date();
   const todayDayKey = getLocalDayKey(today); // YYYY-MM-DD (LOCAL)
-  const todayIndex = getDayOfYear(today); // 1..366
+  const todayIndex = personalMissionDay; // 1..365 desde o início da jornada
   const weekInfo = useMemo(() => getWeekKeyMonday(today), [todayDayKey]);
   const weeklyIndex = useMemo(() => ((weekInfo.isoWeek - 1) % 55) + 1, [weekInfo.weekKey]);
 
@@ -465,23 +488,42 @@ export default function MissionsPage() {
           setProfile(null);
           setIsPremium(false);
           setWalletCoins(0);
+          setTotalXP(0);
+          setXpVerified(false);
+          setWalletVerified(false);
+          setPersonalMissionDay(1);
         } else {
 
           // perfil
           const { data: p, error: pErr } = await supabase
             .from('profiles')
-            .select('id, xp, is_premium')
+            .select('id, xp, is_premium, created_at, timezone')
             .eq('id', uid)
             .maybeSingle();
 
-          if (pErr) {
+          if (pErr || !p) {
+            setXpVerified(false);
             console.warn('profiles load error', pErr);
-          } else if (p) {
+          } else {
             const xp = Number((p as any).xp ?? 0);
+            const tz = (p as any).timezone || 'America/Sao_Paulo';
+            const registered = (p as any).created_at as string | null;
             setProfile(p as ProfileRow);
             setIsPremium(!!(p as any).is_premium);
             setTotalXP(xp);
+            setXpVerified(true);
             setLevel(Math.floor(xp / XP_PER_LEVEL) + 1);
+            setPersonalMissionDay(personalJourneyDay(registered, tz));
+            // Início do onboarding tem prioridade; sua falha não impede o login.
+            void supabase.from('user_private_state').select('data')
+              .eq('user_id', uid).maybeSingle()
+              .then(({ data: saved, error: stateError }: any) => {
+                if (cancelled || stateError) return;
+                const cloudStart = saved?.data?.userData?.detoxCycleStartDate ||
+                  saved?.data?.userData?.startDate;
+                if (typeof cloudStart === 'string')
+                  setPersonalMissionDay(personalJourneyDay(cloudStart, tz));
+              }, () => {});
           }
 
           // carteira
@@ -492,9 +534,11 @@ export default function MissionsPage() {
             .maybeSingle();
 
           if (wErr) {
+            setWalletVerified(false);
             console.warn('wallet load error', wErr);
-          } else if (w) {
-            setWalletCoins(Number((w as any).coins ?? 0));
+          } else {
+            setWalletCoins(Number((w as any)?.coins ?? 0));
+            setWalletVerified(true);
           }
 
           // user_missions (se já completou)
