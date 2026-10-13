@@ -305,6 +305,7 @@ export default function MissionsPage() {
   const [weeklyMission, setWeeklyMission] = useState<MissionRow | null>(null);
   const [weeklyProgress, setWeeklyProgress] = useState<WeeklyProgress>(() => ({ week_key: '', checkins: {}, count: 0 }));
   const [weeklyDoneThisWeek, setWeeklyDoneThisWeek] = useState(false);
+  const [verifiedWeekCheckins, setVerifiedWeekCheckins] = useState(0);
   const [completedMap, setCompletedMap] = useState<Record<string, boolean>>({});
   const [processing, setProcessing] = useState<Record<string, boolean>>({});
   const [answers, setAnswers] = useState<Record<string, string>>({}); // texto que o usuário digitou por missão
@@ -1323,8 +1324,8 @@ const requiresAnswer = missionRequiresAnswer(m);
       weeklyProgress.required_days ??
       getRequiredDaysForWeek(weekInfo.days, weeklyProgress.start_day_key);
 
-    if ((weeklyProgress?.count ?? 0) < requiredDays) {
-      setErrorMsg(`Você precisa marcar ${requiredDays}/${requiredDays} dias desta semana para concluir.`);
+    if (verifiedWeekCheckins < 7) {
+      setErrorMsg(`Para coletar o bônus, registre 7 check-ins reais no Ritual de Hoje. Você tem ${verifiedWeekCheckins}/7.`);
       return;
     }
 
@@ -1341,59 +1342,21 @@ Não minta para você mesmo só para coletar XP e moedas.`,
     setErrorMsg(null);
 
     try {
-      // ✅ recomendado: criar RPC no banco. Se não existir, cai no fallback.
-      let ok = false;
-
-      try {
-        const { data, error } = await supabase.rpc('complete_weekly_mission', {
-          p_user: userId,
-          p_mission_id: Number(weeklyMission.id),
-          p_week_key: weekInfo.weekKey,
-        } as any);
-
-        if (!error && data) {
-          const row = Array.isArray(data) ? data[0] : data;
-          if (row?.success) ok = true;
-          if (!row?.success && row?.message) setErrorMsg(row.message);
-        }
-          } catch (e) {
-        // ignora e tenta fallback
+      // Operação atômica no servidor: valida 7 check-ins verificados, a
+      // semana vigente, a missão e a coleta única. Não existe fallback que
+      // credite recompensas diretamente pelo navegador.
+      const { data, error: rpcError } = await supabase.rpc('complete_weekly_mission', {
+        p_user: userId,
+        p_mission_id: Number(weeklyMission.id),
+        p_week_key: weekInfo.weekKey,
+      } as any);
+      if (rpcError) throw rpcError;
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row?.success) {
+        throw new Error(row?.message || 'O banco não confirmou a recompensa semanal.');
       }
-
-      if (!ok) {
-        const xp = getXpFromMission(weeklyMission);
-        const coins = getCoinsFromMission(weeklyMission);
-
-        // credita recompensa
-        await supabase.rpc('log_user_reward', {
-          p_user: userId,
-          p_mission_id: Number(weeklyMission.id),
-          p_title: weeklyMission.title,
-          p_reward_xp: xp,
-          p_reward_coins: coins,
-          p_metadata: { week_key: weekInfo.weekKey, type: 'weekly' },
-        } as any);
-
-        // marca como "recompensa coletada nesta semana"
-        const newProgress: WeeklyProgress = {
-          ...weeklyProgress,
-          week_key: weekInfo.weekKey,
-          rewarded_week_key: weekInfo.weekKey,
-          required_days: requiredDays,
-        };
-
-        await supabase
-          .from('user_missions')
-          .update({
-            progress: newProgress as any,
-            status: 'concluida',
-            last_update: new Date().toISOString(),
-          })
-          .eq('user_id', userId)
-          .eq('mission_id', Number(weeklyMission.id));
-
-        setWeeklyProgress(newProgress);
-      }
+      setWeeklyProgress((prev) => ({ ...prev, rewarded_week_key: weekInfo.weekKey }));
+      setErrorMsg(null);
 
       setWeeklyDoneThisWeek(true);
 
@@ -1691,6 +1654,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
         {/* RITUAL DIÁRIO, DESAFIOS PESSOAIS E PROGRESSO REAL NA NUVEM */}
         <MissionsEngagement
           userId={userId}
+          onProgress={setVerifiedWeekCheckins}
           onReward={() => {
             void (async () => {
               if (!userId) return;
@@ -1702,6 +1666,11 @@ Não minta para você mesmo só para coletar XP e moedas.`,
               if (typeof profileData.data?.xp === 'number') {
                 setTotalXP(profileData.data.xp);
                 setLevel(getLevelFromXp(profileData.data.xp));
+              }
+              // O Ritual de Hoje também conta como o registro da ação semanal.
+              // Não cobra nenhuma recompensa extra e evita exigir dois cliques.
+              if (weeklyMission && !weeklyProgress.checkins?.[todayDayKey] && !weeklyDoneThisWeek) {
+                await handleWeeklyCheckin();
               }
             })();
           }}
@@ -2068,7 +2037,8 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                   <p className="mt-3 max-w-xl rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-xs leading-relaxed text-slate-200">
                     <strong className="text-white">Como funciona:</strong> marque o dia atual após realizar a atividade.
                     Se esquecer de registrar ontem, você tem uma tolerância por semana.
-                    Um dia não marcado não apaga suas conquistas anteriores.
+                    Para liberar a recompensa semanal, registre os 7 check-ins reais no Ritual de Hoje.
+                    O dia perdido não apaga suas conquistas anteriores.
                   </p>
                 </div>
 
@@ -2088,18 +2058,18 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                       disabled={
                         !userId ||
                         processing[`weeklyComplete:${String(weeklyMission.id)}`] ||
-                        weeklyProgress.count < weeklyRequiredDays
+                        verifiedWeekCheckins < 7
                       }
                       className={[
                         'px-4 py-2 rounded-full font-medium text-sm border transition',
-                        weeklyProgress.count >= weeklyRequiredDays
+                        verifiedWeekCheckins >= 7
                           ? 'bg-sky-600 text-white border-sky-600 hover:bg-sky-700'
                           : 'bg-white/5 text-white/40 border-white/10 cursor-not-allowed',
                       ].join(' ')}
                       title={
-                        weeklyProgress.count >= weeklyRequiredDays
+                        verifiedWeekCheckins >= 7
                           ? 'Concluir semana e coletar recompensa'
-                          : `Marque ${weeklyRequiredDays}/${weeklyRequiredDays} dias para liberar`
+                          : `Registre ${7 - verifiedWeekCheckins} check-in(s) no Ritual de Hoje para liberar`
                       }
                     >
                       {processing[`weeklyComplete:${String(weeklyMission.id)}`]
