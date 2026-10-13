@@ -597,6 +597,16 @@ export default function SosPage() {
     return base;
   }, [tools, activeCategory, search, sortMode, myLikes, quickFilter]);
 
+  // A técnica abre em área de foco; a lista não fica mais se expandindo.
+  useEffect(() => {
+    if (!selectedTool) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const key = (event: KeyboardEvent) => { if (event.key === 'Escape') setSelectedTool(null); };
+    window.addEventListener('keydown', key);
+    return () => { document.body.style.overflow = prev; window.removeEventListener('keydown', key); };
+  }, [selectedTool]);
+
   const featuredTools = useMemo(() => {
     // Somente opções gratuitas com orientação estruturada: variedade acima de popularidade.
     const eligible = tools.filter(t => !t.premium_only &&
@@ -935,8 +945,47 @@ export default function SosPage() {
           </div>
         </details>
 
-        {/* ÁREA AVANÇADA: FERRAMENTAS SOS DO BANCO */}
-        <section className="space-y-4">
+        {/* Três indicações gratuitas com instruções cadastradas no banco. */}
+        <section aria-label="Técnicas sugeridas" className="space-y-3">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">Descubra no seu ritmo</p>
+              <h2 className="mt-1 text-lg font-bold text-white sm:text-xl">Três boas opções para conhecer</h2>
+              <p className="mt-1 text-xs text-slate-400">Gratuitas, com passos disponíveis. Você escolhe quando começar.</p>
+            </div>
+          </div>
+          {toolsLoading ? <div className="grid gap-3 sm:grid-cols-3">
+            {[0,1,2].map(i=><div key={i} className="h-36 animate-pulse rounded-2xl border border-white/10 bg-white/5"/>)}
+          </div> : featuredTools.length ? (
+            <div className="grid gap-3 sm:grid-cols-3">
+              {featuredTools.map(t=>(
+                <button type="button" key={t.id} onClick={()=>setSelectedTool(t)}
+                  className="group flex min-w-0 flex-col items-start rounded-2xl border border-white/10 bg-[#212b3c] p-4 text-left text-white transition hover:border-violet-300/40 hover:bg-[#28364b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
+                  <span className="flex w-full items-center justify-between gap-3">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-400/10 text-2xl" aria-hidden="true">{getEmojiForTool(t)}</span>
+                    <span className="text-[11px] font-semibold text-emerald-300">Gratuita</span>
+                  </span>
+                  <span className="mt-3 line-clamp-2 text-sm font-semibold leading-snug">{t.title}</span>
+                  <span className="mt-2 text-xs text-slate-300">Passo a passo guiado · {t.duration_minutes && t.duration_minutes > 0 ? t.duration_minutes + ' min' : 'no seu tempo'}</span>
+                  <span className="mt-4 flex items-center gap-1.5 text-xs font-bold text-violet-200">Conhecer técnica <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1"/></span>
+                </button>
+              ))}
+            </div>
+          ) : <p className="rounded-xl border border-white/10 bg-[#212b3c] p-4 text-xs text-slate-300">O catálogo está indisponível. A ajuda guiada acima continua funcionando.</p>}
+        </section>
+
+        <details id="sos-library" className="group min-w-0 scroll-mt-28 overflow-hidden rounded-3xl border border-white/10 bg-[#172133] text-white">
+          <summary className="flex min-h-20 cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 sm:px-5 [&::-webkit-details-marker]:hidden">
+            <span className="flex min-w-0 items-center gap-3">
+              <span className="rounded-2xl border border-violet-400/20 bg-violet-400/10 p-3"><BookOpen className="h-5 w-5 text-violet-300"/></span>
+              <span className="min-w-0">
+                <strong className="block text-sm font-bold sm:text-base">Explorar biblioteca de técnicas</strong>
+                <span className="mt-1 block text-xs leading-relaxed text-slate-400">Busque pelo nome, filtre por objetivo e descubra outras práticas.</span>
+              </span>
+            </span>
+            <ChevronDown className="h-5 w-5 shrink-0 text-violet-200 transition-transform group-open:rotate-180"/>
+          </summary>
+          <section className="min-w-0 space-y-4 border-t border-white/10 p-3 sm:p-5">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div>
               <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
@@ -1192,23 +1241,6 @@ export default function SosPage() {
                         </div>
                       </div>
 
-                      {/* Player embutido quando selecionado */}
-                      {selectedTool?.id === t.id && !locked && (
-                        <div className="mt-3 border-t border-gray-200 dark:border-gray-700 pt-3">
-                          <SosPlayer
-                            tool={t}
-                            onComplete={async (secs) => {
-                              console.log(
-                                `Sessão SOS "${t.title}" concluída em ~${secs}s`,
-                              );
-                              const saved = await handleSosComplete(t, secs ?? 0);
-                              if (saved) setSelectedTool(null);
-                              return saved;
-                            }}
-                            onCancel={() => setSelectedTool(null)}
-                          />
-                        </div>
-                      )}
                     </article>
                   );
                 })}
@@ -1232,7 +1264,28 @@ export default function SosPage() {
             </>
           )}
         </section>
+        </details>
       </main>
+      {selectedTool && (
+        <div className="fixed inset-0 z-[140] flex items-center justify-center bg-[#080c1a]/90 p-3 backdrop-blur-md sm:p-6" role="presentation">
+          <div role="dialog" aria-modal="true" aria-label={'Técnica SOS: ' + selectedTool.title}
+            className="dark max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-white/15 bg-[#151d30] p-3 text-white shadow-2xl sm:p-5">
+            <div className="flex justify-end">
+              <button type="button" onClick={()=>setSelectedTool(null)}
+                aria-label="Fechar técnica" className="flex min-h-11 items-center gap-2 rounded-xl px-4 text-xs font-semibold text-slate-200 hover:bg-white/10">
+                Fechar <span aria-hidden="true">×</span>
+              </button>
+            </div>
+            <SosPlayer tool={selectedTool}
+              onComplete={async seconds => {
+                const success = await handleSosComplete(selectedTool, seconds ?? 0);
+                if (success) setSelectedTool(null);
+                return success;
+              }}
+              onCancel={()=>setSelectedTool(null)}/>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
