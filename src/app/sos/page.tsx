@@ -20,6 +20,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { storage } from '@/lib/storage';
 import SosPlayer from '@/components/SosPlayer';
+import ProfileSupportReminder from '@/components/profile/ProfileSupportReminder';
 
 type ThemeMode = 'default' | 'focus';
 
@@ -641,6 +642,7 @@ export default function SosPage() {
 
       {/* MAIN */}
       <main className="max-w-5xl mx-auto px-4 py-8 sm:px-6 lg:px-8 space-y-8">
+        <ProfileSupportReminder userId={supabaseUser?.id ?? null} />
         {/* FRASE MOTIVACIONAL */}
         <section className="bg-gradient-to-r from-red-500 to-pink-600 rounded-3xl p-6 sm:p-8 shadow-2xl text-white text-center">
           <div className="flex items-center justify-center gap-2 mb-3">
