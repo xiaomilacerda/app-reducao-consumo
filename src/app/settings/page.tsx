@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { prepareLocalAccount, readPrivateState, updatePrivateState } from '@/lib/private-state';
 import {
   ArrowLeft,
   Settings as SettingsIcon,
@@ -99,6 +100,7 @@ export default function SettingsPage() {
 
         setUserId(user.id);
         setUserEmail(user.email ?? null);
+        prepareLocalAccount(user.id);
         setAccountCreatedAt(
           user.created_at ? new Date(user.created_at).toLocaleString() : null
         );
@@ -183,6 +185,24 @@ export default function SettingsPage() {
             setNotificationsTime(s.notifications_time);
           }
         }
+
+        // Preferências privadas que não cabem nas colunas atuais de profiles.
+        const privateState = await readPrivateState(user.id);
+        if (privateState) {
+          if (privateState.displayName) setDisplayName(privateState.displayName);
+          if (typeof privateState.preferredFocusArea === 'string' &&
+              ['detox', 'mood', 'money', 'health'].includes(privateState.preferredFocusArea)) {
+            setPreferredFocusArea(privateState.preferredFocusArea as 'detox' | 'mood' | 'money' | 'health');
+          }
+          if (typeof privateState.motivationalLevel === 'number') setMotivationalLevel(privateState.motivationalLevel);
+          if (typeof privateState.darkMode === 'boolean') setDarkMode(privateState.darkMode);
+          if (typeof privateState.notificationsEnabled === 'boolean') setNotificationsEnabled(privateState.notificationsEnabled);
+          if (privateState.notificationsTime) setNotificationsTime(privateState.notificationsTime);
+          if (privateState.preferredLanguage && ['pt', 'en', 'es'].includes(privateState.preferredLanguage)) {
+            setPreferredLanguage(privateState.preferredLanguage as 'pt' | 'en' | 'es');
+          }
+          if (typeof privateState.timezone === 'string') setTimezone(privateState.timezone);
+        }
       } catch (err: any) {
         console.error(err?.message ?? err);
         setErrorMessage('Não foi possível carregar as configurações.');
@@ -225,14 +245,22 @@ export default function SettingsPage() {
       });
 
       if (settingsError) {
-        console.error(
-          'Erro ao salvar user_settings (settings):',
-          settingsError.message
-        );
+        console.error('Erro ao salvar user_settings (settings):', settingsError.message);
         throw new Error('Erro ao salvar configurações de notificações.');
       }
 
-      setSuccessMessage('Configurações atualizadas com sucesso!');
+      await updatePrivateState({
+        displayName: displayName.trim(),
+        timezone,
+        preferredFocusArea,
+        motivationalLevel,
+        darkMode,
+        notificationsEnabled,
+        notificationsTime,
+        preferredLanguage,
+      });
+
+      setSuccessMessage('Configurações salvas na nuvem e disponíveis em outros dispositivos!');
     } catch (err: any) {
       console.error(err?.message ?? err);
       setErrorMessage(
