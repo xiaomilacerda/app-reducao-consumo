@@ -628,6 +628,11 @@ if (lastIso) {
             }
 
             if (!cloudState?.userData?.lastUseDateTime && typeof profile.last_use === 'string') {
+              if (data) {
+                data = { ...data, startDate: profile.last_use, lastUseDateTime: profile.last_use } as UserData;
+                storage.saveUserData(data);
+                setUserData(data);
+              }
               const formatted = formatDateInputFromIso(profile.last_use);
               if (formatted.date) {
                 setLastUseDate(formatted.date);
@@ -653,17 +658,15 @@ if (lastIso) {
             }
           }
 
-          // Se ainda não detectou, tenta metadata do usuário (app_metadata / user_metadata)
+          // Nunca confiar em user_metadata editável para liberar Premium.
           if (!premiumDetected && user) {
             const anyUser: any = user;
             const appMeta = anyUser.app_metadata || {};
-            const userMeta = anyUser.user_metadata || {};
 
             if (
               appMeta.is_premium === true ||
               appMeta.plan === 'premium' ||
-              appMeta.role === 'premium' ||
-              userMeta.is_premium === true
+              appMeta.role === 'premium'
             ) {
               premiumDetected = true;
             }
@@ -687,7 +690,7 @@ if (lastIso) {
             .eq('id', user.id)
             .maybeSingle();
 
-          const rawEquipped = String((p as any)?.equipped_icon ?? '').trim();
+          const rawEquipped = String((p as any)?.equipped_icon || cloudState?.equippedAvatar || '').trim();
           const initial = isAvatarCode(rawEquipped) ? rawEquipped.toUpperCase() : 'A1';
 
           setEquippedAvatar(initial);
@@ -912,6 +915,7 @@ if (lastIso) {
         setErrorMessage('Não foi possível equipar esse avatar agora.');
         return;
       }
+      await updatePrivateState({ equippedAvatar: target });
 
       setEquippedAvatar(target);
       setAvatarPickerOpen(false);
