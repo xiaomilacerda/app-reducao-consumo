@@ -103,7 +103,7 @@ export default function HomePage() {
           prepareLocalAccount(auth.user.id);
           data = storage.getUserData();
           const cloud = await readPrivateState(auth.user.id);
-          if (cloud) {
+          if (cloud?.userData && Object.keys(cloud.userData).length > 0) {
             data = restoreJourney(cloud, data);
           } else if (data?.onboardingCompleted) {
             // Importação única dos dados antigos que ainda existiam só no aparelho.
