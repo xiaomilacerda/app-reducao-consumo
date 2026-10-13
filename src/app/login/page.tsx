@@ -1,5 +1,6 @@
-import { traduzirErro } from '@/lib/traduzir-erro';
 'use client';
+
+import { traduzirErro } from '@/lib/traduzir-erro';
 
 import type { FormEvent } from 'react';
 import { useState } from 'react';
