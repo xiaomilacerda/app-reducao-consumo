@@ -474,6 +474,11 @@ export default function HomePage() {
 
       {/* MAIN */}
       <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8 space-y-8">
+        {syncError && (
+          <div role="alert" className="rounded-xl border border-amber-400/50 bg-amber-950/75 px-4 py-3 text-sm text-amber-100">
+            {syncError}
+          </div>
+        )}
         {/* FRASE DO DIA */}
         {dailyMessage && (
           <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-5 border border-purple-100 dark:border-purple-900/40">
