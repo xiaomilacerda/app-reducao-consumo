@@ -633,19 +633,6 @@ if (lastIso) {
             }
           }
 
-          // Se ainda não detectou, tenta em dados locais
-          if (!premiumDetected && data) {
-            const anyData = data as any;
-            if (
-              anyData.isPremium === true ||
-              anyData.premium === true ||
-              anyData.premiumActive === true ||
-              anyData.plan === 'premium'
-            ) {
-              premiumDetected = true;
-            }
-          }
-
           // Nunca confiar em user_metadata editável para liberar Premium.
           if (!premiumDetected && user) {
             const anyUser: any = user;
