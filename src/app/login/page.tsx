@@ -1,7 +1,7 @@
 'use client';
 
 import type { FormEvent } from 'react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
@@ -23,22 +23,12 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // 1) Se já existe sessão → manda para /profile
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data?.session) {
-        router.replace(getSafeAfterLoginPath());
-        return;
-      }
-      setLoading(false);
-    };
-    checkSession();
-  }, [router]);
+  // Não bloqueie a tela esperando getSession(): uma sessão local obsoleta
+  // pode causar um loop com a proteção SSR de /profile.
+  // O usuário sempre terá acesso ao formulário de login.
 
   // 2) Após login, garantir perfil & status premium sincronizados
   const syncProfile = async () => {
@@ -125,18 +115,6 @@ export default function LoginPage() {
       setSubmitting(false);
     }
   };
-
-  // LOADING
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center text-white gap-3">
-          <div className="h-10 w-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
-          <span>Carregando...</span>
-        </div>
-      </div>
-    );
-  }
 
   // UI PRINCIPAL
   return (
