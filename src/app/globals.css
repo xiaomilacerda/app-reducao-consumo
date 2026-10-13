@@ -342,3 +342,52 @@ select option {
 .jornada-textarea::placeholder {
   color: #6b7280 !important;
 }
+
+/* ================================================ */
+/* LOGIN / CADASTRO — campos escuros e legíveis       */
+/* ================================================ */
+/* Mantemos o autofill ativo; somente sua aparência é ajustada. */
+.wr-auth-input {
+  color-scheme: dark;
+  background-color: #0b1220;
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc !important;
+  caret-color: #f8fafc;
+  accent-color: #a855f7;
+}
+
+.wr-auth-input::placeholder {
+  color: #94a3b8;
+  opacity: 1;
+}
+
+.wr-auth-input::selection {
+  background-color: #7c3aed;
+  color: #ffffff;
+}
+
+/* Chrome, Edge e Safari alteram o fundo ao preencher e-mail/senha. */
+/* Pintamos o interior do campo, sem impedir a sugestão de credenciais. */
+input.wr-auth-input:-webkit-autofill,
+input.wr-auth-input:-webkit-autofill:hover,
+input.wr-auth-input:-webkit-autofill:focus,
+input.wr-auth-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #0b1220 inset !important;
+  box-shadow: 0 0 0 1000px #0b1220 inset !important;
+  -webkit-text-fill-color: #f8fafc !important;
+  caret-color: #f8fafc !important;
+  border-color: #64748b;
+}
+
+/* Firefox e navegadores que implementam a pseudo-classe padrão. */
+input.wr-auth-input:autofill {
+  box-shadow: 0 0 0 1000px #0b1220 inset !important;
+  -webkit-text-fill-color: #f8fafc !important;
+  caret-color: #f8fafc !important;
+}
+
+input.wr-auth-input:focus,
+input.wr-auth-input:-webkit-autofill:focus,
+input.wr-auth-input:autofill:focus {
+  border-color: #a78bfa !important;
+}

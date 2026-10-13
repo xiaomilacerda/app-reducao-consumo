@@ -193,26 +193,34 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1">
-              <label className="text-gray-300 text-xs">E-mail</label>
+              <label htmlFor="login-email" className="text-sm font-medium text-slate-200">E-mail</label>
               <input
+                id="login-email"
+                name="email"
                 type="email"
+                autoComplete="email"
+                autoCapitalize="none"
+                spellCheck={false}
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="voce@exemplo.com"
-                className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-purple-500 focus:outline-none text-sm"
+                className="wr-auth-input w-full h-11 rounded-xl border border-slate-600/80 bg-[#0b1220] px-4 text-sm text-slate-50 placeholder:text-slate-400 outline-none shadow-sm transition-colors hover:border-slate-500 focus:border-purple-400 focus:ring-2 focus:ring-purple-500/35"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-gray-300 text-xs">Senha</label>
+              <label htmlFor="login-password" className="text-sm font-medium text-slate-200">Senha</label>
               <input
+                id="login-password"
+                name="password"
                 type="password"
+                autoComplete="current-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="********"
-                className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-purple-500 focus:outline-none text-sm"
+                className="wr-auth-input w-full h-11 rounded-xl border border-slate-600/80 bg-[#0b1220] px-4 text-sm text-slate-50 placeholder:text-slate-400 outline-none shadow-sm transition-colors hover:border-slate-500 focus:border-purple-400 focus:ring-2 focus:ring-purple-500/35"
               />
             </div>
 

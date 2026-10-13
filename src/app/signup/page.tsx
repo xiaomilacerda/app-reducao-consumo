@@ -201,37 +201,51 @@ export default function SignupPage() {
 
           <form className="space-y-3" onSubmit={handleSignup}>
             <div>
-              <label className="text-xs text-gray-300">Nome completo</label>
+              <label htmlFor="signup-name" className="text-sm font-medium text-slate-200">Nome completo</label>
               <input
+                id="signup-name"
+                name="name"
                 type="text"
+                autoComplete="name"
+                placeholder="Seu nome completo"
                 required
-                className="w-full mt-1 px-3 py-2 rounded-lg bg-gray-950 border border-gray-700 outline-none text-sm text-white focus:ring-2 focus:ring-purple-500"
+                className="wr-auth-input w-full mt-1 h-11 px-4 rounded-xl bg-[#0b1220] border border-slate-600/80 outline-none text-sm text-slate-50 placeholder:text-slate-400 shadow-sm transition-colors hover:border-slate-500 focus:border-purple-400 focus:ring-2 focus:ring-purple-500/35"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
               />
             </div>
 
             <div>
-              <label className="text-xs text-gray-300">E-mail</label>
+              <label htmlFor="signup-email" className="text-sm font-medium text-slate-200">E-mail</label>
               <input
+                id="signup-email"
+                name="email"
                 type="email"
+                autoComplete="email"
+                autoCapitalize="none"
+                spellCheck={false}
+                placeholder="voce@exemplo.com"
                 required
-                className="w-full mt-1 px-3 py-2 rounded-lg bg-gray-950 border border-gray-700 outline-none text-sm text-white focus:ring-2 focus:ring-purple-500"
+                className="wr-auth-input w-full mt-1 h-11 px-4 rounded-xl bg-[#0b1220] border border-slate-600/80 outline-none text-sm text-slate-50 placeholder:text-slate-400 shadow-sm transition-colors hover:border-slate-500 focus:border-purple-400 focus:ring-2 focus:ring-purple-500/35"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
 
             <div>
-              <label className="text-xs text-gray-300">Senha</label>
+              <label htmlFor="signup-password" className="text-sm font-medium text-slate-200">Senha</label>
               <input
+                id="signup-password"
+                name="password"
                 type="password"
+                autoComplete="new-password"
+                aria-describedby="signup-password-hint"
                 required
-                className="w-full mt-1 px-3 py-2 rounded-lg bg-gray-950 border border-gray-700 outline-none text-sm text-white focus:ring-2 focus:ring-purple-500"
+                className="wr-auth-input w-full mt-1 h-11 px-4 rounded-xl bg-[#0b1220] border border-slate-600/80 outline-none text-sm text-slate-50 placeholder:text-slate-400 shadow-sm transition-colors hover:border-slate-500 focus:border-purple-400 focus:ring-2 focus:ring-purple-500/35"
                 value={senha}
                 onChange={(e) => setSenha(e.target.value)}
               />
-              <p className="text-[10px] text-gray-400 mt-1">
+              <p id="signup-password-hint" className="text-xs text-slate-400 mt-1.5 leading-relaxed">
                 Use uma senha forte e que você não utilize em outros serviços.
               </p>
             </div>
