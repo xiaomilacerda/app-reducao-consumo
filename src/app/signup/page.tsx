@@ -39,6 +39,10 @@ export default function SignupPage() {
       const { data, error } = await supabase.auth.signUp({
         email: emailTrimmed,
         password: senha,
+        options: {
+          // Preserva o nome mesmo se a conta precisar de confirmação de e-mail.
+          data: { full_name: nomeTrimmed, display_name: nomeTrimmed },
+        },
       });
 
       if (error) {
@@ -80,11 +84,10 @@ export default function SignupPage() {
 
       // Garantir a carteira do usuário (coins) logo na criação da conta
       try {
-        const { error: walletError } = await supabase.from('user_wallet').upsert({
-          user_id: data.user.id,
-          coins: 0,
-          updated_at: new Date().toISOString(),
-        } as any);
+        const { error: walletError } = await supabase.from('user_wallet').upsert(
+          { user_id: data.user.id, coins: 0, updated_at: new Date().toISOString() },
+          { onConflict: 'user_id', ignoreDuplicates: true }
+        );
         if (walletError) console.warn('Erro ao criar user_wallet:', walletError);
       } catch (err) {
         console.warn('user_wallet upsert catch:', err);
