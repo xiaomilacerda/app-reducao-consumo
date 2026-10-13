@@ -1847,6 +1847,8 @@ if (lastIso) {
         </section>
 
           </div>
+          {errorMessage && <p role="alert" className="mx-3 mb-3 rounded-xl border border-rose-300/40 bg-rose-900/50 px-4 py-3 text-sm text-rose-100">{errorMessage}</p>}
+          {successMessage && <p role="status" className="mx-3 mb-3 rounded-xl border border-emerald-300/40 bg-emerald-900/40 px-4 py-3 text-sm text-emerald-100">{successMessage}</p>}
           {settingsDirty && (
             <div role="status" className="sticky bottom-20 z-20 mx-2 mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300/30 bg-[#292037] px-4 py-3 text-sm text-white shadow-xl sm:mx-4">
               <span>Você tem alterações ainda não salvas.</span>
