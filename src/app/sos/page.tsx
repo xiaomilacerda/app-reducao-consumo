@@ -88,6 +88,21 @@ function normalizeCategory(s: string | null): string {
   const v = (s || '').trim();
   return v ? v : 'Outros';
 }
+function displayCategory(category: string | null) {
+  const key = normalizeCategory(category).toLowerCase();
+  const names: Record<string, string> = {
+    'anti-recaida': 'Apoio ao impulso',
+    breathing: 'Respiração', grounding: 'Atenção ao presente',
+    mindfulness: 'Atenção plena', relax: 'Relaxamento',
+    exercise: 'Movimento', distraction: 'Mudar o foco',
+    cbt: 'Pensamentos', sleep: 'Descanso', audio: 'Áudios',
+  };
+  return names[key] || (category || 'Outras práticas').replace(/-/g, ' ');
+}
+function toolQuality(t: SosTool) {
+  return (Array.isArray(t.steps_json) && t.steps_json.length >= 2 ? 2 : 0) +
+    (t.duration_minutes && t.duration_minutes > 0 ? 1 : 0);
+}
 
 function formatRelativeTime(iso: string): string {
   const t = new Date(iso).getTime();
@@ -583,12 +598,12 @@ export default function SosPage() {
 
     if (sortMode === 'favorites') {
       base = base.filter((t) => myLikes.has(t.id));
-      base = [...base].sort((a, b) => Number(b.likes_count || 0) - Number(a.likes_count || 0));
+      base = [...base].sort((a, b) => (Number(b.likes_count || 0) - Number(a.likes_count || 0)) || (toolQuality(b) - toolQuality(a)));
       return base;
     }
 
     if (sortMode === 'popular') {
-      base = [...base].sort((a, b) => Number(b.likes_count || 0) - Number(a.likes_count || 0));
+      base = [...base].sort((a, b) => (Number(b.likes_count || 0) - Number(a.likes_count || 0)) || (toolQuality(b) - toolQuality(a)));
       return base;
     }
 
@@ -1007,7 +1022,7 @@ export default function SosPage() {
           </div>
 
           {/* Histórico resumido */}
-          <div className="bg-white/90 dark:bg-gray-900/70 border border-gray-200/60 dark:border-gray-700/80 rounded-2xl p-4">
+          <div className="rounded-2xl border border-white/10 bg-white/90 p-4 dark:bg-[#1e2b3f]">
             <div className="flex items-center justify-between gap-2">
               <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                 Seu histórico recente
@@ -1112,7 +1127,7 @@ export default function SosPage() {
                     <input
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Buscar técnica..."
+                      placeholder="Ex.: respiração, sono, ansiedade" aria-label="Buscar técnica"
                       className="w-full sm:w-60 pl-9 pr-3 py-2 rounded-full border border-gray-200/60 dark:border-gray-700/80 bg-white/90 dark:bg-gray-900/60 text-sm text-gray-800 dark:text-gray-100 outline-none"
                     />
                   </div>
@@ -1126,12 +1141,30 @@ export default function SosPage() {
                     >
                       {categories.map((c) => (
                         <option key={c} value={c}>
-                          {c}
+                          {c === 'Todas' ? 'Todas as categorias' : displayCategory(c)}
                         </option>
                       ))}
                     </select>
                   </div>
                 </div>
+              </div>
+
+              <div role="group" aria-label="Filtros rápidos de técnicas" className="flex flex-wrap gap-2">
+                {([
+                  {value:'all',label:'Todas'},
+                  {value:'free',label:'Gratuitas'},
+                  {value:'short',label:'Até 3 minutos'},
+                  {value:'guided',label:'Com passo a passo'}
+                ] as const).map(option=>(
+                  <button type="button" key={option.value} aria-pressed={quickFilter===option.value}
+                    onClick={()=>setQuickFilter(option.value)}
+                    className={'min-h-10 rounded-full border px-3 py-2 text-xs font-semibold transition '+
+                      (quickFilter===option.value
+                        ? 'border-emerald-300/40 bg-emerald-300/15 text-emerald-200'
+                        : 'border-white/15 bg-white/[.045] text-slate-300 hover:bg-white/10')}>
+                    {option.label}
+                  </button>
+                ))}
               </div>
 
               {/* Lista */}
@@ -1146,22 +1179,22 @@ export default function SosPage() {
                   return (
                     <article
                       key={t.id}
-                      className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-md flex flex-col gap-3"
+                      className="flex min-w-0 flex-col gap-3 rounded-2xl border border-white/10 bg-white p-4 shadow-md dark:bg-[#212b3c]"
                     >
                       <div className="flex items-start gap-3">
-                        <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-purple-100 via-pink-50 to-red-100 dark:from-purple-900 dark:via-gray-900 dark:to-red-900 flex items-center justify-center flex-shrink-0 shadow-sm">
-                          <span className="text-3xl">{getEmojiForTool(t)}</span>
+                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-violet-300/10 bg-gradient-to-br from-[#402859] via-[#372344] to-[#482833] shadow-sm sm:h-16 sm:w-16">
+                          <span className="text-2xl" aria-hidden="true">{getEmojiForTool(t)}</span>
                         </div>
 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
-                              <h3 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-gray-100 truncate">
+                              <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-gray-900 dark:text-gray-100 sm:text-base">
                                 {t.title || 'Ferramenta SOS'}
                               </h3>
                               {t.category && (
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                  {t.category}
+                                  {displayCategory(t.category)}
                                 </p>
                               )}
                             </div>
