@@ -1568,11 +1568,11 @@ Não minta para você mesmo só para coletar XP e moedas.`,
             <div className="flex items-center gap-2">
               <Target className="w-5 h-5 text-emerald-400" />
               <h2 className="text-sm sm:text-base font-semibold text-white">
-                Missão diária de hoje
+                Desafio extra de hoje
               </h2>
             </div>
             <span className="text-[11px] text-purple-100/80">
-              {todayDayKey.split('-').reverse().join('/')}
+              {userId ? `Dia ${todayIndex} da sua jornada` : 'Seu primeiro passo'}
             </span>
           </div>
 
@@ -1605,7 +1605,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                       }`}
                     />
                     <h3 className="text-sm sm:text-base font-semibold text-white">
-                      {m.title}
+                      {m.title.replace(/^Dia\s*\d+\s*[-–—]\s*/i, '')}
                     </h3>
                   </div>
                   {m.description && (
@@ -1657,7 +1657,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                             return secs <= 3 ? 'Rascunho salvo ✓' : `Rascunho salvo há ${secs}s`;
                           })()}
                         </span>
-                        <span className="opacity-80">Após concluir, o texto fica travado.</span>
+                        <span className="opacity-80">Seu registro fica salvo na conta.</span>
                       </div>
 
                       {answerTooShort && (
@@ -1679,7 +1679,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                           const saved =
                             (getSavedAnswerText(key, todayDayKey) ||
                               (answers[key] || '')).trim();
-                          return saved || '—';
+                          return saved || 'Desafio concluído hoje. Veja seu registro no histórico.';
                         })()}
                       </div>
                     </div>
@@ -1710,7 +1710,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                       {done ? (
                         <>
                           <CheckCircle className="w-4 h-4" />
-                          Concluída
+                          Concluída hoje
                         </>
                       ) : processing[key] ? (
                         <>
@@ -1740,11 +1740,11 @@ Não minta para você mesmo só para coletar XP e moedas.`,
             <div className="flex items-center gap-2">
               <Crown className="w-5 h-5 text-yellow-400" />
               <h2 className="text-sm sm:text-base font-semibold text-white">
-                Missão Premium de hoje
+                {isPremium ? 'Seu desafio Premium' : 'Desafio Premium'}
               </h2>
             </div>
             <span className="text-[11px] text-purple-100/80">
-              Recompensas maiores para assinantes Weed Reset Premium
+              {isPremium ? 'Uma conquista extra para sua assinatura' : 'Desbloqueie experiências e recompensas extras'}
             </span>
           </div>
 
@@ -1763,7 +1763,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
 
               return (
                 <article
-                  className="rounded-3xl bg-white/5 border border-yellow-400/20 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 shadow-2xl"
+                  className="rounded-3xl bg-gradient-to-r from-amber-500/[.09] to-white/[.03] border border-amber-400/20 px-4 sm:px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 shadow-lg"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -1860,8 +1860,17 @@ Não minta para você mesmo só para coletar XP e moedas.`,
           )}
         </section>
 
-                {/* Histórico de respostas (missão diária) */}
-                <section className="mt-6">
+                {/* Histórico recolhível: mantém acesso, deixa a ação principal em destaque. */}
+                <details className="group mt-5 overflow-hidden rounded-3xl border border-white/10 bg-white/[.035]">
+                  <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 font-semibold text-white hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 [&::-webkit-details-marker]:hidden">
+                    <span className="flex flex-col">
+                      <span>Minhas conquistas e reflexões</span>
+                      <span className="mt-0.5 text-xs font-normal text-slate-400">Acesse seus registros anteriores quando quiser.</span>
+                    </span>
+                    <span className="text-xs text-violet-200 group-open:hidden">Abrir ↓</span>
+                    <span className="hidden text-xs text-violet-200 group-open:inline">Fechar ↑</span>
+                  </summary>
+                <section className="mt-1">
                   <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -1986,7 +1995,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                                 ) : null}
                               </div>
                               <div className="text-[11px] text-white/50">
-                                {it.source === 'db' ? 'sync' : 'local'}
+                                {it.source === 'db' ? '✓ Salvo na nuvem' : 'Salvo neste aparelho'}
                               </div>
                             </div>
 
@@ -2024,6 +2033,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                     )}
                   </div>
                 </section>
+                </details>
 
         {/* Aviso visível para visitantes: nenhum botão de missão deve falhar silenciosamente. */}
         {authChecked && !userId && showLoginNotice && (
