@@ -12,6 +12,7 @@ import {
   Crown,
 } from 'lucide-react';
 import { createBrowserClient } from '@supabase/ssr';
+import ProfileActionNotice from '@/components/profile/ProfileActionNotice';
 
 /**
  * Página: Diário Completo (history)
@@ -66,6 +67,12 @@ export default function MoodHistoryPage() {
 
   // expansão por dia
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
+  const [editId,setEditId] = useState<string|null>(null);
+  const [editText,setEditText] = useState('');
+  const [confirmDelete,setConfirmDelete] = useState<string|null>(null);
+  const [busyId,setBusyId] = useState<string|null>(null);
+  const [notice,setNotice] = useState('');
+  const [actionError,setActionError] = useState('');
 
   useEffect(() => {
     let mounted = true;
@@ -187,80 +194,75 @@ export default function MoodHistoryPage() {
     return '😶';
   }
 
-  // deletar registro (apenas premium)
-  async function handleDelete(id: number | string) {
-    if (!user || !isPremium) {
-      router.push('/premium');
-      return;
-    }
-
-    const ok = window.confirm(
-      'Tem certeza que deseja excluir este registro do seu diário?'
-    );
-    if (!ok) return;
-
+  // Cada pessoa pode corrigir ou excluir seus próprios registros,
+  // independentemente de ter uma assinatura. RLS verifica a propriedade no banco.
+  async function handleDelete(id:string) {
+    if (!user || busyId) return;
+    setBusyId(id);setActionError('');setNotice('');
     try {
-      const { error } = await supabase
-        .from('mood_entries')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.error('Erro ao deletar registro de humor:', error);
-        alert('Não foi possível excluir este registro. Tente novamente.');
-        return;
-      }
-
-      setEntries((prev) => prev.filter((e) => String(e.id) !== String(id)));
-      setFiltered((prev) => prev.filter((e) => String(e.id) !== String(id)));
-    } catch (err) {
-      console.error('Erro inesperado ao excluir registro:', err);
-      alert('Erro inesperado ao excluir. Tente novamente.');
-    }
+      const {data,error} = await supabase.from('mood_entries').delete()
+        .eq('id',id).eq('user_id',user.id).select('id').single();
+      if(error||!data)throw error??new Error('Exclusão não confirmada.');
+      setEntries(prev=>prev.filter(e=>String(e.id)!==id));
+      setFiltered(prev=>prev.filter(e=>String(e.id)!==id));
+      setConfirmDelete(null);setEditId(null);
+      setNotice('O registro foi excluído da sua conta.');
+    }catch{setActionError('Não conseguimos confirmar a exclusão. Tente novamente.');}
+    finally{setBusyId(null);}
   }
 
-  // componente auxiliar: botões de ação por registro
-  function ActionButtons({ entryId }: { entryId: number | string }) {
-    if (isPremium) {
-      return (
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => handleDelete(entryId)}
-            className="px-3 py-1 rounded-md border border-red-400/40 text-red-200 hover:bg-red-500/10 transition-colors inline-flex items-center gap-2 text-xs sm:text-sm"
-          >
-            <Trash2 className="w-4 h-4" />
-            <span className="hidden sm:inline">Excluir</span>
-          </button>
-        </div>
-      );
-    }
+  async function handleEdit(id:string) {
+    if(!user||busyId)return;
+    if(editText.length>2000){setActionError('A anotação precisa ter até 2000 caracteres.');return;}
+    setBusyId(id);setActionError('');setNotice('');
+    try {
+      const {data,error} = await supabase.from('mood_entries')
+        .update({notes:editText.trim()||null,updated_at:new Date().toISOString()})
+        .eq('id',id).eq('user_id',user.id).select('id,notes').single();
+      if(error||!data)throw error??new Error('Salvamento não confirmado.');
+      setEntries(prev=>prev.map(e=>String(e.id)===id?{...e,notes:data.notes}:e));
+      setFiltered(prev=>prev.map(e=>String(e.id)===id?{...e,notes:data.notes}:e));
+      setEditId(null);setEditText('');
+      setNotice('Anotação atualizada e salva na sua conta.');
+    }catch{setActionError('Não conseguimos salvar a anotação. Tente novamente.');}
+    finally{setBusyId(null);}
+  }
 
-    // usuário gratuito: mostra opções com cadeado e empurra para /premium
-    return (
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => router.push('/premium')}
-          className="px-3 py-1 rounded-md border border-dashed border-white/20 text-white/60 hover:bg-white/5 transition-colors inline-flex items-center gap-1 text-[11px] sm:text-xs"
-          title="Função exclusiva para assinantes Premium"
-        >
-          <Edit3 className="w-3 h-3" />
-          <Lock className="w-3 h-3" />
-          <span className="hidden sm:inline">Editar (Premium)</span>
+  function ActionButtons({entryId, entryNotes}:{entryId:string|number;entryNotes?:string|null}) {
+    const id=String(entryId),editing=editId===id,confirming=confirmDelete===id;
+    return <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
+      {editing ? <>
+        <label className="w-full text-xs font-semibold text-slate-300">Editar anotação
+          <textarea value={editText} maxLength={2000}
+            onChange={e=>setEditText(e.target.value)}
+            className="mt-1 min-h-24 w-full resize-y rounded-lg border border-violet-400/40 bg-[#141323] p-2 text-sm text-white outline-none"/>
+        </label>
+        <button type="button" disabled={busyId!==null} onClick={()=>void handleEdit(id)}
+          className="min-h-9 rounded-lg bg-violet-500 px-3 text-xs font-bold text-white disabled:opacity-50">
+          {busyId===id?'Salvando...':'Salvar'}
         </button>
-        <button
-          type="button"
-          onClick={() => router.push('/premium')}
-          className="px-3 py-1 rounded-md border border-dashed border-white/20 text-white/60 hover:bg-white/5 transition-colors inline-flex items-center gap-1 text-[11px] sm:text-xs"
-          title="Função exclusiva para assinantes Premium"
-        >
-          <Trash2 className="w-3 h-3" />
-          <Lock className="w-3 h-3" />
-          <span className="hidden sm:inline">Excluir (Premium)</span>
+        <button type="button" onClick={()=>setEditId(null)}
+          className="min-h-9 rounded-lg border border-white/20 px-3 text-xs text-slate-300">Cancelar</button>
+      </> : <>
+        <button type="button" disabled={busyId!==null}
+          onClick={()=>{setEditId(id);setEditText(entryNotes??'');setConfirmDelete(null);}}
+          className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-white/15 px-2 text-xs text-violet-200 hover:bg-white/10 disabled:opacity-40">
+          <Edit3 className="h-3.5 w-3.5"/> Editar
         </button>
-      </div>
-    );
+        {confirming?<>
+          <button type="button" disabled={busyId!==null} onClick={()=>void handleDelete(id)}
+            className="min-h-9 rounded-lg bg-rose-500/20 px-3 text-xs font-semibold text-rose-200 disabled:opacity-40">
+            {busyId===id?'Excluindo...':'Confirmar'}
+          </button>
+          <button type="button" onClick={()=>setConfirmDelete(null)}
+            className="min-h-9 rounded-lg border border-white/15 px-2 text-xs text-slate-300">Cancelar</button>
+        </>:<button type="button" disabled={busyId!==null}
+          onClick={()=>{setConfirmDelete(id);setEditId(null);}}
+          className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-rose-400/20 px-2 text-xs text-rose-200 hover:bg-rose-500/10 disabled:opacity-40">
+          <Trash2 className="h-3.5 w-3.5"/> Excluir
+        </button>}
+      </>}
+    </div>;
   }
 
   if (loading) {
@@ -273,6 +275,8 @@ export default function MoodHistoryPage() {
 
   return (
     <div className="min-h-screen text-white">
+      <ProfileActionNotice success={notice} error={actionError}
+        onDismiss={()=>{setNotice('');setActionError('');}}/>
       <header className="sticky top-0 z-40 bg-black/35 backdrop-blur-xl border-b border-white/10">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center gap-4">
           <Link
@@ -394,10 +398,10 @@ export default function MoodHistoryPage() {
                       <div className="text-sm text-white/50">
                         {formatDate(day.date)}
                       </div>
-                      <div className="text-base font-medium text-white">Diária</div>
+                      <div className="text-base font-medium text-white">Registros do dia</div>
                     </div>
                     <div className="text-sm text-white/50">
-                      {day.items.length} reações
+                      {day.items.length} {day.items.length===1?'check-in':'check-ins'}
                     </div>
                   </div>
 
@@ -417,7 +421,7 @@ export default function MoodHistoryPage() {
                           </div>
                         </div>
 
-                        <ActionButtons entryId={day.items[0].id} />
+                        <ActionButtons entryId={day.items[0].id} entryNotes={day.items[0].notes}/>
                       </div>
 
                       {day.items[0].notes && (
@@ -473,7 +477,7 @@ export default function MoodHistoryPage() {
                                     </div>
                                   </div>
 
-                                  <ActionButtons entryId={it.id} />
+                                  <ActionButtons entryId={it.id} entryNotes={it.notes}/>
                                 </div>
 
                                 {it.notes && (
