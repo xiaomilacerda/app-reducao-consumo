@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
-  ArrowLeft, ArrowRight, BarChart3, CalendarDays, CheckCircle2, HeartHandshake,
+  ArrowLeft, ArrowRight, CalendarDays, HeartHandshake, ChevronDown, TrendingUp,
   Loader2, RefreshCw, Save, ShieldCheck, SmilePlus, Sparkles,
 } from 'lucide-react';
-import { BarChart, Bar, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { LineChart, Line, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { supabase } from '@/lib/supabase';
 import ProfileActionNotice from '@/components/profile/ProfileActionNotice';
 
@@ -149,6 +149,9 @@ export default function MoodTrackerPage(){
   const [period,setPeriod]=useState<Period>('week');
   const [selected,setSelected]=useState<MoodOption|null>(null);
   const [expanded,setExpanded]=useState(false);
+  const [detailsOpen,setDetailsOpen]=useState(false);
+  const [calendarOpen,setCalendarOpen]=useState(false);
+  const [selectedCalendarDay,setSelectedCalendarDay]=useState<string|null>(null);
   const [notes,setNotes]=useState('');
   const [trigger,setTrigger]=useState('');
   const [helpful,setHelpful]=useState('');
@@ -202,7 +205,7 @@ export default function MoodTrackerPage(){
   const dominant=distribution.slice().sort((a,b)=>b.count-a.count)[0];
   const chart=useMemo(()=>buildChart(visible,period,today),[visible,period,today]);
   const recent=useMemo(()=>[...visible].sort((a,b)=>
-    (b.date+'T'+b.time).localeCompare(a.date+'T'+a.time)).slice(0,6),[visible]);
+    (b.date+'T'+b.time).localeCompare(a.date+'T'+a.time)).slice(0,3),[visible]);
   const noteCount=notes.trim().length;
   const hasDifficult=visible.some(e=>['anxious','difficult'].includes(groupOf(e)));
   const recordedPatterns=useMemo(()=>{
@@ -220,6 +223,22 @@ export default function MoodTrackerPage(){
     return {influences:top('trigger_note'),helped:top('helpful_action')};
   },[visible]);
   const timelineTitle=period==='day'?'Registros de hoje':'Registros recentes do período';
+  const dailyTrend=useMemo(()=>{
+    const dates=period==='day'?[today]:Array.from({length:period==='week'?7:period==='month'?30:365},(_,i)=>addDays(today,i-(period==='week'?6:period==='month'?29:364)));
+    const bins=new Map<string,number[]>();
+    visible.forEach(e=>{const v=optionFor(e.mood)?.legacyValue;if(v===undefined)return;const day=e.date;bins.set(day,[...(bins.get(day)??[]),v]);});
+    return dates.map(date=>{const scores=bins.get(date)??[];return {date,label:date.slice(8)+'/'+date.slice(5,7),score:scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length):null};});
+  },[visible,period,today]);
+  const calendarMonth=today.slice(0,7);
+  const calendarDays=useMemo(()=>{
+    const [y,m]=calendarMonth.split('-').map(Number);
+    const first=new Date(Date.UTC(y,m-1,1)).getUTCDay();
+    const count=new Date(Date.UTC(y,m,0)).getUTCDate();
+    return [...Array.from({length:(first+6)%7},()=>null),...Array.from({length:count},(_,i)=>calendarMonth+'-'+String(i+1).padStart(2,'0'))];
+  },[calendarMonth]);
+  const calendarEntries=selectedCalendarDay?entries.filter(e=>e.date===selectedCalendarDay):[];
+  const repeatedPatterns=[...recordedPatterns.influences,...recordedPatterns.helped].filter(p=>p.count>=2&&p.label.length>=4);
+
 
   async function save(){
     if(inFlight.current||saving)return;
@@ -248,7 +267,7 @@ export default function MoodTrackerPage(){
       setEntries(prev=>[res.data as MoodEntry,...prev]);
       setSuccess('Seu humor foi salvo na nuvem, sem apagar os registros anteriores.');
       setLastFeedback(selected.group);
-      setSelected(null);setNotes('');setTrigger('');setHelpful('');
+      setSelected(null);setNotes('');setTrigger('');setHelpful('');setDetailsOpen(false);
     }catch(e){setSaveError(e instanceof Error?e.message:'Não foi possível salvar. Tente novamente.');}
     finally {setSaving(false);inFlight.current=false;}
   }
@@ -302,22 +321,16 @@ export default function MoodTrackerPage(){
             ))}
           </div>}
           {selected&&<p role="status" className="mt-3 text-sm font-medium text-violet-100">Você escolheu: {selected.emoji} {selected.label}.</p>}
-          <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2">
-            <label className="text-xs font-medium text-slate-200">O que influenciou esse momento? (opcional)
-              <input value={trigger} maxLength={160} onChange={e=>setTrigger(e.target.value)} placeholder="Ex.: trabalho, descanso, conversa"
-                className="mt-2 min-h-11 w-full min-w-0 rounded-xl border border-white/15 bg-black/20 px-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-violet-300"/>
-            </label>
-            <label className="text-xs font-medium text-slate-200">O que te ajudou? (opcional)
-              <input value={helpful} maxLength={160} onChange={e=>setHelpful(e.target.value)} placeholder="Ex.: caminhada, respirar, pedir apoio"
-                className="mt-2 min-h-11 w-full min-w-0 rounded-xl border border-white/15 bg-black/20 px-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-violet-300"/>
-            </label>
-          </div>
-          <label className="mt-4 block text-xs font-medium text-slate-200">Quer registrar uma reflexão? (opcional)
-            <textarea rows={3} maxLength={600} value={notes} onChange={e=>setNotes(e.target.value)}
-              placeholder="Escreva no seu ritmo. Esta informação fica privada na sua conta."
-              className="mt-2 w-full min-w-0 resize-y rounded-xl border border-white/15 bg-black/20 px-3 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-violet-300"/>
+          <label className="mt-4 block text-sm font-medium text-slate-200">Quer contar o que aconteceu? <span className="text-slate-400">(opcional)</span>
+            <textarea rows={2} maxLength={600} value={notes} onChange={e=>setNotes(e.target.value)}
+              placeholder="Um pensamento, uma conquista ou algo que pesou hoje..."
+              className="mt-2 w-full resize-y rounded-xl border border-white/15 bg-black/20 px-3 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-violet-300"/>
           </label>
-          <div className="mt-1 text-right text-[11px] text-slate-400">{noteCount}/600</div>
+          <div className="mt-1 flex justify-between gap-2"><button type="button" aria-expanded={detailsOpen} onClick={()=>setDetailsOpen(v=>!v)} className="inline-flex min-h-10 items-center gap-1.5 text-xs font-semibold text-violet-200">+ {detailsOpen?'Ocultar detalhes':'Adicionar detalhes'} <ChevronDown className={'h-4 w-4 transition-transform '+(detailsOpen?'rotate-180':'')}/></button><span className="text-[11px] text-slate-400">{noteCount}/600</span></div>
+          {detailsOpen&&<div className="mt-2 grid gap-3 rounded-2xl border border-white/10 bg-white/[.035] p-3 sm:grid-cols-2">
+            <label className="text-xs text-slate-200">O que influenciou? (opcional)<input value={trigger} maxLength={160} onChange={e=>setTrigger(e.target.value)} placeholder="Ex.: trabalho, descanso" className="mt-2 min-h-11 w-full min-w-0 rounded-xl border border-white/15 bg-black/20 px-3 text-sm outline-none focus:border-violet-300"/></label>
+            <label className="text-xs text-slate-200">O que ajudou? (opcional)<input value={helpful} maxLength={160} onChange={e=>setHelpful(e.target.value)} placeholder="Ex.: caminhada, conversar" className="mt-2 min-h-11 w-full min-w-0 rounded-xl border border-white/15 bg-black/20 px-3 text-sm outline-none focus:border-violet-300"/></label>
+          </div>}
           <button type="button" onClick={()=>void save()} disabled={saving||loading||!userId||!selected||Boolean(fetchError)}
             className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-300 to-fuchsia-300 px-5 py-3 text-sm font-extrabold text-[#21112d] shadow-md transition hover:brightness-110 disabled:opacity-45 sm:w-auto">
             {saving?<Loader2 className="h-4 w-4 animate-spin"/>:<Save className="h-4 w-4"/>}
@@ -361,37 +374,36 @@ export default function MoodTrackerPage(){
               <p className="mt-3 text-[11px] text-slate-400">As partes somam 100% dos {visible.length} registros no período. Um mesmo dia pode ter vários sentimentos.</p>
             </div>:!fetchError?<p className="rounded-2xl border border-dashed border-white/15 bg-white/5 p-5 text-center text-sm text-slate-300">Sem registros neste período. Você pode começar registrando como está se sentindo agora.</p>:null}
             {!fetchError&&visible.length>0&&<div className="border-t border-white/10 pt-4">
-              <h3 className="flex items-center gap-2 text-base font-semibold"><BarChart3 className="h-5 w-5 text-violet-300"/> Registros ao longo do tempo</h3>
-              <p className="mt-1 text-xs text-slate-400">Quantidade de cada sentimento, não uma pontuação emocional.</p>
-              <div className="mt-4 h-56 w-full" role="img" aria-label="Gráfico de quantidade de registros por dia, horário ou mês">
+              <h3 className="flex items-center gap-2 text-base font-semibold"><TrendingUp className="h-5 w-5 text-violet-300"/> Evolução emocional</h3>
+              <p className="mt-1 text-xs leading-relaxed text-slate-400">Tendência ilustrativa baseada nas emoções registradas, não uma avaliação de saúde mental. Dias sem registros ficam sem pontuação.</p>
+              {dailyTrend.filter(d=>d.score!==null).length<2?<p className="mt-4 rounded-xl border border-dashed border-white/15 bg-white/5 p-4 text-sm text-slate-300">Registre em pelo menos dois dias para visualizar sua evolução. Você já pode acompanhar a distribuição acima.</p>:
+              <div className="mt-4 h-52 w-full" role="img" aria-label="Tendência das emoções nos dias registrados">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chart} margin={{top:5,right:5,left:-28,bottom:0}}>
+                  <LineChart data={dailyTrend} margin={{top:8,right:12,left:-25,bottom:0}}>
                     <CartesianGrid stroke="rgba(255,255,255,.07)" vertical={false}/>
-                    <XAxis dataKey="label" stroke="#A7ABC2" tick={{fontSize:10}} minTickGap={16} interval={period==='month'?4:'preserveStartEnd'}/>
-                    <YAxis stroke="#A7ABC2" tick={{fontSize:10}} allowDecimals={false}/>
-                    <Tooltip cursor={{fill:'rgba(255,255,255,.06)'}} contentStyle={{background:'#22253a',color:'#f4f3ff',border:'1px solid #5e587a',borderRadius:12}}/>
-                    {GROUPS.map(g=><Bar key={g.key} name={g.short} stackId="moods" dataKey={g.key} fill={g.color} maxBarSize={44}/>)}
-                  </BarChart>
+                    <XAxis dataKey="label" stroke="#A7ABC2" tick={{fontSize:10}} minTickGap={24}/>
+                    <YAxis domain={[0,100]} stroke="#A7ABC2" tick={{fontSize:10}} ticks={[0,25,50,75,100]}/>
+                    <Tooltip contentStyle={{background:'#22253a',color:'#f4f3ff',border:'1px solid #5e587a',borderRadius:12}} formatter={(v)=>[v+' / 100','Indicador ilustrativo']}/>
+                    <Line type="monotone" dataKey="score" stroke="#B9A2FF" strokeWidth={3} dot={{r:4,fill:'#B9A2FF'}} connectNulls={false}/>
+                  </LineChart>
                 </ResponsiveContainer>
-              </div>
+              </div>}
             </div>}
-            {!fetchError && (recordedPatterns.influences.length>0||recordedPatterns.helped.length>0)&&(
-              <div className="grid gap-3 border-t border-white/10 pt-4 sm:grid-cols-2">
-                {([
-                  {title:'O que você relatou que influenciou',data:recordedPatterns.influences},
-                  {title:'O que você relatou que ajudou',data:recordedPatterns.helped}
-                ]).map(box=>box.data.length>0&&(
-                  <div key={box.title} className="rounded-2xl border border-violet-300/10 bg-violet-300/[.045] p-4">
-                    <h3 className="text-sm font-semibold">{box.title}</h3>
-                    <div className="mt-3 space-y-2">{box.data.map(item=><div key={normalize(item.label)} className="flex flex-wrap justify-between gap-2 text-xs text-slate-300">
-                      <span className="min-w-0 break-words">{item.label}</span>
-                      <span className="shrink-0 font-semibold text-violet-200">{item.count} {item.count===1?'registro':'registros'}</span>
-                    </div>)}</div>
-                  </div>
-                ))}
-                <p className="text-[11px] leading-relaxed text-slate-400 sm:col-span-2">Esses padrões refletem apenas o que você escreveu. Não demonstram que um fator causou determinada emoção.</p>
-              </div>
-            )}
+            {!fetchError&&<div className="border-t border-white/10 pt-4">
+              <button type="button" onClick={()=>setCalendarOpen(v=>!v)} aria-expanded={calendarOpen} className="flex min-h-11 w-full items-center justify-between gap-3 text-left"><span className="flex items-center gap-2 text-base font-semibold"><CalendarDays className="h-5 w-5 text-violet-300"/> Calendário emocional</span><ChevronDown className={'h-4 w-4 transition-transform '+(calendarOpen?'rotate-180':'')}/></button>
+              {calendarOpen&&<div className="mt-3 rounded-2xl border border-white/10 bg-white/[.025] p-3">
+                <p className="mb-3 text-xs text-slate-300">Mês atual · selecione um dia para ver os registros.</p>
+                <div className="grid grid-cols-7 gap-1 text-center">{['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].map(d=><span key={d} className="py-1 text-[10px] text-slate-400">{d}</span>)}
+                  {calendarDays.map((day,i)=><div key={day??'empty-'+i}>{day?<button type="button" onClick={()=>setSelectedCalendarDay(day)} aria-pressed={selectedCalendarDay===day} className={'relative flex min-h-10 w-full flex-col items-center justify-center rounded-lg text-xs '+(selectedCalendarDay===day?'bg-violet-400/30 ring-1 ring-violet-300':day===today?'bg-white/10':'hover:bg-white/5')}>{Number(day.slice(8))}{entries.some(e=>e.date===day)&&<span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-300"/>}</button>:null}</div>)}
+                </div>
+                {selectedCalendarDay&&<div className="mt-3 border-t border-white/10 pt-3 text-xs text-slate-300"><strong>{selectedCalendarDay.split('-').reverse().join('/')}</strong> · {calendarEntries.length} {calendarEntries.length===1?'registro':'registros'}{calendarEntries.slice(0,4).map(e=><p key={e.id} className="mt-2">{optionEmoji(e)} {e.mood} · {e.time?.slice(0,5)}</p>)}</div>}
+              </div>}
+            </div>}
+            {!fetchError&&<div className="border-t border-white/10 pt-4">
+              <h3 className="flex items-center gap-2 text-base font-semibold"><Sparkles className="h-5 w-5 text-violet-300"/> O que estou descobrindo?</h3>
+              {repeatedPatterns.length===0?<p className="mt-2 text-xs leading-relaxed text-slate-400">Com mais registros e situações recorrentes, você poderá identificar o que costuma influenciar seus dias e o que ajuda. Ainda não há padrões suficientes.</p>:
+              <div className="mt-3 space-y-2">{repeatedPatterns.slice(0,4).map(item=><p key={normalize(item.label)} className="rounded-xl bg-white/5 p-3 text-xs text-slate-200">{item.label} · citado {item.count} vezes</p>)}<p className="text-[11px] text-slate-400">Repetições relatadas por você, não relações de causa e efeito.</p></div>}
+            </div>}
             {canLoadMore&&<p className="text-xs text-amber-200">Existe um histórico muito grande. Parte dos registros antigos não entrou nesta análise. Acesse o histórico completo para consultar.</p>}
             {hasDifficult&&<div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-4">
               <div className="flex items-start gap-2"><HeartHandshake className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300"/>
@@ -415,9 +427,9 @@ export default function MoodTrackerPage(){
                   <p className="text-sm font-semibold">{e.mood}</p>
                   <span className="text-[11px] text-slate-400">{dateTimeLabel(e)}</span>
                 </div>
-                {(e.notes||e.note)&&<p className="mt-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-300">{e.notes||e.note}</p>}
-                {e.trigger_note&&<p className="mt-2 text-xs text-slate-400"><strong className="text-slate-300">Influenciou:</strong> {e.trigger_note}</p>}
-                {e.helpful_action&&<p className="mt-1 text-xs text-slate-400"><strong className="text-slate-300">Ajudou:</strong> {e.helpful_action}</p>}
+                {(e.notes||e.note)&&<p className="mt-1 line-clamp-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-300">{e.notes||e.note}</p>}
+                
+                
               </div>
             </article>)}
           </div>
