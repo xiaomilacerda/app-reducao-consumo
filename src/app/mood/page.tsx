@@ -205,6 +205,20 @@ export default function MoodTrackerPage(){
     (b.date+'T'+b.time).localeCompare(a.date+'T'+a.time)).slice(0,6),[visible]);
   const noteCount=notes.trim().length;
   const hasDifficult=visible.some(e=>['anxious','difficult'].includes(groupOf(e)));
+  const recordedPatterns=useMemo(()=>{
+    const top=(field:'trigger_note'|'helpful_action')=>{
+      const tally=new Map<string,{label:string;count:number}>();
+      for(const entry of visible){
+        const label=(entry[field]??'').trim();
+        const k=normalize(label);
+        if(!k)continue;
+        const prev=tally.get(k);
+        tally.set(k,{label:prev?.label??label,count:(prev?.count??0)+1});
+      }
+      return [...tally.values()].sort((a,b)=>b.count-a.count).slice(0,3);
+    };
+    return {influences:top('trigger_note'),helped:top('helpful_action')};
+  },[visible]);
   const timelineTitle=period==='day'?'Registros de hoje':'Registros recentes do período';
 
   async function save(){
@@ -361,6 +375,23 @@ export default function MoodTrackerPage(){
                 </ResponsiveContainer>
               </div>
             </div>}
+            {!fetchError && (recordedPatterns.influences.length>0||recordedPatterns.helped.length>0)&&(
+              <div className="grid gap-3 border-t border-white/10 pt-4 sm:grid-cols-2">
+                {([
+                  {title:'O que você relatou que influenciou',data:recordedPatterns.influences},
+                  {title:'O que você relatou que ajudou',data:recordedPatterns.helped}
+                ]).map(box=>box.data.length>0&&(
+                  <div key={box.title} className="rounded-2xl border border-violet-300/10 bg-violet-300/[.045] p-4">
+                    <h3 className="text-sm font-semibold">{box.title}</h3>
+                    <div className="mt-3 space-y-2">{box.data.map(item=><div key={normalize(item.label)} className="flex flex-wrap justify-between gap-2 text-xs text-slate-300">
+                      <span className="min-w-0 break-words">{item.label}</span>
+                      <span className="shrink-0 font-semibold text-violet-200">{item.count} {item.count===1?'registro':'registros'}</span>
+                    </div>)}</div>
+                  </div>
+                ))}
+                <p className="text-[11px] leading-relaxed text-slate-400 sm:col-span-2">Esses padrões refletem apenas o que você escreveu. Não demonstram que um fator causou determinada emoção.</p>
+              </div>
+            )}
             {canLoadMore&&<p className="text-xs text-amber-200">Existe um histórico muito grande. Parte dos registros antigos não entrou nesta análise. Acesse o histórico completo para consultar.</p>}
             {hasDifficult&&<div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-4">
               <div className="flex items-start gap-2"><HeartHandshake className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300"/>
