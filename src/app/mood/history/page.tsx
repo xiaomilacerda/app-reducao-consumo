@@ -2,14 +2,11 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   Search,
   Edit3,
   Trash2,
-  Lock,
-  Crown,
 } from 'lucide-react';
 import { createBrowserClient } from '@supabase/ssr';
 import ProfileActionNotice from '@/components/profile/ProfileActionNotice';
@@ -44,14 +41,13 @@ function formatDate(d: string) {
 
 export default function MoodHistoryPage() {
   const supabase = useMemo(createClient, []);
-  const router = useRouter();
 
   const [user, setUser] = useState<any | null>(null);
-  const [isPremium, setIsPremium] = useState(false);
 
   const [entries, setEntries] = useState<any[]>([]);
   const [filtered, setFiltered] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError,setLoadError] = useState('');
 
   // Busca + datas
   const [search, setSearch] = useState('');
@@ -75,6 +71,7 @@ export default function MoodHistoryPage() {
 
     async function load() {
       setLoading(true);
+      setLoadError('');
       try {
         const { data } = await supabase.auth.getUser();
         const currentUser = data?.user ?? null;
@@ -87,19 +84,6 @@ export default function MoodHistoryPage() {
           return;
         }
 
-        // pega info de premium
-        const { data: profile, error: profErr } = await supabase
-          .from('profiles')
-          .select('is_premium')
-          .eq('id', currentUser.id)
-          .maybeSingle();
-
-        if (profErr) {
-          console.warn('Erro carregando profile em history:', profErr);
-        }
-
-        setIsPremium(!!profile?.is_premium);
-
         // carrega histórico de humor
         const { data: moods, error } = await supabase
           .from('mood_entries')
@@ -110,16 +94,14 @@ export default function MoodHistoryPage() {
 
         if (error) {
           console.error('Erro ao buscar moods', error);
-          setEntries([]);
-          setFiltered([]);
+          setLoadError('Não foi possível carregar seu diário. Confira a conexão e atualize esta página.');
         } else {
           setEntries(moods ?? []);
           setFiltered(moods ?? []);
         }
       } catch (err) {
         console.error('Erro ao carregar histórico:', err);
-        setEntries([]);
-        setFiltered([]);
+        setLoadError('Não foi possível sincronizar os registros. Tente novamente.');
       } finally {
         if (mounted) setLoading(false);
       }
@@ -146,13 +128,10 @@ export default function MoodHistoryPage() {
     }
 
     if (dateFrom) {
-      const from = new Date(dateFrom);
-      results = results.filter((e) => new Date(e.date) >= from);
+      results = results.filter((e) => String(e.date) >= dateFrom);
     }
     if (dateTo) {
-      const to = new Date(dateTo);
-      to.setHours(23, 59, 59, 999);
-      results = results.filter((e) => new Date(e.date) <= to);
+      results = results.filter((e) => String(e.date) <= dateTo);
     }
 
     setFiltered(results);
@@ -163,7 +142,7 @@ export default function MoodHistoryPage() {
   const groupedByDay = useMemo(() => {
     const map: Record<string, any[]> = {};
     for (const e of filtered) {
-      const day = new Date(e.date).toISOString().slice(0, 10);
+      const day = String(e.date).slice(0, 10);
       map[day] = map[day] ?? [];
       map[day].push(e);
     }
@@ -179,15 +158,17 @@ export default function MoodHistoryPage() {
   }, [groupedByDay, page]);
 
   // utilitário de emoji
-  function moodValueToEmoji(value: number | null | undefined) {
-    const v = Number(value ?? 0);
-    if (isNaN(v)) return '😶';
-    if (v >= 85) return '🤩';
-    if (v >= 70) return '😊';
-    if (v >= 50) return '🙂';
-    if (v >= 30) return '😕';
-    if (v > 0) return '😔';
-    return '😶';
+  function moodValueToEmoji(value: number | null | undefined,mood?:string|null) {
+    const emojis:Record<string,string>={
+      excelente:'🤩', maravilhoso:'😍', 'ótimo':'😄', feliz:'🙂', animado:'😃',
+      bem:'😊', normal:'😐', calmo:'😌', preocupado:'😕', ansioso:'😥',
+      'muito ansioso':'😰', irritado:'😤', triste:'😢', 'muito mal / raiva':'😡',
+    };
+    const key=(mood||'').toLowerCase().trim();
+    if(emojis[key])return emojis[key];
+    const v=Number(value);
+    const mapping:Record<number,string>={100:'🤩',95:'😍',90:'😄',80:'🙂',75:'😃',65:'😊',55:'😐',50:'😌',40:'😕',30:'😥',20:'😰',15:'😤',8:'😢',3:'😡'};
+    return mapping[v]||'📝';
   }
 
   // Cada pessoa pode corrigir ou excluir seus próprios registros,
@@ -291,31 +272,16 @@ export default function MoodHistoryPage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-6">
-        {/* Banner Premium explicando as travas de edição */}
-        {user && (
-          <section className="bg-gradient-to-r from-purple-700 via-purple-600 to-pink-600 text-white p-4 rounded-2xl shadow-md flex flex-col md:flex-row items-start md:items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Crown className="w-5 h-5" />
-              <p className="text-xs sm:text-sm">
-                {isPremium
-                  ? 'Você é Premium: pode excluir qualquer registro do seu diário.'
-                  : 'Editar e excluir registros do diário são recursos exclusivos do plano Premium.'}
-              </p>
-            </div>
-            <div className="flex-1" />
-            {!isPremium && (
-              <button
-                type="button"
-                onClick={() => router.push('/premium')}
-                className="inline-flex items-center gap-1 rounded-xl bg-white/10 hover:bg-white/15 px-3 py-1.5 text-xs font-semibold"
-              >
-                <Crown className="w-3 h-3" />
-                Ver planos
-              </button>
-            )}
-          </section>
-        )}
-
+        {loadError&&<p role="alert" className="rounded-2xl border border-rose-300/30 bg-rose-400/10 p-4 text-sm text-rose-100">
+          {loadError}
+        </p>}
+        {!user&&!loading&&<p className="rounded-2xl border border-violet-400/20 bg-violet-400/10 p-4 text-sm text-slate-200">
+          Entre na sua conta para consultar seus registros.
+          <Link href="/login?next=%2Fmood%2Fhistory" className="mt-3 block rounded-xl bg-violet-400 p-3 text-center font-bold text-[#241232]">Entrar / Criar conta</Link>
+        </p>}
+        {user&&!loadError&&<p className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-slate-300">
+          Seu histórico é privado. Você pode corrigir uma anotação ou excluir seus próprios registros em qualquer plano.
+        </p>}
         {/* Busca + introdução */}
         <div className="bg-black/30 p-4 rounded-2xl border border-white/10 backdrop-blur-xl">
           <div className="flex flex-col md:flex-row md:items-center gap-3">
@@ -404,7 +370,7 @@ export default function MoodHistoryPage() {
                   {/* destaque: primeira reação do dia */}
                   <div className="mt-4 p-4 rounded-xl border border-white/10 bg-gradient-to-r from-purple-500/10 via-fuchsia-500/10 to-pink-500/10 flex items-start gap-4">
                     <div className="text-2xl select-none">
-                      {moodValueToEmoji(day.items[0].mood_value)}
+                      {moodValueToEmoji(day.items[0].mood_value,day.items[0].mood)}
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between gap-2">
@@ -460,7 +426,7 @@ export default function MoodHistoryPage() {
                               className="p-3 rounded-lg border border-white/10 bg-black/20 flex items-start gap-3"
                             >
                               <div className="text-xl select-none">
-                                {moodValueToEmoji(it.mood_value)}
+                                {moodValueToEmoji(it.mood_value,it.mood)}
                               </div>
                               <div className="flex-1">
                                 <div className="flex items-center justify-between gap-2">
