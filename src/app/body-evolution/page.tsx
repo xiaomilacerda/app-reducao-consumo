@@ -24,6 +24,11 @@ import {
   Pencil,
   Save,
   X,
+  Brain,
+  Moon,
+  Wind,
+  Activity,
+  ArrowRight,
 } from 'lucide-react';
 
 import { calculateCleanDays } from '@/lib/utils-recovery';
@@ -466,6 +471,8 @@ export default function BodyEvolutionPage() {
   const [cleanHours, setCleanHours] = useState(0);
 
   const [expandedHours, setExpandedHours] = useState<number | null>(null);
+  const [showAllStages, setShowAllStages] = useState(false);
+  const [activeSystem, setActiveSystem] = useState<'mente' | 'sono' | 'respiracao' | 'energia'>('mente');
 
   // Auth + premium
   const [authChecked, setAuthChecked] = useState(false);
@@ -985,6 +992,30 @@ export default function BodyEvolutionPage() {
           </div>
         </section>
 
+        <section className="overflow-hidden rounded-3xl border border-emerald-300/25 bg-gradient-to-br from-[#102b2b] via-[#171c31] to-[#271837] p-5 text-white shadow-xl sm:p-7">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.16em] text-emerald-200"><Sparkles className="h-4 w-4"/> Sua jornada de descobertas</div>
+          <h2 className="mt-2 text-2xl font-bold sm:text-3xl">Entenda o que pode mudar no seu organismo</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/70">Cada marco libera novos conhecimentos. Seu corpo tem seu próprio ritmo: os prazos indicam etapas do aplicativo, não garantias de recuperação.</p>
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {([
+              {id:'mente',name:'Cérebro e atenção',Icon:Brain},
+              {id:'sono',name:'Sono e sonhos',Icon:Moon},
+              {id:'respiracao',name:'Respiração',Icon:Wind},
+              {id:'energia',name:'Energia e humor',Icon:Activity},
+            ] as const).map(item=><button key={item.id} type="button" onClick={()=>setActiveSystem(item.id)} aria-pressed={activeSystem===item.id} className={'flex min-h-28 flex-col items-start justify-between rounded-2xl border p-3 text-left transition '+(activeSystem===item.id?'border-emerald-300/70 bg-emerald-300/15':'border-white/10 bg-white/5 hover:bg-white/10')}><item.Icon className="h-6 w-6 text-emerald-200"/><span className="text-sm font-semibold">{item.name}</span></button>)}
+          </div>
+          <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-4">
+            {activeSystem==='mente'&&<><h3 className="font-semibold text-emerald-200">Cérebro e atenção</h3><p className="mt-1 text-sm text-white/80">A atenção e a memória podem mudar após reduzir ou interromper o consumo. A evolução varia conforme frequência, duração do uso e outros fatores.</p><p className="mt-2 text-xs text-white/60">Observe: está mais fácil acompanhar uma conversa ou concluir uma tarefa?</p></>}
+            {activeSystem==='sono'&&<><h3 className="font-semibold text-emerald-200">Sono e sonhos</h3><p className="mt-1 text-sm text-white/80">Dificuldade para dormir e sonhos intensos podem ocorrer durante a abstinência, especialmente no início. Melhoras não acontecem em uma data fixa.</p><p className="mt-2 text-xs text-white/60">Observe: duração, despertares e sensação ao acordar.</p></>}
+            {activeSystem==='respiracao'&&<><h3 className="font-semibold text-emerald-200">Respiração</h3><p className="mt-1 text-sm text-white/80">Para quem fuma, reduzir a exposição à fumaça pode beneficiar as vias respiratórias. Sintomas como tosse e catarro merecem acompanhamento se persistirem.</p><p className="mt-2 text-xs text-white/60">Observe: tosse, irritação e conforto ao respirar.</p></>}
+            {activeSystem==='energia'&&<><h3 className="font-semibold text-emerald-200">Energia e humor</h3><p className="mt-1 text-sm text-white/80">Irritabilidade, ansiedade e mudanças de apetite podem aparecer na adaptação. Um dia difícil não apaga o progresso.</p><p className="mt-2 text-xs text-white/60">Observe: disposição, apetite e estratégias que ajudam.</p></>}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link href="/mood" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-300 px-4 py-2 text-sm font-bold text-[#102a27]">Registrar como me sinto <ArrowRight className="h-4 w-4"/></Link>
+            <Link href="/sos" className="inline-flex min-h-11 items-center rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold text-white">Preciso de apoio</Link>
+          </div>
+        </section>
+
         {/* Recompensa 1 ano */}
         <section className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl border border-gray-200/60 dark:border-gray-700/80">
           <div className="flex items-start justify-between gap-3">
@@ -1052,9 +1083,9 @@ export default function BodyEvolutionPage() {
 
         {/* Timeline */}
         <section className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl">
-          <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">Timeline de Recuperação</h3>
+          <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">Biblioteca de descobertas</h3>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-            Cada etapa concluída desbloqueia detalhes e um espaço pra você registrar como se sentiu.
+            Explore os marcos já alcançados e registre sua experiência. Os prazos são simbólicos e não representam um diagnóstico do seu organismo.
           </p>
 
           {loadingNotes && (
@@ -1064,7 +1095,7 @@ export default function BodyEvolutionPage() {
           )}
 
           <div className="space-y-6">
-            {evolution.map((stage, index) => {
+            {evolution.map((stage, index) => {\n              if (!showAllStages && !stage.completed && nextStage?.hours !== stage.hours) return null;
               const remainingDays =
                 cleanHours < stage.hours ? Math.max(0, Math.ceil((stage.hours - cleanHours) / 24)) : 0;
 
@@ -1314,9 +1345,10 @@ export default function BodyEvolutionPage() {
             })}
           </div>
 
+          <button type="button" onClick={()=>setShowAllStages(v=>!v)} className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-purple-300/30 bg-purple-500/10 px-4 text-sm font-semibold text-purple-800 dark:text-purple-100">{showAllStages?'Mostrar apenas conquistas e próximo marco':'Explorar todos os marcos futuros'} <ChevronDown className={'h-4 w-4 transition '+(showAllStages?'rotate-180':'')}/></button>
           <div className="mt-6 flex items-start gap-2 text-xs text-gray-500 dark:text-gray-400">
             <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
-            <p>As fases desta timeline são uma simplificação baseada em relatos comuns e conceitos gerais. Não substituem aconselhamento profissional.</p>
+            <p>Os marcos representam tempo de jornada, não a confirmação de mudanças fisiológicas. Os sintomas e o ritmo de adaptação variam. Informações educativas não substituem orientação profissional.</p>
           </div>
         </section>
 
