@@ -82,6 +82,8 @@ export default function MoodHistoryPage() {
     async function load() {
       setLoading(true);
       setLoadError('');
+      setEntries([]);
+      setFiltered([]);
       try {
         const { data } = await supabase.auth.getUser();
         const currentUser = data?.user ?? null;
@@ -95,19 +97,24 @@ export default function MoodHistoryPage() {
         }
 
         // carrega histórico de humor
-        const { data: moods, error } = await supabase
-          .from('mood_entries')
-          .select('*')
-          .eq('user_id', currentUser.id)
-          .order('date', { ascending: false })
-          .order('time', { ascending: false });
-
-        if (error) {
-          console.error('Erro ao buscar moods', error);
-          setLoadError('Não foi possível carregar seu diário. Confira a conexão e atualize esta página.');
-        } else {
-          setEntries(moods ?? []);
-          setFiltered(moods ?? []);
+        // Páginas de 500 preservam todos os registros, inclusive dias
+        // com vários sentimentos; não mostrar um histórico truncado como completo.
+        const moods: any[] = [];
+        for (let start = 0; start < 5000; start += 500) {
+          const { data, error } = await supabase.from('mood_entries')
+            .select('*').eq('user_id', currentUser.id)
+            .order('date', { ascending: false })
+            .order('time', { ascending: false })
+            .range(start, start + 499);
+          if (error) throw error;
+          const batch = data ?? [];
+          moods.push(...batch);
+          if (batch.length < 500) break;
+          if (start >= 4500) throw new Error('Muitos registros para esta visualização.');
+        }
+        if (mounted) {
+          setEntries(moods);
+          setFiltered(moods);
         }
       } catch (err) {
         console.error('Erro ao carregar histórico:', err);
