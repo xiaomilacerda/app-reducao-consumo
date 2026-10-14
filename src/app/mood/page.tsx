@@ -1,1004 +1,425 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
-  ArrowLeft,
-  SmilePlus,
-  Bell,
-  Crown,
-  CalendarDays,
-  HeartPulse,
-  RefreshCcw,
-  TrendingUp,
+  ArrowLeft, CalendarDays, CheckCircle2, ChevronDown, HeartHandshake,
+  History, Loader2, PlusCircle, RefreshCcw, ShieldCheck, Sparkles, TrendingUp,
 } from 'lucide-react';
-import { createBrowserClient } from '@supabase/ssr';
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-} from 'recharts';
+import { supabase } from '@/lib/supabase';
+import ProfileActionNotice from '@/components/profile/ProfileActionNotice';
 
-/* ---------- CONFIG ---------- */
-const DEFAULT_MIN_INTERVAL_HOURS = 12;
-
-const MOODS = [
-  { key: 'excelente', emoji: '🤩', label: 'Excelente', value: 100 },
-  { key: 'maravilhoso', emoji: '😍', label: 'Maravilhoso', value: 95 },
-  { key: 'otimo', emoji: '😄', label: 'Ótimo', value: 90 },
-  { key: 'feliz', emoji: '🙂', label: 'Feliz', value: 80 },
-  { key: 'animado', emoji: '😃', label: 'Animado', value: 75 },
-  { key: 'bem', emoji: '😊', label: 'Bem', value: 65 },
-  { key: 'normal', emoji: '😐', label: 'Normal', value: 55 },
-  { key: 'calmo', emoji: '😌', label: 'Calmo', value: 50 },
-  { key: 'preocupado', emoji: '😕', label: 'Preocupado', value: 40 },
-  { key: 'ansioso', emoji: '😥', label: 'Ansioso', value: 30 },
-  { key: 'muito_ansioso', emoji: '😰', label: 'Muito Ansioso', value: 20 },
-  { key: 'irritado', emoji: '😤', label: 'Irritado', value: 15 },
-  { key: 'triste', emoji: '😢', label: 'Triste', value: 8 },
-  { key: 'muito_mal', emoji: '😡', label: 'Muito Mal / Raiva', value: 3 },
-];
-
-/**
- * Categoria aproximada por humor — usada para escolher a mensagem diária.
- */
-const MOOD_CATEGORY_MAP: Record<string, string> = {
-  excelente: 'motivation',
-  maravilhoso: 'encouragement',
-  otimo: 'motivation',
-  feliz: 'encouragement',
-  animado: 'encouragement',
-  bem: 'reflection',
-  normal: 'reflection',
-  calmo: 'calma',
-  preocupado: 'reflection',
-  ansioso: 'calma',
-  muito_ansioso: 'support',
-  irritado: 'tapa',
-  triste: 'support',
-  muito_mal: 'support',
+type GroupKey = 'positive' | 'balanced' | 'anxious' | 'difficult' | 'other';
+type Period = 'day' | 'week' | 'month' | 'year';
+type Mood = { key: string; label: string; emoji: string; value: number; group: GroupKey; messageCategory: string };
+type Entry = {
+  id: string; user_id: string; mood: string; mood_value: number;
+  notes: string | null; date: string; time: string | null;
+  created_at: string; daily_message: string | null; context_tags?: string[] | null;
 };
 
-const LAST_NOTIF_KEY = 'last_notification_times_v2';
+const MOODS: Mood[] = [
+  {key:'excelente',label:'Excelente',emoji:'🤩',value:100,group:'positive',messageCategory:'motivation'},
+  {key:'maravilhoso',label:'Maravilhoso',emoji:'😍',value:95,group:'positive',messageCategory:'encouragement'},
+  {key:'otimo',label:'Ótimo',emoji:'😄',value:90,group:'positive',messageCategory:'motivation'},
+  {key:'feliz',label:'Feliz',emoji:'🙂',value:80,group:'positive',messageCategory:'encouragement'},
+  {key:'animado',label:'Animado',emoji:'😃',value:75,group:'positive',messageCategory:'encouragement'},
+  {key:'bem',label:'Bem',emoji:'😊',value:65,group:'positive',messageCategory:'reflection'},
+  {key:'normal',label:'Normal',emoji:'😐',value:55,group:'balanced',messageCategory:'reflection'},
+  {key:'calmo',label:'Calmo',emoji:'😌',value:50,group:'balanced',messageCategory:'calma'},
+  {key:'preocupado',label:'Preocupado',emoji:'😕',value:40,group:'anxious',messageCategory:'reflection'},
+  {key:'ansioso',label:'Ansioso',emoji:'😥',value:30,group:'anxious',messageCategory:'calma'},
+  {key:'muito_ansioso',label:'Muito ansioso',emoji:'😰',value:20,group:'anxious',messageCategory:'support'},
+  {key:'irritado',label:'Irritado',emoji:'😤',value:15,group:'difficult',messageCategory:'reflection'},
+  {key:'triste',label:'Triste',emoji:'😢',value:8,group:'difficult',messageCategory:'support'},
+  {key:'muito_mal',label:'Muito mal / raiva',emoji:'😡',value:3,group:'difficult',messageCategory:'support'},
+];
+const GROUPS: {key:GroupKey;label:string;color:string}[] = [
+  {key:'positive',label:'Momentos positivos',color:'#44C5A7'},
+  {key:'balanced',label:'Neutros e tranquilos',color:'#8BB8E8'},
+  {key:'anxious',label:'Preocupação e ansiedade',color:'#F4BE64'},
+  {key:'difficult',label:'Momentos difíceis',color:'#E484AC'},
+  {key:'other',label:'Outros registros',color:'#A1A1AA'},
+];
+const TAGS = ['Sono','Estresse','Trabalho','Relacionamentos','Vontade de consumir','Movimento','Alimentação','Outro'];
+const PERIODS: {key:Period;label:string;days:number}[] = [
+  {key:'day',label:'Hoje',days:1},{key:'week',label:'7 dias',days:7},
+  {key:'month',label:'30 dias',days:30},{key:'year',label:'365 dias',days:365},
+];
 
-function getCategoryForMoodKey(moodKey: string): string {
-  return MOOD_CATEGORY_MAP[moodKey] || moodKey;
-}
-
-function moodValueToEmoji(value: number) {
-  if (typeof value !== 'number' || Number.isNaN(value)) return '😐';
-  let closest = MOODS[0];
-  let bestDiff = Math.abs(value - closest.value);
-  for (let i = 1; i < MOODS.length; i++) {
-    const diff = Math.abs(value - MOODS[i].value);
-    if (diff < bestDiff) {
-      bestDiff = diff;
-      closest = MOODS[i];
-    }
-  }
-  return closest.emoji;
-}
-
-function localDateKey(date = new Date()) {
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const dd = String(date.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-function normalizeEntryDate(value: string) {
-  if (!value) return '';
-  // Se o banco já retorna YYYY-MM-DD, não converte para UTC para evitar erro de fuso horário.
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
-  return localDateKey(new Date(value));
-}
-
-function formatDateShort(d: string) {
-  const key = normalizeEntryDate(d);
-  if (!key) return '--/--';
-  const [yyyy, mm, dd] = key.split('-').map(Number);
-  const date = new Date(yyyy, mm - 1, dd);
-  return date.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-  });
-}
-
-function toPlainError(err: any) {
-  if (!err) return null;
+function keyInTimezone(date: Date, tz: string): string {
   try {
-    const keys = Object.getOwnPropertyNames(err);
-    const plain: any = {};
-    for (const k of keys) plain[k] = err[k];
-    plain.message = plain.message ?? err?.message;
-    plain.code = plain.code ?? err?.code;
-    plain.details = plain.details ?? err?.details;
-    plain.hint = plain.hint ?? err?.hint;
-    return plain;
-  } catch {
-    return { message: String(err) };
-  }
+    const parts = new Intl.DateTimeFormat('en-US',{timeZone:tz,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date);
+    const part=(type:string)=>parts.find(x=>x.type===type)?.value??'00';
+    return [part('year'),part('month'),part('day')].join('-');
+  } catch {return date.toISOString().slice(0,10);}
 }
-
-function createClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !key) {
-    console.error('ENV SUPABASE AUSENTE:', { url: !!url, key: !!key });
-  }
-
-  return createBrowserClient(url || '', key || '');
+function clockInTimezone(date: Date, tz: string):string {
+  try {return new Intl.DateTimeFormat('pt-BR',{timeZone:tz,hour:'2-digit',minute:'2-digit',hour12:false}).format(date);}
+  catch {return date.toTimeString().slice(0,5);}
+}
+function shiftDate(day:string,offset:number):string {
+  const d = new Date(day+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+offset);
+  return d.toISOString().slice(0,10);
+}
+function niceDay(d:string) {return /^\d{4}-\d{2}-\d{2}$/.test(d)?d.slice(8,10)+'/'+d.slice(5,7):d;}
+function moodByEntry(entry:Entry):Mood | undefined {
+  const name=(entry.mood||'').trim().toLocaleLowerCase('pt-BR');
+  return MOODS.find(m=>m.label.toLocaleLowerCase('pt-BR')===name || m.key===name)
+    ?? MOODS.find(m=>m.value===Number(entry.mood_value));
+}
+function groupOf(entry:Entry):GroupKey {return moodByEntry(entry)?.group??'other';}
+function countGroups(list:Entry[]):Record<GroupKey,number> {
+  const result:Record<GroupKey,number>={positive:0,balanced:0,anxious:0,difficult:0,other:0};
+  list.forEach(item=>result[groupOf(item)]++);
+  return result;
+}
+/** Distribui o arredondamento para que a soma dos rótulos seja SEMPRE 100%. */
+function parts100(counts:number[]):number[] {
+  const total=counts.reduce((a,b)=>a+b,0);
+  if(!total)return counts.map(()=>0);
+  const exact=counts.map(n=>n*100/total);
+  const values=exact.map(n=>Math.floor(n));
+  let remain=100-values.reduce((a,b)=>a+b,0);
+  const indices=exact.map((n,i)=>({i,fraction:n-values[i]}))
+    .sort((a,b)=>b.fraction-a.fraction||a.i-b.i);
+  for(const item of indices){if(remain<=0)break;values[item.i]++;remain--;}
+  return values;
+}
+function fallbackMessage(mood:Mood) {
+  if(mood.group==='anxious'||mood.group==='difficult')
+    return 'Obrigado por reconhecer como está se sentindo. Você pode fazer uma pausa e procurar apoio, sem precisar resolver tudo agora.';
+  if(mood.group==='balanced')
+    return 'Dar nome ao que sente é uma forma de perceber a sua jornada. Você não precisa ter um dia perfeito.';
+  return 'Que bom que você registrou esse momento. Guarde o que fez bem para lembrar nos próximos dias.';
 }
 
 export default function MoodTrackerPage() {
-  const supabase = useMemo(createClient, []);
+  const [userId,setUserId]=useState<string|null>(null);
+  const [timezone,setTimezone]=useState('America/Sao_Paulo');
+  const [entries,setEntries]=useState<Entry[]>([]);
+  const [loading,setLoading]=useState(true);
+  const [loadError,setLoadError]=useState('');
+  const [selectedMood,setSelectedMood]=useState<Mood|null>(null);
+  const [moreMoods,setMoreMoods]=useState(false);
+  const [notes,setNotes]=useState('');
+  const [tags,setTags]=useState<string[]>([]);
+  const [saving,setSaving]=useState(false);
+  const [saveError,setSaveError]=useState('');
+  const [notice,setNotice]=useState('');
+  const dismiss=useCallback(()=>{setNotice('');setSaveError('');},[]);
+  const [lastSaved,setLastSaved]=useState<{mood:Mood;message:string}|null>(null);
+  const [period,setPeriod]=useState<Period>('week');
+  const [showHistory,setShowHistory]=useState(false);
 
-  const [user, setUser] = useState<any | null>(null);
-  const [themeMode, setThemeMode] = useState<'normal' | 'focus'>('normal');
-  const [isPremium, setIsPremium] = useState(false);
-
-  /* dados principais */
-  const [loading, setLoading] = useState(true);
-  const [entries, setEntries] = useState<any[]>([]);
-  const [selectedMood, setSelectedMood] = useState<any | null>(null);
-  const [notes, setNotes] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveDebug, setSaveDebug] = useState<any | null>(null);
-
-  /* ui / gráficos */
-  const [chartData, setChartData] = useState<any[]>([]);
-  const [selectedRange, setSelectedRange] = useState<
-    'week' | 'month' | 'year' | 'day'
-  >('month');
-  const [thermo, setThermo] = useState(0);
-  const [insights, setInsights] = useState({
-    message: 'Carregando insights...',
-    risk: 0,
-    trend: 0,
-  });
-  const [notifPermission, setNotifPermission] = useState<
-    'default' | 'granted' | 'denied'
-  >('default');
-
-  /* status de permissão de notificação */
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      setNotifPermission(
-        Notification.permission as 'default' | 'granted' | 'denied'
-      );
+  const today=keyInTimezone(new Date(),timezone);
+  const days=PERIODS.find(x=>x.key===period)?.days??7;
+  const since=shiftDate(today,-(days-1));
+  const filtered=useMemo(()=>entries.filter(x=>x.date>=since&&x.date<=today),[entries,since,today]);
+  const groups=useMemo(()=>countGroups(filtered),[filtered]);
+  const groupPercent=useMemo(()=>parts100(GROUPS.map(g=>groups[g.key])),[groups]);
+  const uniqueDays=useMemo(()=>new Set(filtered.map(e=>e.date)).size,[filtered]);
+  const moodCounts=useMemo(()=>{
+    const count=new Map<string,{label:string;emoji:string;count:number}>();
+    for(const entry of filtered){
+      const m=moodByEntry(entry),label=m?.label??entry.mood??'Outro';
+      const current=count.get(label)??{label,emoji:m?.emoji??'📝',count:0};
+      current.count++;
+      count.set(label,current);
     }
-  }, []);
+    return [...count.values()].sort((a,b)=>b.count-a.count||a.label.localeCompare(b.label));
+  },[filtered]);
+  const latest=useMemo(()=>[...filtered].sort((a,b)=>b.created_at.localeCompare(a.created_at))[0], [filtered]);
 
-  /* carregamento inicial: usuário, profile, mood_entries */
-  useEffect(() => {
-    let mounted = true;
-
-    async function load() {
-      setLoading(true);
-      try {
-        const { data } = await supabase.auth.getUser();
-        const currentUser = data.user ?? null;
-
-        if (!mounted) return;
-
-        setUser(currentUser);
-        if (!currentUser) {
-          setLoading(false);
-          return;
-        }
-
-        const { data: profile, error: profErr } = await supabase
-          .from('profiles')
-          .select('theme_mode, is_premium')
-          .eq('id', currentUser.id)
-          .maybeSingle();
-
-        if (profErr) {
-          console.warn('Erro carregando profile.theme_mode', profErr);
-        }
-
-        setThemeMode(profile?.theme_mode ?? 'normal');
-        setIsPremium(!!profile?.is_premium);
-
-        const { data: moods, error: moodsErr } = await supabase
-          .from('mood_entries')
-          .select('*')
-          .eq('user_id', currentUser.id)
-          .order('created_at', { ascending: true });
-
-        if (moodsErr) {
-          console.error('Erro carregando mood_entries', moodsErr);
-          setEntries([]);
-        } else {
-          setEntries(moods ?? []);
-        }
-      } catch (err) {
-        console.error('Erro carregando dados do mood:', err);
-      } finally {
-        if (mounted) setLoading(false);
-      }
+  const chart=useMemo(()=>{
+    const bucket=new Map<string,Entry[]>();
+    for(const row of filtered){
+      const bucketKey=period==='year'?row.date.slice(0,7):
+        period==='day'?String(row.time??'').slice(0,2)||'00':row.date;
+      if(!bucket.has(bucketKey))bucket.set(bucketKey,[]);
+      bucket.get(bucketKey)?.push(row);
     }
-
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, [supabase]);
-
-  /* ---------- helpers de notificações (localStorage) ---------- */
-  function getLastNotifTimes(): Record<string, string> {
-    try {
-      const raw =
-        typeof window !== 'undefined'
-          ? window.localStorage.getItem(LAST_NOTIF_KEY)
-          : null;
-      return raw ? JSON.parse(raw) : {};
-    } catch {
-      return {};
-    }
-  }
-
-  function setLastNotifTime(key: string) {
-    try {
-      if (typeof window === 'undefined') return;
-      const map = getLastNotifTimes();
-      map[key] = new Date().toISOString();
-      window.localStorage.setItem(LAST_NOTIF_KEY, JSON.stringify(map));
-    } catch {
-      // ignore
-    }
-  }
-
-  function hoursSince(iso?: string) {
-    if (!iso) return Infinity;
-    return (Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60);
-  }
-
-  async function handleMaybeNotifyAfterSave() {
-    if (typeof window === 'undefined' || !('Notification' in window)) return;
-
-    let perm: NotificationPermission = Notification.permission;
-    if (perm === 'default') {
-      try {
-        perm = await Notification.requestPermission();
-        setNotifPermission(perm as 'default' | 'granted' | 'denied');
-      } catch (err) {
-        console.error('Erro ao pedir permissão de notificação:', err);
-      }
-    }
-
-    if (perm !== 'granted') return;
-
-    const map = getLastNotifTimes();
-    const last = map['mood_daily_reminder'];
-    if (hoursSince(last) < DEFAULT_MIN_INTERVAL_HOURS) return;
-
-    try {
-      new Notification('WeedReset – lembrete emocional', {
-        body: 'Volte amanhã para registrar como você está se sentindo. Seu diário está ficando cada vez mais completo.',
-      });
-      setLastNotifTime('mood_daily_reminder');
-    } catch (err) {
-      console.error('Erro ao criar notificação:', err);
-    }
-  }
-
-  /* ---------- gráfico, termômetro e insights ---------- */
-  useEffect(() => {
-    if (!entries || entries.length === 0) {
-      setChartData([]);
-      setThermo(0);
-      setInsights({
-        message: 'Registre seu humor para gerar insights',
-        risk: 0,
-        trend: 0,
-      });
-      return;
-    }
-
-    // termômetro = média geral
-    const sumAll = entries.reduce(
-      (s: number, it: any) => s + (it.mood_value || 0),
-      0
-    );
-    const avgAll = Math.round(sumAll / entries.length);
-    setThermo(avgAll);
-
-    const now = new Date();
-    let startDate = new Date();
-    if (selectedRange === 'week') startDate.setDate(now.getDate() - 7);
-    else if (selectedRange === 'month') startDate.setMonth(now.getMonth() - 1);
-    else if (selectedRange === 'year')
-      startDate.setFullYear(now.getFullYear() - 1);
-    else startDate = new Date('1970-01-01');
-
-    const filtered = entries.filter((e) => new Date(e.date) >= startDate);
-
-    if (!filtered.length) {
-      setChartData([]);
-      setInsights({
-        message:
-          'Continue registrando seu humor para ver a evolução neste período.',
-        risk: avgAll < 30 ? 80 : avgAll < 50 ? 40 : 10,
-        trend: avgAll,
-      });
-      return;
-    }
-
-    // visão diária: vários registros do dia atual
-    if (selectedRange === 'day') {
-      const todayKey = localDateKey();
-      const dayEvents = filtered.filter(
-        (e) => normalizeEntryDate(e.date) === todayKey
-      );
-      const data = dayEvents.map((e: any, i: number) => ({
-        label: e.time || `#${i + 1}`,
-        value: e.mood_value,
+    return [...bucket.entries()].sort((a,b)=>a[0].localeCompare(b[0]))
+      .map(([key,items])=>({
+        key, label:period==='year'?key.slice(5,7)+'/'+key.slice(2,4)
+          :period==='day'?key+'h':niceDay(key),
+        counts:countGroups(items),total:items.length,
       }));
-      setChartData(data);
+  },[filtered,period]);
 
-      const avgDay = dayEvents.length
-        ? Math.round(
-            dayEvents.reduce(
-              (s: number, it: any) => s + (it.mood_value || 0),
-              0
-            ) / dayEvents.length
-          )
-        : avgAll;
+  const load=useCallback(async()=>{
+    setLoading(true);setLoadError('');
+    try {
+      const auth=await supabase.auth.getUser();
+      if(auth.error)throw auth.error;
+      const user=auth.data.user;
+      setUserId(user?.id??null);
+      if(!user){setEntries([]);return;}
+      const profile=await supabase.from('profiles').select('timezone').eq('id',user.id).maybeSingle();
+      const tz=profile.data?.timezone??'America/Sao_Paulo';
+      setTimezone(tz);
+      const todayInTz=keyInTimezone(new Date(),tz);
+      // Consultas paginadas: nenhum registro é ignorado silenciosamente ao atingir
+      // o limite padrão de 1000 linhas do Supabase.
+      const output:Entry[]=[];
+      let more=true;
+      for(let start=0;more;start+=500){
+        if(start>=5000){throw new Error('O histórico é maior que o limite de consulta. Contate o suporte para uma exportação completa.');}
+        const query=await supabase.from('mood_entries')
+          .select('id,user_id,mood,mood_value,notes,date,time,created_at,daily_message,context_tags')
+          .eq('user_id',user.id).gte('date',shiftDate(todayInTz,-364))
+          .lte('date',todayInTz).order('date',{ascending:false})
+          .order('time',{ascending:false}).range(start,start+499);
+        if(query.error)throw query.error;
+        const batch=(query.data??[]) as Entry[];
+        output.push(...batch);
+        more=batch.length===500;
+      }
+      setEntries(output);
+    }catch(e){
+      console.warn('Diário emocional: erro de sincronização',e);
+      setLoadError('Não conseguimos sincronizar os registros. Nenhum dado foi apagado; tente novamente.');
+    }finally{setLoading(false);}
+  },[]);
 
-      const risk = avgDay < 30 ? 80 : avgDay < 50 ? 40 : 10;
-      const trendMsg =
-        avgDay > 70
-          ? 'Você está indo muito bem hoje! Continue assim!'
-          : avgDay > 40
-          ? 'Oscilações são normais. Continue registrando!'
-          : 'Hoje o dia está mais pesado — se cuide e procure apoio se necessário.';
+  useEffect(()=>{void load();},[load]);
 
-      setInsights({ message: trendMsg, risk, trend: avgDay });
-      return;
-    }
-
-    // agregação por dia para semana/mês/ano
-    const days: Record<
-      string,
-      { total: number; count: number; events: any[] }
-    > = {};
-    filtered.forEach((e: any) => {
-      const key = normalizeEntryDate(e.date);
-      if (!days[key]) days[key] = { total: 0, count: 0, events: [] };
-      days[key].total += e.mood_value || 0;
-      days[key].count += 1;
-      days[key].events.push(e);
-    });
-
-    const data = Object.keys(days)
-      .sort()
-      .map((k) => ({
-        label: `${k.slice(8, 10)}/${k.slice(5, 7)}`,
-        value: Math.round(days[k].total / days[k].count),
-      }));
-    setChartData(data);
-
-    const avgRange = Math.round(
-      filtered.reduce(
-        (s: number, it: any) => s + (it.mood_value || 0),
-        0
-      ) / filtered.length
-    );
-    const risk = avgRange < 30 ? 80 : avgRange < 50 ? 40 : 10;
-    const trendMsg =
-      avgRange > 70
-        ? 'Sua tendência emocional nesse período está muito positiva.'
-        : avgRange > 40
-        ? 'Humor com algumas oscilações — acompanhar ajuda a entender padrões.'
-        : 'Nesse período o humor está mais delicado. Vale olhar com carinho para você.';
-
-    setInsights({ message: trendMsg, risk, trend: avgRange });
-  }, [entries, selectedRange]);
-
-  /* ---------- SALVAR HUMOR ---------- */
-  async function handleSave() {
-    setSaveError(null);
-    setSaveDebug(null);
-
-    if (!selectedMood) return;
-
+  async function saveMood(){
+    if(saving||!selectedMood)return;
+    setSaveError('');setNotice('');
+    if(notes.length>500){setSaveError('A reflexão deve ter até 500 caracteres.');return;}
     setSaving(true);
-    const tzDate = localDateKey();
-
-    try {
-      const { data: udata, error: uerr } = await supabase.auth.getUser();
-      const freshUser = udata.user ?? null;
-
-      if (uerr) console.error('auth.getUser error:', toPlainError(uerr));
-
-      if (!freshUser) {
-        setSaveError('Sua sessão expirou. Faça login novamente para salvar.');
-        setSaving(false);
-        return;
-      }
-
-      // pega a última entrada do dia, se existir
-      const { data: existingList, error: checkErr } = await supabase
-        .from('mood_entries')
-        .select('*')
-        .eq('user_id', freshUser.id)
-        .eq('date', tzDate)
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (checkErr) {
-        console.error('Erro verificando entrada existente', toPlainError(checkErr));
-      }
-
-      const existing =
-        Array.isArray(existingList) && existingList.length ? existingList[0] : null;
-
-      const categoryForMood = getCategoryForMoodKey(selectedMood.key);
-
-      // tenta mensagem diária
-      let dailyMessage: string | null = null;
-      try {
-        const { data: rpcUserMsg, error: rpcErr } = await supabase.rpc(
-          'get_random_mood_message_for_user',
-          {
-            p_user: freshUser.id,
-            category_input: categoryForMood,
-            avoid_days: 7,
-          }
-        );
-
-        if (
-          !rpcErr &&
-          rpcUserMsg &&
-          Array.isArray(rpcUserMsg) &&
-          rpcUserMsg.length
-        ) {
-          dailyMessage = (rpcUserMsg[0] as any).message ?? null;
-        } else {
-          const { data: rpcSimple, error: rpcSimpleErr } = await supabase.rpc(
-            'get_random_mood_message',
-            {
-              category_input: categoryForMood,
-            }
-          );
-          if (
-            !rpcSimpleErr &&
-            rpcSimple &&
-            Array.isArray(rpcSimple) &&
-            rpcSimple.length
-          ) {
-            dailyMessage = (rpcSimple[0] as any).message ?? null;
-          }
-        }
-
-        if (rpcErr) console.warn('RPC user msg error:', toPlainError(rpcErr));
-      } catch (err) {
-        console.error('Erro ao obter mensagem aleatória', err);
-      }
-
-      // se já existe hoje: atualiza e ANEXA texto
-      if (existing) {
-        const existingNotes = (existing.notes ?? existing.note ?? '') as string;
-        const mergedNotes = [existingNotes || '', notes || '']
-          .filter(Boolean)
-          .join('\n\n');
-
-        const payload: any = {
-          notes: mergedNotes, // padrão
-          mood: selectedMood.label,
-          mood_value: selectedMood.value,
-          time: new Date().toTimeString().slice(0, 5),
-          updated_at: new Date().toISOString(),
-        };
-        if (!existing.daily_message && dailyMessage) {
-          payload.daily_message = dailyMessage;
-        }
-
-        const res = await supabase
-          .from('mood_entries')
-          .update(payload)
-          .eq('id', existing.id)
-          .select('*')
-          .maybeSingle();
-
-        if (res.error) {
-          const plain = toPlainError(res.error);
-          console.error('Erro atualizando entrada do dia:', plain);
-          setSaveError('Não foi possível atualizar seu registro de hoje.');
-          setSaveDebug({
-            phase: 'update',
-            status: (res as any).status,
-            statusText: (res as any).statusText,
-            error: plain,
-          });
-        } else if (res.data) {
-          setEntries((prev) =>
-            prev.map((e) => (e.id === res.data.id ? res.data : e))
-          );
-          setNotes('');
-          setSelectedMood(null);
-          await handleMaybeNotifyAfterSave();
-        }
-
-        setSaving(false);
-        return;
-      }
-
-      // não existe hoje: cria registro
-      const now = new Date();
-      const payloadInsert: any = {
-        user_id: freshUser.id,
-        mood: selectedMood.label,
-        mood_value: selectedMood.value,
-        notes, // padrão (você já migrou)
-        date: tzDate,
-        time: now.toTimeString().slice(0, 5),
-        daily_message: dailyMessage,
+    try{
+      const auth=await supabase.auth.getUser();
+      if(auth.error||!auth.data.user||auth.data.user.id!==userId)
+        throw new Error('A sessão expirou. Entre novamente antes de registrar.');
+      const now=new Date(),date=keyInTimezone(now,timezone),time=clockInTimezone(now,timezone);
+      let dailyMessage=fallbackMessage(selectedMood);
+      try{
+        const res=await supabase.rpc('get_random_mood_message_for_user',{
+          p_user:auth.data.user.id,category_input:selectedMood.messageCategory,avoid_days:7,
+        });
+        if(!res.error&&Array.isArray(res.data)&&typeof res.data[0]?.message==='string'&&res.data[0].message.trim())
+          dailyMessage=res.data[0].message.trim();
+      }catch {/* A mensagem complementar nunca impede o registro. */}
+      const payload={
+        user_id:auth.data.user.id,date,time,mood:selectedMood.label,
+        mood_value:selectedMood.value,notes:notes.trim()||null,
+        context_tags:tags,daily_message:dailyMessage,
       };
-
-      const res = await supabase
-        .from('mood_entries')
-        .insert(payloadInsert)
-        .select('*')
-        .maybeSingle();
-
-      if (res.error) {
-        const plain = toPlainError(res.error);
-        console.error('Erro insert mood (plain):', plain);
-        console.error('Erro insert mood (status):', {
-          status: (res as any).status,
-          statusText: (res as any).statusText,
-        });
-
-        const st = (res as any).status;
-        if (st === 401) setSaveError('Falha de sessão (401). Faça logout/login e tente novamente.');
-        else if (st === 403) setSaveError('Bloqueado por segurança (403). Normalmente é RLS/policy.');
-        else if (st === 400) setSaveError('Dados inválidos (400). Pode ser coluna/tipo/NOT NULL.');
-        else setSaveError('Não foi possível salvar seu humor. Tente novamente.');
-
-        setSaveDebug({
-          phase: 'insert',
-          status: st,
-          statusText: (res as any).statusText,
-          error: plain,
-        });
-      } else if (res.data) {
-        setEntries((prev) => [...prev, res.data]);
-        setNotes('');
-        setSelectedMood(null);
-        setSaveError(null);
-        setSaveDebug(null);
-      }
-
-      await handleMaybeNotifyAfterSave();
-    } catch (err) {
-      console.error(err);
-      setSaveError('Ocorreu um erro inesperado ao salvar. Tente novamente.');
-      setSaveDebug({ phase: 'catch', error: toPlainError(err) });
-    } finally {
-      setSaving(false);
-    }
+      const {data,error}=await supabase.from('mood_entries').insert(payload)
+        .select('id,user_id,mood,mood_value,notes,date,time,created_at,daily_message,context_tags').single();
+      if(error||!data)throw error??new Error('Salvamento não confirmado');
+      const saved=data as Entry;
+      setEntries(prev=>[saved,...prev]);
+      setLastSaved({mood:selectedMood,message:dailyMessage});
+      setSelectedMood(null);setNotes('');setTags([]);
+      setNotice('Seu sentimento foi salvo no WeedReset e estará disponível em outros dispositivos.');
+    }catch(e){
+      console.warn('Falha ao salvar humor',e);
+      setSaveError('Não foi possível confirmar o registro na nuvem. Sua seleção continua aqui para tentar novamente.');
+    }finally{setSaving(false);}
   }
 
-  /* ---------- estados de carregamento ---------- */
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen text-white">
-        <div className="animate-spin w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full" />
-      </div>
-    );
-  }
-
-  /* ---------- montar lista "Diário da Semana" ---------- */
-  const groupedLatestPerDay: any[] = [];
-  const seen: Record<string, boolean> = {};
-  [...entries]
-    .sort(
-      (a, b) =>
-        new Date(b.date + 'T' + (b.time || '00:00')).getTime() -
-        new Date(a.date + 'T' + (a.time || '00:00')).getTime()
-    )
-    .forEach((e) => {
-      const key = e.date;
-      if (!seen[key]) {
-        groupedLatestPerDay.push(e);
-        seen[key] = true;
-      }
-    });
-
-  const recentEntries = groupedLatestPerDay.slice(0, 7);
-  const lastEntry = recentEntries[0] || null;
-  const noteCharCount = notes.trim().length;
-  const selectedMoodMessage = selectedMood
-    ? `Selecionado: ${selectedMood.emoji} ${selectedMood.label} (${selectedMood.value}%)`
-    : 'Escolha um humor antes de salvar.';
-
+  const showMoods=moreMoods?MOODS:MOODS.slice(0,8);
   return (
-    <div className="min-h-screen bg-transparent">
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-black/40 backdrop-blur-xl">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center gap-3">
-          <Link href="/" className="p-2 rounded-lg hover:bg-white/10">
-            <ArrowLeft className="w-6 h-6 text-white/80" />
-          </Link>
-          <SmilePlus className="w-8 h-8 text-purple-300" />
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-200 to-pink-200 bg-clip-text text-transparent drop-shadow">
-            Diário Emoções
-          </h1>
-          <div className="ml-auto flex items-center gap-2">
-            {isPremium ? (
-              <span className="hidden sm:inline-flex items-center gap-1 rounded-full border border-amber-300/40 px-3 py-1 text-[11px] text-amber-200 bg-amber-500/10">
-                <Crown className="w-3 h-3" />
-                Premium ativo
-              </span>
-            ) : null}
-            <Link
-              href="/mood/history"
-              className="text-sm text-white/70 hover:text-white hover:underline"
-            >
-              Diário completo
-            </Link>
+    <div className="min-h-screen w-full overflow-x-clip bg-transparent pb-28 text-white">
+      <ProfileActionNotice success={notice} error={saveError} onDismiss={dismiss}/>
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#171426]/95 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-5xl items-center gap-3 px-3 py-3 sm:px-6">
+          <Link href="/" aria-label="Voltar ao início" className="rounded-lg p-2 text-slate-200 hover:bg-white/10"><ArrowLeft className="h-5 w-5"/></Link>
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-400/15 text-2xl">💜</span>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-base font-bold sm:text-xl">Diário de Emoções</h1>
+            <p className="text-[11px] text-slate-400">Seu espaço para perceber e cuidar</p>
           </div>
+          <Link href="/mood/history" className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 text-xs font-semibold text-violet-200 hover:bg-white/10"><History className="h-4 w-4"/> Histórico</Link>
         </div>
       </header>
-
-      <main className="max-w-6xl mx-auto px-4 py-7 space-y-10">
-        {/* Banner Premium topo */}
-        {user && (
-          <section className="bg-gradient-to-r from-purple-700 via-purple-600 to-pink-600 text-white p-4 rounded-2xl shadow-md flex flex-col md:flex-row items-start md:items-center gap-3">
-            <div className="flex flex-wrap items-center gap-2 justify-end">
-              <Crown className="w-5 h-5" />
-              <span className="font-semibold text-sm">
-                {isPremium
-                  ? 'Você está usando a versão Premium do Diário de Emoções.'
-                  : 'Histórico detalhado, gráficos avançados e lembretes inteligentes brilham ainda mais no plano Premium.'}
-              </span>
-            </div>
-            <div className="flex-1" />
-            {!isPremium && (
-              <Link
-                href="/premium"
-                className="inline-flex items-center gap-1 rounded-xl bg-white/10 hover:bg-white/20 px-3 py-1.5 text-xs font-semibold"
-              >
-                <Crown className="w-3 h-3" />
-                Ver planos
-              </Link>
-            )}
-            {notifPermission === 'granted' && (
-              <span className="flex items-center gap-1 text-[11px] opacity-90">
-                <Bell className="w-3 h-3" />
-                Lembretes ativados
-              </span>
-            )}
-          </section>
-        )}
-
-        {/* Resumo rápido */}
-        {user && (
-          <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="rounded-2xl border border-white/10 bg-black/25 p-4 text-white shadow-xl">
-              <div className="flex items-center gap-2 text-white/60 text-xs">
-                <CalendarDays className="w-4 h-4 text-purple-200" />
-                Registros salvos
-              </div>
-              <p className="mt-2 text-2xl font-bold">{entries.length}</p>
-              <p className="text-[11px] text-white/50">Quanto mais registros, melhor o app entende seus padrões.</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-black/25 p-4 text-white shadow-xl">
-              <div className="flex items-center gap-2 text-white/60 text-xs">
-                <HeartPulse className="w-4 h-4 text-pink-200" />
-                Média emocional
-              </div>
-              <p className="mt-2 text-2xl font-bold">{Number.isNaN(thermo) ? 0 : thermo}%</p>
-              <p className="text-[11px] text-white/50">Termômetro geral dos seus registros.</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-black/25 p-4 text-white shadow-xl">
-              <div className="flex items-center gap-2 text-white/60 text-xs">
-                <TrendingUp className="w-4 h-4 text-emerald-200" />
-                Último registro
-              </div>
-              <p className="mt-2 text-lg font-bold">
-                {lastEntry ? `${formatDateShort(lastEntry.date)} · ${lastEntry.mood}` : 'Ainda vazio'}
-              </p>
-              <p className="text-[11px] text-white/50">Use essa tela como check-in emocional diário.</p>
-            </div>
-          </section>
-        )}
-
-        {/* Termômetro + seleção de humor */}
-        <section className="bg-black/30 backdrop-blur-xl border border-white/10 p-6 rounded-2xl shadow-2xl space-y-4 text-white">
-          <h2 className="text-lg font-bold text-white">
-            Como você está se sentindo agora?
-          </h2>
-          <p className="text-sm text-white/70">
-            Registre sem julgamento. Esse diário ajuda você a enxergar padrões, gatilhos e evolução emocional ao longo da sua recuperação.
-          </p>
-
-          <div className="w-full h-10 rounded-full bg-white/10 overflow-hidden mt-3">
-            <div
-              className="h-full bg-gradient-to-r from-purple-600 via-pink-500 to-red-500 transition-all duration-700"
-              style={{ width: `${Number.isNaN(thermo) ? 0 : thermo}%` }}
-            />
+      <main className="mx-auto w-full max-w-5xl min-w-0 space-y-5 px-3 py-5 sm:px-6 sm:py-7">
+        {!loading&&!userId&&<section className="rounded-2xl border border-violet-300/20 bg-[#23213a] p-5 text-sm text-slate-200">
+          Entre para registrar seus sentimentos e recuperá-los em qualquer dispositivo.
+          <Link href="/login?next=%2Fmood" className="mt-3 flex min-h-11 items-center justify-center rounded-xl bg-violet-400 px-4 font-bold text-[#1c1533]">Entrar / Criar conta</Link>
+        </section>}
+        {loadError&&<div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-400/30 bg-rose-400/10 p-4 text-sm text-rose-100">
+          {loadError}<button type="button" onClick={()=>void load()} className="min-h-10 rounded-lg border border-rose-200/30 px-3 font-semibold">Tentar novamente</button>
+        </div>}
+        <section className="relative min-w-0 overflow-hidden rounded-3xl border border-violet-400/25 bg-gradient-to-br from-[#31234d] via-[#252044] to-[#17192f] p-4 shadow-xl sm:p-6">
+          <span className="text-[11px] font-semibold uppercase tracking-[.17em] text-violet-200">Um check-in, no seu ritmo</span>
+          <h2 className="mt-2 text-xl font-extrabold sm:text-2xl">Como você está se sentindo agora?</h2>
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-300">Um dia pode ter muitos sentimentos. Registre quantas vezes quiser, sem precisar escolher um único humor para o dia inteiro.</p>
+          <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-7">
+            {showMoods.map(m=>(
+              <button key={m.key} type="button" aria-pressed={selectedMood?.key===m.key}
+                disabled={!userId||loading||saving||!!loadError}
+                onClick={()=>{setSelectedMood(m);setLastSaved(null);}}
+                className={'flex min-h-[78px] min-w-0 flex-col items-center justify-center gap-1 rounded-2xl border px-1.5 py-2 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 disabled:opacity-45 '+
+                  (selectedMood?.key===m.key?'border-violet-200 bg-violet-400/30 ring-2 ring-violet-300/25':'border-white/10 bg-white/[.065] hover:border-violet-300/40 hover:bg-white/10')}>
+                <span className="text-2xl" aria-hidden="true">{m.emoji}</span>
+                <span className="break-words text-[10px] font-semibold leading-tight sm:text-[11px]">{m.label}</span>
+              </button>
+            ))}
           </div>
-          <p className="text-center text-sm mt-2 text-white/80">
-            Seu humor médio até agora:{' '}
-            <strong>{Number.isNaN(thermo) ? 0 : thermo}%</strong>
-          </p>
-
-          {/* Emojis */}
-          <div className="mt-3">
-            <div className="flex gap-3 overflow-x-auto py-2 no-scrollbar items-center">
-              {MOODS.map((m) => (
-                <button
-                  key={m.key}
-                  onClick={() => setSelectedMood(m)}
-                  className={`flex flex-col items-center justify-center rounded-2xl p-2 min-w-[64px] text-2xl text-center shadow transition ${
-                    selectedMood?.key === m.key
-                      ? 'bg-purple-600 text-white scale-105'
-                      : 'bg-white/10 text-white/90 hover:bg-white/15'
-                  }`}
-                >
-                  <div className="text-2xl leading-none">{m.emoji}</div>
-                  <div className="text-[11px] mt-1">{m.label}</div>
-                </button>
+          <button type="button" onClick={()=>setMoreMoods(v=>!v)}
+            className="mt-3 inline-flex min-h-10 items-center gap-2 text-xs font-semibold text-violet-200 hover:text-white">
+            {moreMoods?'Mostrar opções principais':'Ver outros sentimentos'} <ChevronDown className={'h-4 w-4 transition '+(moreMoods?'rotate-180':'')}/>
+          </button>
+          {selectedMood&&<p className="mt-2 text-sm font-medium text-emerald-200">Você selecionou {selectedMood.emoji} {selectedMood.label}.</p>}
+          <div className="mt-4 border-t border-white/10 pt-4">
+            <p className="text-xs font-semibold text-slate-200">Algo influenciou esse sentimento? <span className="font-normal text-slate-400">(opcional, até 3)</span></p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {TAGS.map(tag=>(
+                <button type="button" key={tag} aria-pressed={tags.includes(tag)}
+                  disabled={!userId||loading||saving||!!loadError||(!tags.includes(tag)&&tags.length>=3)}
+                  onClick={()=>setTags(v=>v.includes(tag)?v.filter(x=>x!==tag):[...v,tag])}
+                  className={'min-h-9 rounded-full border px-3 py-1.5 text-xs font-medium disabled:opacity-40 '+
+                    (tags.includes(tag)?'border-emerald-300/60 bg-emerald-400/15 text-emerald-100':'border-white/15 bg-white/5 text-slate-300 hover:bg-white/10')}>{tag}</button>
               ))}
             </div>
-          </div>
-
-          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/75">
-            {selectedMoodMessage}
-          </div>
-
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Escreva um resumo do seu dia — isso será anexado ao seu registro de hoje."
-            className="mood-notes-textarea w-full p-4 rounded-xl text-sm bg-black/30 border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500/40 min-h-[120px] resize-y leading-relaxed"
-            style={{
-              color: '#ffffff',
-              WebkitTextFillColor: '#ffffff',
-              caretColor: '#ffffff',
-            }}
-            rows={4}
-          />
-
-          {saveError && (
-            <div className="p-3 rounded-xl bg-red-500/10 border border-red-400/20 text-sm text-red-200 whitespace-pre-wrap">
-              {saveError}
-              {saveDebug?.status ? `\n(status: ${saveDebug.status})` : ''}
-            </div>
-          )}
-
-          {saveDebug?.error?.message && (
-            <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-[12px] text-white/70 whitespace-pre-wrap">
-              <div className="font-semibold text-white/80 mb-1">Debug:</div>
-              {JSON.stringify(saveDebug, null, 2)}
-            </div>
-          )}
-
-          <div className="flex items-center justify-between text-[11px] text-white/45">
-            <span>{noteCharCount} caracteres</span>
-            <span>Salvar novamente no mesmo dia anexa a nova nota.</span>
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              onClick={handleSave}
-              disabled={!selectedMood || saving}
-              className="flex-1 py-3 rounded-xl text-white bg-gradient-to-r from-purple-600 to-pink-600 font-semibold shadow-lg disabled:opacity-50"
-            >
-              {saving ? 'Salvando...' : 'Salvar meu humor'}
+            <label className="mt-4 block text-xs font-semibold text-slate-200" htmlFor="mood-note">Quer escrever uma reflexão? <span className="font-normal text-slate-400">(opcional)</span></label>
+            <textarea id="mood-note" value={notes} maxLength={500} rows={3}
+              disabled={!userId||loading||saving||!!loadError}
+              onChange={e=>setNotes(e.target.value)}
+              placeholder="O que aconteceu? O que poderia ajudar neste momento?"
+              className="mt-2 min-h-24 w-full resize-y rounded-xl border border-white/15 bg-black/25 p-3 text-sm leading-relaxed text-white outline-none placeholder:text-slate-400 focus:border-violet-300 focus:ring-2 focus:ring-violet-300/20 disabled:opacity-50"/>
+            <div className="mt-1 text-right text-[11px] text-slate-400">{notes.length}/500</div>
+            <button type="button" disabled={!selectedMood||saving||loading||!userId||!!loadError}
+              onClick={()=>void saveMood()}
+              className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-400 to-fuchsia-400 px-4 text-sm font-extrabold text-[#20112f] shadow-lg transition hover:brightness-110 disabled:opacity-45">
+              {saving?<Loader2 className="h-4 w-4 animate-spin"/>:<PlusCircle className="h-4 w-4"/>}
+              {saving?'Salvando na nuvem...':'Registrar este momento'}
             </button>
-            <button
-              onClick={() => {
-                setNotes('');
-                setSelectedMood(null);
-                setSaveError(null);
-                setSaveDebug(null);
-              }}
-              className="px-4 py-3 rounded-xl bg-white/10 border border-white/10 text-white/80 hover:bg-white/15"
-            >
-              <RefreshCcw className="inline-block w-4 h-4 mr-1" />
-              Limpar
-            </button>
+            <p className="mt-3 text-center text-[11px] text-slate-400">Novo registro, sem substituir o anterior. A conta é necessária para sincronizar.</p>
           </div>
         </section>
 
-        {/* Diário da Semana */}
-        <section className="bg-black/25 backdrop-blur-xl border border-white/10 p-6 rounded-2xl shadow-xl text-white">
-          <h3 className="text-lg font-bold text-white">Diário da Semana</h3>
+        {lastSaved&&<section aria-label="Mensagem após registro" className="rounded-2xl border border-emerald-300/20 bg-[#17322f] p-4 sm:p-5">
+          <p className="flex items-center gap-2 text-sm font-bold text-emerald-200"><CheckCircle2 className="h-5 w-5"/> Obrigado por registrar {lastSaved.mood.emoji}</p>
+          <p className="mt-2 text-sm leading-relaxed text-slate-200">{lastSaved.message}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {(lastSaved.mood.group==='anxious'||lastSaved.mood.group==='difficult')&&
+              <Link href="/sos" className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-emerald-300 px-4 text-xs font-bold text-[#133027]"><HeartHandshake className="h-4 w-4"/> Fazer uma pausa SOS</Link>}
+            <Link href="/mood/history" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/15 px-4 text-xs font-semibold text-white">Ver meus registros</Link>
+          </div>
+        </section>}
 
-          {recentEntries.length === 0 && (
-            <p className="text-sm text-white/70">Nenhum registro ainda.</p>
-          )}
-
-          <div className="space-y-4 mt-4">
-            {recentEntries.map((entry: any) => {
-              const fullNotes = (entry.notes ?? entry.note ?? '') as string;
-
-              const parts = fullNotes
-                .split(/\n{2,}/)
-                .map((s: string) => s.trim())
-                .filter(Boolean);
-              const lastNote = parts.length ? parts[parts.length - 1] : null;
-
-              return (
-                <div
-                  key={entry.id}
-                  className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="text-2xl">
-                        {moodValueToEmoji(entry.mood_value)}
-                      </div>
-                      <span className="text-sm font-semibold text-white">
-                        {formatDateShort(entry.date)} — {entry.mood}
-                      </span>
-                    </div>
-                    <span className="text-xs text-white/50">
-                      {entry.time ?? ''}
-                    </span>
-                  </div>
-
-                  {lastNote && (
-                    <p className="text-sm text-white/80 whitespace-pre-wrap">
-                      {lastNote}
-                    </p>
-                  )}
-
-                  {entry.daily_message && (
-                    <div className="mt-2 p-2 bg-purple-500/10 border border-purple-400/20 rounded text-sm text-purple-200">
-                      {entry.daily_message}
-                    </div>
-                  )}
+        <section aria-label="Análise do humor no período" className="space-y-4 rounded-3xl border border-white/10 bg-[#191a30] p-4 shadow-lg sm:p-6">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <span className="text-[11px] font-semibold uppercase tracking-widest text-violet-300">Sua evolução</span>
+              <h2 className="mt-1 text-lg font-bold sm:text-xl">Como foram seus registros?</h2>
+              <p className="mt-1 text-xs text-slate-400">Proporções reais, sem atribuir notas psicológicas aos sentimentos.</p>
+            </div>
+            <button type="button" onClick={()=>void load()} disabled={loading}
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/15 px-3 text-xs text-slate-200 disabled:opacity-50"><RefreshCcw className={'h-4 w-4 '+(loading?'animate-spin':'')}/> Sincronizar</button>
+          </div>
+          <div role="group" aria-label="Período de análise" className="grid grid-cols-4 gap-1.5 rounded-2xl bg-black/20 p-1.5">
+            {PERIODS.map(p=><button key={p.key} type="button" aria-pressed={period===p.key}
+              onClick={()=>setPeriod(p.key)}
+              className={'min-h-10 rounded-xl px-1 text-xs font-semibold transition '+(period===p.key?'bg-violet-500 text-white shadow':'text-slate-300 hover:bg-white/10')}>
+              {p.label}</button>)}
+          </div>
+          {loading?<p role="status" className="rounded-xl border border-white/10 p-4 text-sm text-slate-300"><Loader2 className="mr-2 inline h-4 w-4 animate-spin"/> Carregando seus registros...</p>
+          :loadError?<p className="rounded-xl border border-white/10 p-4 text-sm text-slate-300">Os indicadores ficam indisponíveis até a sincronização. Seus dados não foram apagados.</p>
+          :<>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                <p className="text-[11px] text-slate-400">Registros</p><p className="mt-1 text-xl font-bold tabular-nums">{filtered.length}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                <p className="text-[11px] text-slate-400">Dias acompanhados</p><p className="mt-1 text-xl font-bold tabular-nums">{uniqueDays}<span className="text-xs font-normal text-slate-400">/{days}</span></p>
+              </div>
+              <div className="min-w-0 rounded-2xl border border-white/10 bg-white/5 p-3">
+                <p className="text-[11px] text-slate-400">Mais registrado</p>
+                <p className="mt-1 break-words text-xs font-bold sm:text-sm">{moodCounts[0]?moodCounts[0].emoji+' '+moodCounts[0].label:'—'}</p>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/15 p-3.5 sm:p-5">
+              <h3 className="text-sm font-bold">Distribuição dos sentimentos</h3>
+              <p className="mt-1 text-xs text-slate-400">Todos os check-ins do período compõem a mesma barra.</p>
+              {filtered.length ? <>
+                <div role="img" aria-label={'Distribuição de '+filtered.length+' registros no período'}
+                  className="mt-4 flex h-5 w-full overflow-hidden rounded-full bg-white/10">
+                  {GROUPS.map((g,i)=>groups[g.key]>0?
+                    <div key={g.key} title={g.label+': '+groups[g.key]+' registros ('+groupPercent[i]+'%)'}
+                      style={{width:groupPercent[i]+'%',backgroundColor:g.color}}/>:null)}
                 </div>
-              );
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {GROUPS.filter(g=>groups[g.key]>0).map(g=>{
+                    const idx=GROUPS.findIndex(p=>p.key===g.key);
+                    return <div key={g.key} className="flex items-center gap-2 text-xs">
+                      <span className="h-3 w-3 shrink-0 rounded-full" style={{backgroundColor:g.color}}/>
+                      <span className="min-w-0 flex-1 text-slate-300">{g.label}</span>
+                      <span className="font-semibold tabular-nums">{groups[g.key]} · {groupPercent[idx]}%</span>
+                    </div>;
+                  })}
+                </div>
+                <p className="mt-3 text-[11px] text-slate-400">A soma é sempre 100% dos registros escolhidos. Isso não é uma avaliação clínica.</p>
+              </>:<p className="mt-4 rounded-xl bg-white/5 p-4 text-sm text-slate-300">Nenhum sentimento registrado neste período. Se quiser, comece com um check-in acima.</p>}
+            </div>
+
+            {chart.length>0&&<div className="min-w-0 rounded-2xl border border-white/10 bg-black/15 p-3.5 sm:p-5">
+              <h3 className="text-sm font-bold">Linha do tempo dos registros</h3>
+              <p className="mt-1 text-xs text-slate-400">Cada coluna representa a quantidade de sentimentos que você registrou, agrupada por {period==='day'?'hora':period==='year'?'mês':'dia'}.</p>
+              <div className="mt-4 overflow-x-auto pb-2">
+                <div className="flex h-40 min-w-full items-end gap-2" style={{width:Math.max(0,chart.length*43)+'px'}}>
+                  {chart.map(item=><div key={item.key} className="flex h-full min-w-[35px] flex-1 flex-col items-center justify-end gap-1">
+                    <span className="text-[10px] font-semibold text-slate-300">{item.total}</span>
+                    <div className="flex w-full max-w-9 flex-col-reverse overflow-hidden rounded-t-lg border border-white/10 bg-white/5"
+                      style={{height:Math.max(12,Math.round(item.total/Math.max(...chart.map(x=>x.total))*100))+'px'}}>
+                      {GROUPS.map(g=>item.counts[g.key]>0?
+                        <div key={g.key} title={g.label+': '+item.counts[g.key]}
+                          style={{height:(100*item.counts[g.key]/item.total)+'%',backgroundColor:g.color}}/>:null)}
+                    </div>
+                    <span className="whitespace-nowrap text-[10px] text-slate-400">{item.label}</span>
+                  </div>)}
+                </div>
+              </div>
+              <p className="mt-1 text-[11px] text-slate-400">Dias sem registro não são considerados sentimentos negativos.</p>
+            </div>}
+
+            {filtered.length>0&&<div className="rounded-2xl border border-violet-300/15 bg-violet-300/[.065] p-4">
+              <p className="flex items-center gap-2 text-sm font-bold text-violet-200"><Sparkles className="h-4 w-4"/> Um olhar sobre este período</p>
+              <p className="mt-2 text-sm leading-relaxed text-slate-200">
+                {moodCounts[0]?
+                  'Você registrou '+filtered.length+' '+(filtered.length===1?'momento':'momentos')+' em '+uniqueDays+' '+(uniqueDays===1?'dia':'dias')+'. O sentimento mais frequente foi '+moodCounts[0].label.toLowerCase()+'.':
+                  'Seus registros estão disponíveis para acompanhar no seu ritmo.'}
+                {' '}Esses dados mostram o que você contou ao diário; não definem quem você é.
+              </p>
+              {filtered.some(e=>groupOf(e)==='difficult'||groupOf(e)==='anxious')&&
+                <Link href="/sos" className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl border border-violet-400/25 bg-violet-400/10 px-3 text-xs font-semibold text-violet-200">
+                  <HeartHandshake className="h-4 w-4"/> Conhecer o SOS
+                </Link>}
+            </div>}
+          </>}
+        </section>
+
+        <section className="rounded-2xl border border-white/10 bg-[#191a30] p-4 sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><h2 className="text-base font-bold">Seus momentos mais recentes</h2>
+              <p className="mt-1 text-xs text-slate-400">Cada check-in aparece separadamente, mesmo no mesmo dia.</p></div>
+            <button type="button" onClick={()=>setShowHistory(v=>!v)} aria-expanded={showHistory}
+              className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/15 px-3 text-xs font-semibold text-violet-200">
+              {showHistory?'Recolher':'Ver registros'} <ChevronDown className={'h-4 w-4 transition '+(showHistory?'rotate-180':'')}/>
+            </button>
+          </div>
+          {showHistory&&<div className="mt-4 space-y-2">
+            {[...entries].sort((a,b)=>b.created_at.localeCompare(a.created_at)).slice(0,7).map(entry=>{
+              const m=moodByEntry(entry);
+              return <article key={entry.id} className="flex min-w-0 items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
+                <span className="text-2xl">{m?.emoji??'📝'}</span>
+                <div className="min-w-0 flex-1"><p className="text-sm font-semibold">{entry.mood}</p>
+                  <p className="mt-0.5 text-xs text-slate-400">{niceDay(entry.date)} · {entry.time??'Horário não informado'}</p>
+                  {entry.notes&&<p className="mt-2 break-words whitespace-pre-wrap text-sm text-slate-300">{entry.notes}</p>}
+                  {!!entry.context_tags?.length&&<p className="mt-1 text-xs text-violet-200">Contexto: {entry.context_tags.join(', ')}</p>}
+                </div>
+              </article>;
             })}
-          </div>
-
-          <Link
-            href="/mood/history"
-            className="block text-center mt-4 text-purple-200 font-medium hover:text-white hover:underline text-sm"
-          >
-            Abrir meu diário completo →
-          </Link>
+            {!entries.length&&<p className="text-sm text-slate-300">Ainda não há registros salvos.</p>}
+            <Link href="/mood/history" className="block min-h-10 pt-3 text-center text-sm font-semibold text-violet-200 underline underline-offset-4">Abrir histórico completo</Link>
+          </div>}
         </section>
-
-        {/* Evolução do Humor */}
-        <section className="bg-black/25 backdrop-blur-xl border border-white/10 p-6 rounded-2xl shadow-xl space-y-4 text-white">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-white">Evolução do Humor</h3>
-            <div className="flex flex-wrap items-center gap-2 justify-end">
-              <button
-                onClick={() => setSelectedRange('day')}
-                className={`px-3 py-1 rounded-full ${
-                  selectedRange === 'day'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-white/10 text-white/80 hover:bg-white/15'
-                }`}
-              >
-                Diário
-              </button>
-              <button
-                onClick={() => setSelectedRange('week')}
-                className={`px-3 py-1 rounded-full ${
-                  selectedRange === 'week'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-white/10 text-white/80 hover:bg-white/15'
-                }`}
-              >
-                Semana
-              </button>
-              <button
-                onClick={() => setSelectedRange('month')}
-                className={`px-3 py-1 rounded-full ${
-                  selectedRange === 'month'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-white/10 text-white/80 hover:bg-white/15'
-                }`}
-              >
-                Mês
-              </button>
-              <button
-                onClick={() => setSelectedRange('year')}
-                className={`px-3 py-1 rounded-full ${
-                  selectedRange === 'year'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-white/10 text-white/80 hover:bg-white/15'
-                }`}
-              >
-                Ano
-              </button>
-            </div>
-          </div>
-
-          <div className="w-full h-56">
-            {chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <XAxis dataKey="label" stroke="rgba(255,255,255,0.6)" />
-                  <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.6)" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'rgba(0,0,0,0.75)',
-                      border: '1px solid rgba(255,255,255,0.10)',
-                      borderRadius: 12,
-                      color: 'rgba(255,255,255,0.9)',
-                    }}
-                    labelStyle={{ color: 'rgba(255,255,255,0.75)' }}
-                    itemStyle={{ color: 'rgba(255,255,255,0.9)' }}
-                  />
-                  <Line
-                    dataKey="value"
-                    type="monotone"
-                    stroke="#d946ef"
-                    strokeWidth={3}
-                    dot={{ r: 4, fill: '#9333ea' }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full rounded-2xl border border-dashed border-white/10 bg-white/5 flex items-center justify-center text-center px-6">
-                <p className="text-sm text-white/60">
-                  Salve alguns registros para visualizar sua evolução emocional neste período.
-                </p>
-              </div>
-            )}
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <h4 className="text-sm font-semibold text-white">Insights</h4>
-              <p className="text-sm text-white/80">{insights.message}</p>
-            </div>
-            <div>
-              <h4 className="text-sm font-semibold text-white">
-                Risco &amp; Tendência
-              </h4>
-              <div className="flex items-center gap-4 mt-2">
-                <div className="text-sm">
-                  Tendência:{' '}
-                  <strong>
-                    {Number.isNaN(insights.trend) ? 0 : insights.trend}%
-                  </strong>
-                </div>
-                <div className="text-sm">
-                  Risco emocional:{' '}
-                  <strong>
-                    {Number.isNaN(insights.risk) ? 0 : insights.risk}%
-                  </strong>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Nota explicativa */}
-        <section className="bg-white/5 border border-white/10 p-4 rounded-xl text-sm text-white/70 mb-4">
-          <strong>Nota:</strong> Ao salvar novamente no mesmo dia você anexará
-          notas ao registro do dia (o humor do dia será atualizado com sua
-          seleção mais recente). A visualização &quot;Diário da Semana&quot;
-          mostra apenas o registro principal por dia para manter a página
-          limpa.
-        </section>
-
-        {/* Botão extra embaixo */}
-        <div className="flex justify-center pb-10">
-          <Link
-            href="/mood/history"
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-5 py-3 text-sm font-semibold text-white shadow-md hover:shadow-lg"
-          >
-            <SmilePlus className="w-4 h-4" />
-            Abrir meu diário
-          </Link>
-        </div>
+        <p className="flex items-start gap-2 px-2 text-xs leading-relaxed text-slate-400"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0"/> As informações do diário são privadas e associadas à sua conta. Você pode consultar ou excluir seus registros no histórico. Preferências de lembretes ficam no Perfil.</p>
       </main>
     </div>
   );
