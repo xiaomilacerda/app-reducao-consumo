@@ -23,6 +23,15 @@ import ProfileActionNotice from '@/components/profile/ProfileActionNotice';
  */
 
 const PAGE_SIZE = 12;
+const MOOD_CHOICES = [
+  {label:'Excelente',value:100},{label:'Maravilhoso',value:95},
+  {label:'Ótimo',value:90},{label:'Feliz',value:80},
+  {label:'Animado',value:75},{label:'Bem',value:65},
+  {label:'Normal',value:55},{label:'Calmo',value:50},
+  {label:'Preocupado',value:40},{label:'Ansioso',value:30},
+  {label:'Muito ansioso',value:20},{label:'Irritado',value:15},
+  {label:'Triste',value:8},{label:'Muito mal / raiva',value:3},
+];
 
 function createClient() {
   return createBrowserClient(
@@ -61,6 +70,7 @@ export default function MoodHistoryPage() {
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
   const [editId,setEditId] = useState<string|null>(null);
   const [editText,setEditText] = useState('');
+  const [editMood,setEditMood] = useState('Normal');
   const [confirmDelete,setConfirmDelete] = useState<string|null>(null);
   const [busyId,setBusyId] = useState<string|null>(null);
   const [notice,setNotice] = useState('');
@@ -193,22 +203,30 @@ export default function MoodHistoryPage() {
     if(editText.length>2000){setActionError('A anotação precisa ter até 2000 caracteres.');return;}
     setBusyId(id);setActionError('');setNotice('');
     try {
+      const selected = MOOD_CHOICES.find(x=>x.label===editMood);
+      if(!selected)throw new Error('Humor não encontrado.');
       const {data,error} = await supabase.from('mood_entries')
-        .update({notes:editText.trim()||null,updated_at:new Date().toISOString()})
-        .eq('id',id).eq('user_id',user.id).select('id,notes').single();
+        .update({notes:editText.trim()||null,mood:selected.label,mood_value:selected.value,updated_at:new Date().toISOString()})
+        .eq('id',id).eq('user_id',user.id).select('id,notes,mood,mood_value').single();
       if(error||!data)throw error??new Error('Salvamento não confirmado.');
-      setEntries(prev=>prev.map(e=>String(e.id)===id?{...e,notes:data.notes}:e));
-      setFiltered(prev=>prev.map(e=>String(e.id)===id?{...e,notes:data.notes}:e));
+      setEntries(prev=>prev.map(e=>String(e.id)===id?{...e,notes:data.notes,mood:data.mood,mood_value:data.mood_value}:e));
+      setFiltered(prev=>prev.map(e=>String(e.id)===id?{...e,notes:data.notes,mood:data.mood,mood_value:data.mood_value}:e));
       setEditId(null);setEditText('');
       setNotice('Anotação atualizada e salva na sua conta.');
     }catch{setActionError('Não conseguimos salvar a anotação. Tente novamente.');}
     finally{setBusyId(null);}
   }
 
-  function ActionButtons({entryId, entryNotes}:{entryId:string|number;entryNotes?:string|null}) {
+  function ActionButtons({entryId, entryNotes, entryMood}:{entryId:string|number;entryNotes?:string|null;entryMood?:string|null}) {
     const id=String(entryId),editing=editId===id,confirming=confirmDelete===id;
     return <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
       {editing ? <>
+        <label className="w-full text-xs font-semibold text-slate-300">Corrigir sentimento
+          <select value={editMood} onChange={e=>setEditMood(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-violet-400/40 bg-[#141323] p-2 text-sm text-white">
+            {MOOD_CHOICES.map(m=><option key={m.label} value={m.label}>{m.label}</option>)}
+          </select>
+        </label>
         <label className="w-full text-xs font-semibold text-slate-300">Editar anotação
           <textarea value={editText} maxLength={2000}
             onChange={e=>setEditText(e.target.value)}
@@ -222,7 +240,7 @@ export default function MoodHistoryPage() {
           className="min-h-9 rounded-lg border border-white/20 px-3 text-xs text-slate-300">Cancelar</button>
       </> : <>
         <button type="button" disabled={busyId!==null}
-          onClick={()=>{setEditId(id);setEditText(entryNotes??'');setConfirmDelete(null);}}
+          onClick={()=>{setEditId(id);setEditText(entryNotes??'');setEditMood(MOOD_CHOICES.find(m=>m.label.toLowerCase()===(entryMood??'').toLowerCase())?.label??'Normal');setConfirmDelete(null);}}
           className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-white/15 px-2 text-xs text-violet-200 hover:bg-white/10 disabled:opacity-40">
           <Edit3 className="h-3.5 w-3.5"/> Editar
         </button>
@@ -383,7 +401,7 @@ export default function MoodHistoryPage() {
                           </div>
                         </div>
 
-                        {ActionButtons({entryId:day.items[0].id,entryNotes:day.items[0].notes})}
+                        {ActionButtons({entryId:day.items[0].id,entryNotes:day.items[0].notes,entryMood:day.items[0].mood})}
                       </div>
 
                       {day.items[0].notes && (
@@ -439,7 +457,7 @@ export default function MoodHistoryPage() {
                                     </div>
                                   </div>
 
-                                  {ActionButtons({entryId:it.id,entryNotes:it.notes})}
+                                  {ActionButtons({entryId:it.id,entryNotes:it.notes,entryMood:it.mood})}
                                 </div>
 
                                 {it.notes && (
