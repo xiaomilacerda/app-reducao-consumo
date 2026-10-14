@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/hooks/use-toast'
-import { ArrowLeft, Check, Lock, Coins, Sparkles } from 'lucide-react'
+import { ArrowLeft, Check, Lock, Coins, Sparkles, Trophy, Target, Gift, ArrowRight } from 'lucide-react'
 
 type AvatarItem = {
   code: string // A1..A20
@@ -226,6 +226,8 @@ export default function RewardsPage() {
   const [showOwnedOnly, setShowOwnedOnly] = useState(false)
   const [selected, setSelected] = useState<string>('A1')
   const [busy, setBusy] = useState(false)
+  const [filter, setFilter] = useState<'Todos' | 'Próximos' | 'Meus' | 'Lendários'>('Próximos')
+  const [celebrating, setCelebrating] = useState<string | null>(null)
 
   const level = useMemo(() => Math.floor((Number(xp) || 0) / XP_PER_LEVEL) + 1, [xp])
 
@@ -237,6 +239,9 @@ export default function RewardsPage() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return AVATARS.filter((a) => {
+      if (filter === 'Meus' && !owned.has(a.code)) return false
+      if (filter === 'Lendários' && a.rarity !== 'Lendário') return false
+      if (filter === 'Próximos' && (owned.has(a.code) || a.coins > wallet.coins + 1000)) return false
       if (showOwnedOnly && !owned.has(a.code)) return false
       if (!q) return true
       return (
@@ -246,7 +251,7 @@ export default function RewardsPage() {
         a.rarity.toLowerCase().includes(q)
       )
     })
-  }, [owned, query, showOwnedOnly])
+  }, [owned, query, showOwnedOnly, filter, wallet.coins])
 
   const progressText = useMemo(() => {
     const count = Array.from(owned).filter((x) => isAvatarId(x)).length
@@ -486,7 +491,8 @@ export default function RewardsPage() {
       setWallet({ coins: finalCoins })
       setOwned((prev) => new Set([...Array.from(prev), code]))
 
-      toast({ title: 'Compra concluída!', description: `Você desbloqueou: ${getAvatarName(code)}.` })
+      setCelebrating(code)
+      toast({ title: 'Conquista desbloqueada!', description: `Você desbloqueou: ${getAvatarName(code)}.` })
       await equipAvatar(code)
     } catch (e: any) {
       console.error(e)
@@ -546,9 +552,30 @@ export default function RewardsPage() {
           </div>
         </div>
 
+        <section className="mt-6 overflow-hidden rounded-3xl border border-amber-300/25 bg-gradient-to-br from-[#342348] via-[#1e1733] to-[#141629] p-5 sm:p-7">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[.18em] text-amber-200"><Trophy className="h-4 w-4"/> Uma grande conquista para inspirar</div>
+          <div className="mt-4 flex flex-col items-center gap-5 sm:flex-row">
+            <div className="relative h-40 w-40 shrink-0 overflow-hidden rounded-full border-4 border-amber-300/70 shadow-[0_0_55px_rgba(245,158,11,.23)] sm:h-48 sm:w-48"><Image src={avatarSrc(featured.code)} alt={featured.name} fill className="object-cover" sizes="192px" priority/></div>
+            <div className="min-w-0 flex-1 text-center sm:text-left">
+              <span className="rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1 text-xs font-semibold text-amber-200">Lendário</span>
+              <h2 className="mt-3 text-2xl font-extrabold text-white sm:text-3xl">{featured.name}</h2>
+              <p className="mt-2 text-sm leading-relaxed text-white/70">Um símbolo de perseverança. Sua jornada tem valor em cada passo, mesmo nos dias difíceis.</p>
+              <p className="mt-3 flex items-center justify-center gap-2 font-bold text-amber-200 sm:justify-start"><Coins className="h-4 w-4"/>{formatCoins(featured.coins)} moedas</p>
+              <button type="button" onClick={()=>{setSelected(featured.code);document.getElementById('avatar-detalhes')?.scrollIntoView({behavior:'smooth',block:'start'})}} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-amber-200 px-5 py-2 font-bold text-[#251a32] transition hover:bg-amber-100">Quero conquistar <ArrowRight className="h-4 w-4"/></button>
+            </div>
+          </div>
+        </section>
+        <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Meu progresso">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><Coins className="h-5 w-5 text-amber-300"/><p className="mt-2 text-2xl font-bold text-white">{formatCoins(wallet.coins)}</p><p className="text-xs text-white/60">Moedas disponíveis</p></div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><Gift className="h-5 w-5 text-violet-300"/><p className="mt-2 text-2xl font-bold text-white">{owned.size}/20</p><p className="text-xs text-white/60">Avatares conquistados</p></div>
+          <div className="col-span-2 rounded-2xl border border-white/10 bg-white/5 p-4 sm:col-span-1"><Target className="h-5 w-5 text-emerald-300"/><p className="mt-2 text-lg font-bold text-white">{nextGoal.name}</p><p className="text-xs text-white/60">Próximo desbloqueio · {formatCoins(Math.max(0,nextGoal.coins-wallet.coins))} moedas restantes</p></div>
+        </section>
+        {celebrating&&<div role="status" className="mt-4 rounded-2xl border border-amber-300/50 bg-amber-300/10 p-5 text-center">
+          <Sparkles className="mx-auto h-8 w-8 text-amber-200"/><h2 className="mt-2 text-xl font-bold text-white">Conquista desbloqueada!</h2><p className="mt-1 text-sm text-white/70">Você conquistou {getAvatarName(celebrating)}. Celebre esse passo da sua jornada.</p><button type="button" onClick={()=>setCelebrating(null)} className="mt-3 rounded-xl bg-white/10 px-5 py-2 text-sm text-white">Continuar explorando</button>
+        </div>}
         <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-12">
           {/* Preview */}
-          <div className="lg:col-span-5">
+          <div id="avatar-detalhes" className="scroll-mt-24 lg:col-span-5">
             <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -574,7 +601,7 @@ export default function RewardsPage() {
               </div>
 
               <div className="mt-5 flex items-center gap-4">
-                <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-2xl border border-white/15 bg-black/30">
+                <div className={"relative h-32 w-32 shrink-0 overflow-hidden rounded-2xl border-2 bg-black/30 shadow-xl "+rarityClass(selectedItem.rarity)}>
                   <Image
                     src={avatarSrc(selectedItem.code)}
                     alt={selectedItem.name}
@@ -586,6 +613,11 @@ export default function RewardsPage() {
                 </div>
 
                 <div className="flex-1">
+                  {selectedItem.coins > 0 && <div className="mb-3">
+                    <div className="flex justify-between gap-2 text-xs text-white/70"><span>Progresso até este avatar</span><span>{goalProgress}%</span></div>
+                    <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-violet-400 to-amber-300 transition-all" style={{width:goalProgress+'%'}}/></div>
+                    <p className="mt-2 text-xs text-white/70">{goalRemaining===0?'Você já tem moedas suficientes!':formatCoins(goalRemaining)+' moedas para conquistar'}</p>
+                  </div>}
                   {selectedItem.coins > 0 && (
                     <div className="mt-2 text-xs text-white/60">
                       Estimativa: ~{estimatedWeeks} semana(s) juntando moedas (média: {COINS_PER_WEEK_ESTIMATE}/semana).
@@ -641,12 +673,12 @@ export default function RewardsPage() {
                 Seu avatar fica no seu perfil e ao lado dos seus posts/comentários. O “Padrão” é o grátis para todo mundo.
               </p>
               <div className="mt-3 flex items-center gap-3">
-                <div className="relative h-10 w-10 overflow-hidden rounded-full border border-white/15 bg-black/30">
-                  <Image src={avatarSrc(equipped)} alt={getAvatarName(equipped)} fill className="object-cover" sizes="40px" />
+                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full border-2 border-violet-300/60 bg-black/30">
+                  <Image src={avatarSrc(selectedItem.code)} alt={getAvatarName(selectedItem.code)} fill className="object-cover" sizes="56px" />
                 </div>
                 <div>
-                  <div className="text-sm text-white">Em uso: {getAvatarName(equipped)}</div>
-                  <div className="text-xs text-white/60">Troque aqui e veja refletir na Comunidade.</div>
+                  <div className="text-sm text-white">Prévia: {getAvatarName(selectedItem.code)}</div>
+                  <div className="text-xs text-white/60">É assim que o avatar selecionado aparecerá ao lado das suas mensagens anônimas.</div>
                 </div>
               </div>
             </div>
@@ -657,7 +689,7 @@ export default function RewardsPage() {
             <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex-1">
-                  <div className="text-sm font-semibold text-white">Avatares</div>
+                  <div className="text-lg font-semibold text-white">Sua coleção de avatares</div>
                   <div className="mt-1 text-xs text-white/60">Clique para ver detalhes. Compre com moedas e equipe quando quiser.</div>
                 </div>
 
@@ -675,7 +707,8 @@ export default function RewardsPage() {
                 </div>
               </div>
 
-              <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
+              <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Filtrar coleção">{(['Próximos','Todos','Meus','Lendários'] as const).map(f=><button key={f} type="button" onClick={()=>setFilter(f)} aria-pressed={filter===f} className={'min-h-10 rounded-xl border px-3 text-xs font-semibold '+(filter===f?'border-violet-300 bg-violet-400/20 text-white':'border-white/10 bg-white/5 text-white/70')}>{f}</button>)}</div>
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
                 {filtered.map((a) => {
                   const isOwned = owned.has(a.code)
                   const isSelected = selected === a.code
@@ -686,7 +719,7 @@ export default function RewardsPage() {
                       key={a.code}
                       onClick={() => setSelected(a.code)}
                       className={
-                        'group relative rounded-2xl border bg-black/30 transition overflow-hidden ' +
+                        'group relative rounded-2xl border bg-black/30 transition overflow-hidden shadow-lg '+rarityClass(a.rarity)+' ' +
                         (isSelected
                           ? 'border-emerald-400/60 ring-2 ring-emerald-400/30'
                           : 'border-white/10 hover:border-white/20')
@@ -698,12 +731,12 @@ export default function RewardsPage() {
                           src={avatarSrc(a.code)}
                           alt={a.name}
                           fill
-                          className={'object-cover transition ' + (isOwned ? 'opacity-100' : 'opacity-40 grayscale')}
-                          sizes="(max-width: 768px) 33vw, 140px"
+                          className="object-cover transition group-hover:scale-105"
+                          sizes="(max-width: 768px) 50vw, 180px"
                         />
 
                         {!isOwned && (
-                          <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="absolute bottom-2 right-2 flex items-center justify-center">
                             <div className="flex items-center gap-2 rounded-full bg-black/60 px-2.5 py-1 text-[11px] text-white">
                               <Lock className="h-3 w-3" />
                               <span>{formatCoins(a.coins)}</span>
@@ -734,6 +767,8 @@ export default function RewardsPage() {
                 })}
               </div>
 
+              {filtered.length===0&&!loading&&<p className="mt-4 rounded-xl border border-dashed border-white/15 p-4 text-sm text-white/70">Nenhum avatar neste filtro. Explore outras categorias.</p>}
+              <Link href="/missions" className="mt-5 flex min-h-12 items-center justify-center gap-2 rounded-xl border border-violet-300/30 bg-violet-400/10 px-4 text-sm font-semibold text-violet-100 hover:bg-violet-400/20">Conquistar moedas nas missões <ArrowRight className="h-4 w-4"/></Link>
               {loading && <div className="mt-4 text-xs text-white/60">Carregando…</div>}
             </div>
           </div>
