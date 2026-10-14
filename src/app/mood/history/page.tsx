@@ -172,6 +172,7 @@ export default function MoodHistoryPage(){
             {(entry.notes||entry.note)&&<p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-200">{entry.notes||entry.note}</p>}
             {entry.trigger_note&&<p className="mt-2 break-words text-xs text-slate-300"><strong>Influenciou:</strong> {entry.trigger_note}</p>}
             {entry.helpful_action&&<p className="mt-1 break-words text-xs text-slate-300"><strong>Ajudou:</strong> {entry.helpful_action}</p>}
+            {entry.daily_message&&<p className="mt-3 rounded-xl border border-violet-400/15 bg-violet-400/10 p-3 text-xs leading-relaxed text-violet-100">{entry.daily_message}</p>}
           </>}
         </div>
       </div>
