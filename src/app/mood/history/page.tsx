@@ -35,15 +35,11 @@ function createClient() {
 }
 
 function formatDate(d: string) {
-  try {
-    return new Date(d).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
-  } catch {
-    return d;
-  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+  const [year, month, day] = d.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString('pt-BR', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+  });
 }
 
 export default function MoodHistoryPage() {
@@ -421,7 +417,7 @@ export default function MoodHistoryPage() {
                           </div>
                         </div>
 
-                        <ActionButtons entryId={day.items[0].id} entryNotes={day.items[0].notes}/>
+                        {ActionButtons({entryId:day.items[0].id,entryNotes:day.items[0].notes})}
                       </div>
 
                       {day.items[0].notes && (
@@ -477,7 +473,7 @@ export default function MoodHistoryPage() {
                                     </div>
                                   </div>
 
-                                  <ActionButtons entryId={it.id} entryNotes={it.notes}/>
+                                  {ActionButtons({entryId:it.id,entryNotes:it.notes})}
                                 </div>
 
                                 {it.notes && (
