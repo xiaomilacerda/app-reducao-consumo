@@ -221,7 +221,10 @@ export default function MoodTrackerPage() {
     }finally{setSaving(false);}
   }
 
-  const showMoods=moreMoods?MOODS:MOODS.slice(0,8);
+  // Mostrar emoções de todo o espectro logo de início, não só as positivas.
+  const commonMoodKeys = ['feliz','bem','calmo','normal','ansioso','muito_ansioso','irritado','triste'];
+  const showMoods = moreMoods ? MOODS : commonMoodKeys
+    .map(key=>MOODS.find(m=>m.key===key)!).filter(Boolean);
   return (
     <div className="min-h-screen w-full overflow-x-clip bg-transparent pb-28 text-white">
       <ProfileActionNotice success={notice} error={saveError} onDismiss={dismiss}/>
