@@ -1095,7 +1095,8 @@ export default function BodyEvolutionPage() {
           )}
 
           <div className="space-y-6">
-            {evolution.map((stage, index) => {\n              if (!showAllStages && !stage.completed && nextStage?.hours !== stage.hours) return null;
+            {evolution.map((stage, index) => {
+              if (!showAllStages && !stage.completed && nextStage?.hours !== stage.hours) return null;
               const remainingDays =
                 cleanHours < stage.hours ? Math.max(0, Math.ceil((stage.hours - cleanHours) / 24)) : 0;
 
