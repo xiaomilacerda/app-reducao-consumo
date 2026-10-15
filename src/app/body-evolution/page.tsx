@@ -1029,7 +1029,7 @@ export default function BodyEvolutionPage() {
             </div>
           )}
 
-          <div className="space-y-3">
+          <div className="space-y-2">
             {evolution.map((stage, index) => {
               if (!showAllStages && !stage.completed && nextStage?.hours !== stage.hours) return null;
               const remainingDays =
@@ -1049,37 +1049,19 @@ export default function BodyEvolutionPage() {
 
               const isEditingThis = editingStage === stage.hours;
 
+              const following = evolution.slice(index + 1).find(candidate => showAllStages || candidate.completed || nextStage?.hours === candidate.hours);
+              const railProgress = following ? clamp((cleanHours - stage.hours) / Math.max(1, following.hours - stage.hours), 0, 1) : 0;
               return (
-                <div key={stage.title} className="relative min-w-0" id={`stage-${stage.hours}`}>
-                  {index < evolution.length - 1 && (
-                    <div
-                      className={`absolute left-6 top-16 w-0.5 h-full ${
-                        stage.completed ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
-                      }`}
-                    />
-                  )}
-
-                  <div
-                    className={`p-3 sm:p-5 rounded-xl transition-all border-2 ${
-                      stage.completed
-                        ? 'bg-green-50 dark:bg-green-900/20 border-green-400 dark:border-green-600'
-                        : 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600'
-                    }`}
-                  >
-                    <div className="flex min-w-0 items-start gap-2 sm:gap-4">
-                      <div
-                        className={`w-9 h-9 sm:w-12 sm:h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
-                          stage.completed
-                            ? 'bg-green-500 text-white'
-                            : 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400'
-                        }`}
-                      >
-                        {stage.completed ? <CheckCircle className="w-6 h-6" /> : <Clock className="w-6 h-6" />}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                          <div className="flex items-center gap-3">
+                <div key={stage.hours} id={`stage-${stage.hours}`} className="grid min-w-0 grid-cols-[24px_minmax(0,1fr)] gap-x-3 sm:grid-cols-[28px_minmax(0,1fr)] sm:gap-x-4">
+                  <div aria-hidden="true" className="flex flex-col items-center">
+                    <div className={`z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 sm:h-7 sm:w-7 ${stage.completed ? 'border-emerald-500 bg-emerald-500 text-white shadow-[0_0_0_4px_rgba(16,185,129,0.12)]' : isNextCard ? 'border-violet-500 bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-200' : 'border-gray-400 bg-gray-100 text-gray-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300'}`}>
+                      {stage.completed ? <CheckCircle className="h-4 w-4" /> : isNextCard ? <Sparkles className="h-3.5 w-3.5" /> : <Lock className="h-3 w-3" />}
+                    </div>
+                    {following && <div className="relative mt-1 min-h-12 w-[3px] flex-1 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700"><div className="absolute inset-x-0 top-0 rounded-full bg-emerald-500 transition-[height] duration-700 motion-reduce:transition-none" style={{height: `${Math.round(railProgress*100)}%`}} /></div>}
+                  </div>
+                  <div className={`min-w-0 rounded-2xl border p-3 shadow-sm sm:p-5 ${stage.completed ? 'border-emerald-300 bg-emerald-50/80 dark:border-emerald-700/50 dark:bg-emerald-950/20' : isNextCard ? 'border-violet-400 bg-violet-50/80 ring-1 ring-violet-300/40 dark:border-violet-500/70 dark:bg-violet-950/25' : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/70'}`}>
+                        <div className="mb-2 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex flex-wrap items-center gap-2">
                             <h4 className="text-base sm:text-xl font-bold text-gray-900 dark:text-gray-100">
                               {stage.icon} {stage.title}
                             </h4>
@@ -1124,7 +1106,7 @@ export default function BodyEvolutionPage() {
                           </button>
                         </div>
 
-                        <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-200">{stage.description}</p>
+                        <p className={`text-sm leading-relaxed text-gray-700 dark:text-gray-200 ${stage.completed && !isOpen ? "line-clamp-2" : ""}`}>{stage.description}</p>
 
                         {isNextCard && !stage.completed && (
                           <div className="mt-4 rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white/60 dark:bg-black/20 p-3">
@@ -1269,12 +1251,10 @@ export default function BodyEvolutionPage() {
                         )}
 
                         {!stage.completed && (
-                          <p className="text-xs text-gray-500 dark:text-gray-500 mt-3">
+                          <p className="text-xs text-gray-700 dark:text-gray-300 mt-3">
                             Faltam aproximadamente {remainingDays} dia{remainingDays === 1 ? '' : 's'} para desbloquear esta etapa.
                           </p>
                         )}
-                      </div>
-                    </div>
                   </div>
                 </div>
               );
