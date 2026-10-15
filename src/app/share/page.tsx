@@ -3,14 +3,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Check, Copy, Download, Eye, EyeOff, Heart, Image as ImageIcon, Link2, LockKeyhole, Share2, Sparkles, Trophy } from 'lucide-react';
+import { ArrowLeft, Copy, Download, Eye, EyeOff, Heart, Image as ImageIcon, Link2, LockKeyhole, Share2, Sparkles, Trophy } from 'lucide-react';
 import { storage } from '@/lib/storage';
 import { UserData } from '@/lib/types';
 import { calculateCleanDays, calculateSavings, formatCurrency } from '@/lib/utils-recovery';
 
 type Theme = 'noite' | 'aurora' | 'ouro' | 'natureza';
 type Format = 'story' | 'feed';
-type Stat = 'savings' | 'achievements';
 const THEMES: Record<Theme, { name: string; bg: string; bg2: string; accent: string; text: string }> = {
   noite: { name: 'Noite', bg: '#0A1426', bg2: '#1C254A', accent: '#A5B4FC', text: '#FFFFFF' },
   aurora: { name: 'Aurora', bg: '#24133C', bg2: '#6B2D66', accent: '#F9A8D4', text: '#FFFFFF' },
@@ -50,7 +49,7 @@ function makeArtwork(opts: { theme: Theme; format: Format; days: number; message
   ctx.fillStyle = '#D5DAE5'; ctx.font = '500 27px sans-serif'; ctx.textAlign = 'right'; ctx.fillText('MINHA JORNADA', 994, top);
   const centerY = opts.format === 'story' ? 720 : 450;
   ctx.textAlign = 'center'; ctx.fillStyle = '#F1F5F9'; ctx.font = '500 36px sans-serif'; ctx.fillText(opts.milestone ? 'MARCO CONQUISTADO' : 'UM DIA DE CADA VEZ', 540, centerY - 235);
-  ctx.fillStyle = t.text; ctx.font = '800 280px sans-serif'; ctx.fillText(String(opts.days), 540, centerY + 20);
+  ctx.fillStyle = t.text; ctx.font = '800 280px sans-serif';\n  const dayLabel = String(Math.max(0, Math.floor(opts.days)));\n  const dayWidth = ctx.measureText(dayLabel).width;\n  if (dayWidth > 850) ctx.font = `800 ${Math.max(95, Math.floor(280 * 850 / dayWidth))}px sans-serif`;\n  ctx.fillText(dayLabel, 540, centerY + 20, 850);
   ctx.fillStyle = t.accent; ctx.font = '800 84px sans-serif'; ctx.fillText(opts.days === 1 ? 'DIA' : 'DIAS', 540, centerY + 118);
   ctx.strokeStyle = t.accent; ctx.globalAlpha = .65; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(310, centerY + 175); ctx.lineTo(770, centerY + 175); ctx.stroke(); ctx.globalAlpha = 1;
   ctx.fillStyle = '#FFFFFF'; ctx.font = '600 47px sans-serif';
@@ -62,7 +61,7 @@ function makeArtwork(opts: { theme: Theme; format: Format; days: number; message
   if (!opts.discreet && opts.showAchievements) stats.push(opts.achievements + ' conquistas');
   if (stats.length) {
     ctx.fillStyle = '#FFFFFF'; ctx.globalAlpha = .09; roundedRect(ctx, 85, statsY - 72, 910, 124, 28); ctx.fill(); ctx.globalAlpha = 1;
-    ctx.fillStyle = '#E2E8F0'; ctx.font = '600 29px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(stats.join('   •   '), 540, statsY + 2);
+    ctx.fillStyle = '#E2E8F0'; ctx.font = '600 29px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(stats.join('   •   '), 540, statsY + 2, 880);
   }
   const bottom = h - 100;
   ctx.fillStyle = '#E2E8F0'; ctx.font = '500 29px sans-serif'; ctx.textAlign = 'center';
@@ -96,7 +95,7 @@ export default function ShareProgressPage() {
     setAchievements(storage.getAchievements().filter(a => a.unlocked).length);
     try { setShareCount(Number(localStorage.getItem('weedreset_share_actions_v1') || '0')); } catch {}
   }, [router]);
-  const days = userData ? Math.max(0, calculateCleanDays(userData.startDate, userData.lastRelapseDate)) : 0;
+  const rawDays = userData ? calculateCleanDays(userData.startDate, userData.lastRelapseDate) : 0;\n  const days = Number.isFinite(rawDays) ? Math.max(0, Math.floor(rawDays)) : 0;
   const savings = userData ? calculateSavings(days, userData.dailyCost || 0) : 0;
   const reached = MILESTONES.filter(d => d <= days);
   const chosenDays = selectedMilestone ?? days;
@@ -187,7 +186,7 @@ export default function ShareProgressPage() {
           <section className="space-y-4 lg:sticky lg:top-24">
             <div className="rounded-2xl border border-white/10 bg-white/[.04] p-4 sm:p-6">
               <div className="mb-4 flex items-center justify-between"><h3 className="font-bold">Prévia da publicação</h3><span className="text-xs text-slate-400">{format === 'story' ? '1080 × 1920' : '1080 × 1080'}</span></div>
-              <div className="mx-auto max-w-[330px] overflow-hidden rounded-2xl border border-white/15 shadow-2xl">{preview ? <img src={preview} alt="Prévia da sua conquista personalizada" className="block h-auto w-full" /> : <div className="aspect-[9/16] animate-pulse bg-slate-800" />}</div>
+              <div className="mx-auto max-w-[260px] overflow-hidden rounded-2xl border border-white/15 shadow-2xl sm:max-w-[330px]">{preview ? <img src={preview} alt="Prévia da sua conquista personalizada" className="block h-auto w-full" /> : <div className="aspect-[9/16] animate-pulse bg-slate-800" />}</div>
               <div className="mt-5 grid grid-cols-2 gap-3">
                 <button onClick={download} disabled={busy} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-violet-300/50 bg-violet-400/15 px-2 text-sm font-bold disabled:opacity-50"><Download className="h-4 w-4" />Baixar PNG</button>
                 <button onClick={share} disabled={busy} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-violet-500 px-2 text-sm font-bold text-white disabled:opacity-50"><Share2 className="h-4 w-4" />Compartilhar</button>
