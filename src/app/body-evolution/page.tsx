@@ -905,7 +905,7 @@ export default function BodyEvolutionPage() {
       <header className="bg-black/40 backdrop-blur-xl shadow-lg sticky top-0 z-40 border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               <Link href="/" className="p-2 hover:bg-white/10 rounded-lg transition-colors">
                 <ArrowLeft className="w-6 h-6 text-white/80" />
               </Link>
@@ -932,7 +932,7 @@ export default function BodyEvolutionPage() {
         {/* Progresso Geral */}
         <section className="rounded-2xl bg-gradient-to-r from-emerald-400/80 to-green-500/70 p-[1px] shadow-2xl">
           <div className="rounded-2xl bg-black/30 backdrop-blur-xl border border-white/10 p-6">
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-emerald-200" />
@@ -1024,14 +1024,14 @@ export default function BodyEvolutionPage() {
                 <Gift className="w-5 h-5 text-purple-600 dark:text-purple-300" />
                 Recompensa de Conclusão (1 Ano)
               </h3>
-              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-200 mt-2">
                 Ao completar <strong>1 ano</strong> e fechar a grade inteira, você pode coletar uma recompensa especial.
               </p>
             </div>
 
             <Link
               href="/rewards"
-              className="shrink-0 inline-flex items-center gap-2 px-3 py-2 rounded-full bg-black/5 dark:bg-white/10 text-gray-800 dark:text-gray-100 text-xs font-semibold hover:bg-black/10 dark:hover:bg-white/20 transition-colors"
+              className="self-start shrink-0 inline-flex items-center gap-2 px-3 py-2 rounded-full bg-black/5 dark:bg-white/10 text-gray-800 dark:text-gray-100 text-xs font-semibold hover:bg-black/10 dark:hover:bg-white/20 transition-colors"
               title="Ir para Recompensas"
             >
               Ver na loja
@@ -1039,52 +1039,32 @@ export default function BodyEvolutionPage() {
             </Link>
           </div>
 
-          <div className="mt-4 rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-gray-50 dark:bg-gray-900/30 p-4">
-            <div className="flex items-center gap-4">
-              <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-black/5 dark:bg-white/10 border border-gray-200/60 dark:border-gray-700/60">
-                <Image src={COMPLETION_REWARD.img} alt={COMPLETION_REWARD.name} fill className="object-cover" />
+          <div className="mt-4 rounded-2xl border border-purple-300/25 bg-purple-500/5 p-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="flex shrink-0 items-center gap-3">
+                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-purple-300/30 bg-black/10">
+                  <Image src={COMPLETION_REWARD.img} alt={COMPLETION_REWARD.name} fill className="object-contain p-1" />
+                </div>
+                <div className="min-w-0 sm:hidden">
+                  <p className="break-words text-base font-bold leading-snug text-gray-900 dark:text-white">{COMPLETION_REWARD.name}</p>
+                  <span className="mt-1 inline-flex rounded-full bg-purple-500/15 px-2.5 py-1 text-xs font-semibold text-purple-800 dark:text-purple-200">{rewardOwned ? 'Coletado' : hasCompletedFullYear ? 'Disponível para coletar' : 'Ainda bloqueado'}</span>
+                </div>
               </div>
-
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-gray-900 dark:text-gray-100 truncate">{COMPLETION_REWARD.name}</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                  Recompensa simbólica por completar o ciclo completo. Você pode equipar em <strong>Recompensas</strong>.
-                </p>
+              <div className="min-w-0 flex-1">
+                <p className="hidden break-words text-base font-bold text-gray-900 dark:text-white sm:block">{COMPLETION_REWARD.name}</p>
+                <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-200">Uma conquista simbólica para celebrar um ano de jornada. Depois de coletar, você poderá equipá-la em Recompensas.</p>
+                {!hasCompletedFullYear && <p className="mt-2 text-xs font-medium text-purple-800 dark:text-purple-200">Disponível ao completar um ano e todas as etapas.</p>}
               </div>
-
-              <div className="shrink-0">
-                {!hasCompletedFullYear ? (
-                  <div className="text-xs text-gray-600 dark:text-gray-400 text-right">
-                    <div className="font-semibold text-gray-900 dark:text-gray-100">Bloqueado</div>
-                    <div>Complete 1 ano para coletar</div>
-                  </div>
-                ) : rewardOwned ? (
-                  <div className="text-xs text-green-700 dark:text-green-300 font-semibold">Coletado ✅</div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={claimCompletionReward}
-                    disabled={claiming}
-                    className="px-4 py-2 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold hover:opacity-95 disabled:opacity-60"
-                  >
-                    {claiming ? 'Coletando...' : 'Coletar'}
-                  </button>
-                )}
-              </div>
+              {hasCompletedFullYear && !rewardOwned && <button type="button" onClick={claimCompletionReward} disabled={claiming} className="min-h-11 w-full rounded-xl bg-purple-600 px-5 py-2 text-sm font-bold text-white disabled:opacity-60 sm:w-auto">{claiming ? 'Coletando...' : 'Coletar recompensa'}</button>}
             </div>
-
-            {hasCompletedFullYear && !userId && (
-              <div className="mt-3 text-xs text-gray-700 dark:text-gray-200 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200/60 dark:border-yellow-800/60 rounded-lg p-3">
-                Para coletar e guardar no inventário, faça login.
-              </div>
-            )}
+            {hasCompletedFullYear && !userId && <p className="mt-3 rounded-lg bg-amber-500/10 p-3 text-sm text-gray-800 dark:text-amber-100">Faça login para salvar a recompensa no inventário.</p>}
           </div>
         </section>
 
         {/* Timeline */}
         <section className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl">
           <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">Biblioteca de descobertas</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+          <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-200 mb-6">
             Explore os marcos já alcançados e registre sua experiência. Os prazos são simbólicos e não representam um diagnóstico do seu organismo.
           </p>
 
@@ -1094,7 +1074,7 @@ export default function BodyEvolutionPage() {
             </div>
           )}
 
-          <div className="space-y-6">
+          <div className="space-y-3">
             {evolution.map((stage, index) => {
               if (!showAllStages && !stage.completed && nextStage?.hours !== stage.hours) return null;
               const remainingDays =
@@ -1115,7 +1095,7 @@ export default function BodyEvolutionPage() {
               const isEditingThis = editingStage === stage.hours;
 
               return (
-                <div key={stage.title} className="relative" id={`stage-${stage.hours}`}>
+                <div key={stage.title} className="relative min-w-0" id={`stage-${stage.hours}`}>
                   {index < evolution.length - 1 && (
                     <div
                       className={`absolute left-6 top-16 w-0.5 h-full ${
@@ -1125,15 +1105,15 @@ export default function BodyEvolutionPage() {
                   )}
 
                   <div
-                    className={`p-6 rounded-xl transition-all border-2 ${
+                    className={`p-3 sm:p-5 rounded-xl transition-all border-2 ${
                       stage.completed
                         ? 'bg-green-50 dark:bg-green-900/20 border-green-400 dark:border-green-600'
                         : 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600'
                     }`}
                   >
-                    <div className="flex items-start gap-4">
+                    <div className="flex min-w-0 items-start gap-2 sm:gap-4">
                       <div
-                        className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
+                        className={`w-9 h-9 sm:w-12 sm:h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
                           stage.completed
                             ? 'bg-green-500 text-white'
                             : 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400'
@@ -1145,7 +1125,7 @@ export default function BodyEvolutionPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                           <div className="flex items-center gap-3">
-                            <h4 className="text-xl font-bold text-gray-800 dark:text-gray-200">
+                            <h4 className="text-base sm:text-xl font-bold text-gray-900 dark:text-gray-100">
                               {stage.icon} {stage.title}
                             </h4>
 
@@ -1189,7 +1169,7 @@ export default function BodyEvolutionPage() {
                           </button>
                         </div>
 
-                        <p className="text-gray-600 dark:text-gray-400">{stage.description}</p>
+                        <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-200">{stage.description}</p>
 
                         {isNextCard && !stage.completed && (
                           <div className="mt-4 rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white/60 dark:bg-black/20 p-3">
