@@ -49,7 +49,11 @@ function makeArtwork(opts: { theme: Theme; format: Format; days: number; message
   ctx.fillStyle = '#D5DAE5'; ctx.font = '500 27px sans-serif'; ctx.textAlign = 'right'; ctx.fillText('MINHA JORNADA', 994, top);
   const centerY = opts.format === 'story' ? 720 : 450;
   ctx.textAlign = 'center'; ctx.fillStyle = '#F1F5F9'; ctx.font = '500 36px sans-serif'; ctx.fillText(opts.milestone ? 'MARCO CONQUISTADO' : 'UM DIA DE CADA VEZ', 540, centerY - 235);
-  ctx.fillStyle = t.text; ctx.font = '800 280px sans-serif';\n  const dayLabel = String(Math.max(0, Math.floor(opts.days)));\n  const dayWidth = ctx.measureText(dayLabel).width;\n  if (dayWidth > 850) ctx.font = `800 ${Math.max(95, Math.floor(280 * 850 / dayWidth))}px sans-serif`;\n  ctx.fillText(dayLabel, 540, centerY + 20, 850);
+  ctx.fillStyle = t.text; ctx.font = '800 280px sans-serif';
+  const dayLabel = String(Math.max(0, Math.floor(opts.days)));
+  const dayWidth = ctx.measureText(dayLabel).width;
+  if (dayWidth > 850) ctx.font = `800 ${Math.max(95, Math.floor(280 * 850 / dayWidth))}px sans-serif`;
+  ctx.fillText(dayLabel, 540, centerY + 20, 850);
   ctx.fillStyle = t.accent; ctx.font = '800 84px sans-serif'; ctx.fillText(opts.days === 1 ? 'DIA' : 'DIAS', 540, centerY + 118);
   ctx.strokeStyle = t.accent; ctx.globalAlpha = .65; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(310, centerY + 175); ctx.lineTo(770, centerY + 175); ctx.stroke(); ctx.globalAlpha = 1;
   ctx.fillStyle = '#FFFFFF'; ctx.font = '600 47px sans-serif';
@@ -95,7 +99,8 @@ export default function ShareProgressPage() {
     setAchievements(storage.getAchievements().filter(a => a.unlocked).length);
     try { setShareCount(Number(localStorage.getItem('weedreset_share_actions_v1') || '0')); } catch {}
   }, [router]);
-  const rawDays = userData ? calculateCleanDays(userData.startDate, userData.lastRelapseDate) : 0;\n  const days = Number.isFinite(rawDays) ? Math.max(0, Math.floor(rawDays)) : 0;
+  const rawDays = userData ? calculateCleanDays(userData.startDate, userData.lastRelapseDate) : 0;
+  const days = Number.isFinite(rawDays) ? Math.max(0, Math.floor(rawDays)) : 0;
   const savings = userData ? calculateSavings(days, userData.dailyCost || 0) : 0;
   const reached = MILESTONES.filter(d => d <= days);
   const chosenDays = selectedMilestone ?? days;
