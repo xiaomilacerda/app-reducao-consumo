@@ -502,6 +502,15 @@ export default function RewardsPage() {
     }
   }
 
+  const featured = AVATARS[19]
+  const nextGoal = AVATARS.find(a => !owned.has(a.code)) ?? featured
+  const goalRemaining = Math.max(0, selectedItem.coins - wallet.coins)
+  const goalProgress = selectedItem.coins > 0 ? clamp(Math.round(wallet.coins / selectedItem.coins * 100), 0, 100) : 100
+  const rarityClass = (rarity: AvatarItem['rarity']) =>
+    rarity === 'Lendário' ? 'border-amber-400/60 shadow-amber-400/15' :
+    rarity === 'Épico' ? 'border-fuchsia-400/50 shadow-fuchsia-400/10' :
+    rarity === 'Raro' ? 'border-sky-400/40' : 'border-white/15'
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-950 via-black to-black">
       <div className="mx-auto w-full max-w-6xl px-4 py-6">
