@@ -73,7 +73,9 @@ export default function NotificationBell() {
   }, [client, userId]);
 
   useEffect(() => {
-    if (!userId) { setNotices([]); setOpen(false); return; }
+    setNotices([]);
+    setOpen(false);
+    if (!userId) return;
     void refresh();
     const timer = window.setInterval(() => { void refresh(); }, 20000);
     const focus = () => { void refresh(); };

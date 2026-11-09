@@ -511,7 +511,7 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
         const userCommentSet = new Set<string>();
         if (user) {
           allComments.forEach((c) => {
-            if (c.user_id === user.id) userCommentSet.add(c.post_id);
+            if (c.user_id === user.id && !c.parent_comment_id) userCommentSet.add(c.post_id);
           });
         }
 
