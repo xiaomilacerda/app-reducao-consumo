@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -10,9 +10,6 @@ import {
   Heart,
   MessageCircle,
   ArrowUpRight,
-  Bell,
-  CheckCheck,
-  X,
 } from 'lucide-react';
 import { createBrowserClient } from '@supabase/ssr';
 
@@ -34,6 +31,7 @@ type CommunityComment = {
   content: string;
   created_at: string;
   author_icon?: string | null;
+  parent_comment_id?: string | null;
 };
 
 type CommunityLike = {
@@ -55,22 +53,6 @@ type ModerationState = {
   canReport: boolean;
   commentBlockedUntil: string | null;
   reportBlockedUntil: string | null;
-};
-
-
-type CommunityNotification = {
-  id: string;
-  user_id: string;
-  post_id: string;
-  comment_id: string | null;
-  actor_id: string | null;
-  created_at: string;
-  is_read: boolean;
-  read_at: string | null;
-
-  // preenchido no client (fallback quando não dá join)
-  post_content?: string | null;
-  comment_content?: string | null;
 };
 
 
@@ -182,6 +164,36 @@ function safeGetThemeModeFromStorage(): 'focus' | 'normal' {
   return v === 'focus' || v === 'normal' ? v : 'normal';
 }
 
+
+function orderCommunityThread(comments: CommunityComment[]): Array<{ comment: CommunityComment; depth: number }> {
+  const ids = new Set(comments.map((comment) => comment.id));
+  const children = new Map<string, CommunityComment[]>();
+  const roots: CommunityComment[] = [];
+  const output: Array<{ comment: CommunityComment; depth: number }> = [];
+  const visited = new Set<string>();
+  const sortOldest = (a: CommunityComment, b: CommunityComment) =>
+    new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+
+  for (const comment of comments) {
+    if (comment.parent_comment_id && ids.has(comment.parent_comment_id)) {
+      const group = children.get(comment.parent_comment_id) || [];
+      group.push(comment);
+      children.set(comment.parent_comment_id, group);
+    } else {
+      roots.push(comment);
+    }
+  }
+  const visit = (comment: CommunityComment, depth: number) => {
+    if (visited.has(comment.id)) return;
+    visited.add(comment.id);
+    output.push({ comment, depth });
+    for (const child of (children.get(comment.id) || []).sort(sortOldest)) visit(child, depth + 1);
+  };
+  roots.sort(sortOldest).forEach((comment) => visit(comment, 0));
+  comments.forEach((comment) => visit(comment, 0));
+  return output;
+}
+
 export default function CommunityPage() {
   const router = useRouter();
   const supabase = useMemo(createClient, []);
@@ -202,11 +214,6 @@ export default function CommunityPage() {
 
   const [feedFilter, setFeedFilter] = useState<'all' | 'my_comments'>('all');
 
-  const [inboxOpen, setInboxOpen] = useState(false);
-  const [inboxLoading, setInboxLoading] = useState(false);
-  const [inboxItems, setInboxItems] = useState<CommunityNotification[]>([]);
-  const [inboxUnread, setInboxUnread] = useState(0);
-
   const [commentViewByPostId, setCommentViewByPostId] = useState<Record<string, 'all' | 'mine'>>({});
 
   const [newPost, setNewPost] = useState('');
@@ -214,6 +221,8 @@ export default function CommunityPage() {
   const [hasPostedToday, setHasPostedToday] = useState(false);
 
   const [replyByPostId, setReplyByPostId] = useState<Record<string, string>>({});
+  const [replyTargetByPostId, setReplyTargetByPostId] = useState<Record<string, string | null>>({});
+  const handledDeepLink = useRef<string | null>(null);
   const [sendingReplyFor, setSendingReplyFor] = useState<string | null>(null);
 
   const [globalError, setGlobalError] = useState<string | null>(null);
@@ -425,13 +434,13 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
 
         const ctry1 = await supabase
           .from('community_comments')
-          .select('id, post_id, user_id, content, created_at, status, author_icon')
+          .select('id, post_id, parent_comment_id, user_id, content, created_at, status, author_icon')
           .in('post_id', postIds);
 
         if (ctry1.error) {
           const ctry2 = await supabase
             .from('community_comments')
-            .select('id, post_id, user_id, content, created_at, status')
+            .select('id, post_id, parent_comment_id, user_id, content, created_at, status')
             .in('post_id', postIds);
 
           if (ctry2.error) {
@@ -538,175 +547,26 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
     loadAll();
   }, [supabase, user, orderBy, feedFilter, reloadFlag]);
 
-  const loadInbox = async (silent = false) => {
-    if (!user) return;
-
-    if (!silent) setInboxLoading(true);
-
-    try {
-      // Tenta fazer join direto (funciona se existirem relacionamentos / FK reconhecidos pelo PostgREST)
-      const j = await supabase
-        .from('community_notifications')
-        .select(
-          'id, user_id, post_id, comment_id, actor_id, created_at, is_read, read_at, post:community_posts(content), comment:community_comments(content)'
-        )
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      let rows: any[] = [];
-
-      if (!j.error) {
-        rows = (j.data || []).map((r: any) => ({
-          id: r.id,
-          user_id: r.user_id,
-          post_id: r.post_id,
-          comment_id: r.comment_id ?? null,
-          actor_id: r.actor_id ?? null,
-          created_at: r.created_at,
-          is_read: !!r.is_read,
-          read_at: r.read_at ?? null,
-          post_content: r.post?.content ?? null,
-          comment_content: r.comment?.content ?? null,
-        }));
-      } else {
-        // Fallback sem join
-        const b = await supabase
-          .from('community_notifications')
-          .select('id, user_id, post_id, comment_id, actor_id, created_at, is_read, read_at')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(50);
-
-        if (b.error) throw b.error;
-
-        rows = (b.data || []).map((r: any) => ({
-          id: r.id,
-          user_id: r.user_id,
-          post_id: r.post_id,
-          comment_id: r.comment_id ?? null,
-          actor_id: r.actor_id ?? null,
-          created_at: r.created_at,
-          is_read: !!r.is_read,
-          read_at: r.read_at ?? null,
-          post_content: null,
-          comment_content: null,
-        }));
-
-        const postIds = Array.from(new Set(rows.map((r) => r.post_id).filter(Boolean)));
-        const commentIds = Array.from(new Set(rows.map((r) => r.comment_id).filter(Boolean)));
-
-        if (postIds.length > 0) {
-          const p = await supabase.from('community_posts').select('id, content').in('id', postIds as any);
-          if (!p.error && p.data) {
-            const map: Record<string, string> = {};
-            for (const it of p.data as any[]) map[it.id] = it.content;
-            rows = rows.map((r) => ({ ...r, post_content: map[r.post_id] ?? r.post_content }));
-          }
-        }
-
-        if (commentIds.length > 0) {
-          const c = await supabase.from('community_comments').select('id, content').in('id', commentIds as any);
-          if (!c.error && c.data) {
-            const map: Record<string, string> = {};
-            for (const it of c.data as any[]) map[it.id] = it.content;
-            rows = rows.map((r) => ({ ...r, comment_content: map[r.comment_id] ?? r.comment_content }));
-          }
-        }
-      }
-
-      setInboxItems(rows as any);
-      setInboxUnread((rows || []).filter((r: any) => !r.is_read).length);
-    } catch (e) {
-      console.warn('Erro ao carregar inbox', e);
-    } finally {
-      if (!silent) setInboxLoading(false);
-    }
-  };
-
-  const markAllInboxAsRead = async () => {
-    if (!user) return;
-
-    try {
-      const nowIso = new Date().toISOString();
-
-      const { error } = await supabase
-        .from('community_notifications')
-        .update({ is_read: true, read_at: nowIso })
-        .eq('user_id', user.id)
-        .eq('is_read', false);
-
-      if (error) throw error;
-
-      setInboxItems((prev) =>
-        prev.map((n) => (n.is_read ? n : { ...n, is_read: true, read_at: nowIso }))
-      );
-      setInboxUnread(0);
-    } catch (e) {
-      console.warn('Erro ao marcar tudo como lido', e);
-    }
-  };
-
-  const openNotification = async (n: CommunityNotification) => {
-    // Marca como lida (se necessário)
-    try {
-      if (!n.is_read && user) {
-        const nowIso = new Date().toISOString();
-        const { error } = await supabase
-          .from('community_notifications')
-          .update({ is_read: true, read_at: nowIso })
-          .eq('id', n.id)
-          .eq('user_id', user.id);
-
-        if (!error) {
-          setInboxItems((prev) =>
-            prev.map((x) => (x.id === n.id ? { ...x, is_read: true, read_at: nowIso } : x))
-          );
-          setInboxUnread((prev) => Math.max(0, prev - 1));
-        }
-      }
-    } catch (e) {
-      // não bloquear navegação por isso
-    }
-
-    setInboxOpen(false);
-
-    // Abre o post e scrolla
-    try {
-      setPosts((prev) =>
-        prev.map((p) => (p.id === n.post_id ? { ...p, commentsOpen: true } : p))
-      );
-
-      setTimeout(() => {
-        const el = document.getElementById(`post-${n.post_id}`);
-        el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 150);
-    } catch {}
-  };
 
   useEffect(() => {
-    if (!user) {
-      setInboxItems([]);
-      setInboxUnread(0);
-      return;
-    }
-
-    loadInbox(true);
-
-    const t = setInterval(() => {
-      loadInbox(true);
-    }, 25000);
-
-    return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
-
-  useEffect(() => {
-    if (!user) return;
-    if (inboxOpen) loadInbox();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inboxOpen, user?.id]);
-
+    if (loading || posts.length === 0 || typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const postId = params.get("post");
+    const commentId = params.get("comment");
+    if (!postId) return;
+    const key = postId + ":" + (commentId || "");
+    if (handledDeepLink.current === key) return;
+    handledDeepLink.current = key;
+    setPosts((current) => current.map((post) =>
+      post.id === postId ? { ...post, commentsOpen: true } : post
+    ));
+    const timer = window.setTimeout(() => {
+      const target = (commentId ? document.getElementById("comment-" + commentId) : null) ||
+        document.getElementById("post-" + postId);
+      target?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 450);
+    return () => window.clearTimeout(timer);
+  }, [loading, posts.length]);
 
   function showInfo(msg: string) {
     setGlobalInfo(msg);
@@ -869,7 +729,8 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
 
     const post = posts.find((p) => p.id === postId);
     if (!post) return;
-    if (post.userHasCommented) {
+    const replyToCommentId = replyTargetByPostId[postId] || null;
+    if (!replyToCommentId && post.userHasCommented) {
       setGlobalError('Você já respondeu esse post.');
       return;
     }
@@ -887,6 +748,7 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
         user_id: user.id,
         content: text,
         author_icon: myIcon || DEFAULT_ICON,
+        parent_comment_id: replyToCommentId,
       };
 
       let ins = await supabase.from('community_comments').insert(payload).select('*').maybeSingle();
@@ -911,7 +773,7 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
             ? {
                 ...p,
                 comments: [...p.comments, data],
-                userHasCommented: true,
+                userHasCommented: replyToCommentId ? p.userHasCommented : true,
                 commentsOpen: true,
               }
             : p
@@ -919,6 +781,7 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
       );
 
       setReplyByPostId((prev) => ({ ...prev, [postId]: '' }));
+      setReplyTargetByPostId((prev) => ({ ...prev, [postId]: null }));
     } catch (err) {
       console.warn('Erro handleSendReply:', err);
       setGlobalError('Erro inesperado.');
@@ -1039,114 +902,6 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
           </div>
 
           <div className="flex items-center gap-3">
-            {user && (
-              <div className="relative">
-                <button
-                  className="relative px-3 py-2 rounded-full bg-white/70 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-900 transition"
-                  onClick={() => {
-                    setInboxOpen((v) => !v);
-                  }}
-                  title="Notificações"
-                >
-                  <Bell className="w-5 h-5 text-gray-700 dark:text-gray-200" />
-                  {inboxUnread > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-purple-600 text-white text-[11px] font-bold flex items-center justify-center">
-                      {inboxUnread > 99 ? '99+' : inboxUnread}
-                    </span>
-                  )}
-                </button>
-
-                {inboxOpen && (
-                  <div className="absolute right-0 mt-2 w-[92vw] max-w-[440px] z-50 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl overflow-hidden">
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">
-                          Notificações
-                        </span>
-                        {inboxUnread > 0 && (
-                          <span className="text-xs text-purple-700 dark:text-purple-300">
-                            ({inboxUnread} não lidas)
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          className="text-xs px-3 py-1.5 rounded-full border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
-                          onClick={async () => {
-                            await markAllInboxAsRead();
-                          }}
-                          disabled={inboxItems.length === 0 || inboxUnread === 0}
-                          title="Marcar todas como lidas"
-                        >
-                          <CheckCheck className="w-4 h-4 inline-block -mt-[2px] mr-1" />
-                          Ler tudo
-                        </button>
-
-                        <button
-                          className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-                          onClick={() => setInboxOpen(false)}
-                          title="Fechar"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="max-h-[360px] overflow-auto">
-                      {inboxLoading ? (
-                        <div className="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
-                          Carregando...
-                        </div>
-                      ) : inboxItems.length === 0 ? (
-                        <div className="px-4 py-6 text-sm text-gray-500 dark:text-gray-400">
-                          Nenhuma notificação ainda.
-                        </div>
-                      ) : (
-                        <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                          {inboxItems.map((n) => (
-                            <button
-                              key={n.id}
-                              className={`w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition ${
-                                !n.is_read ? 'bg-purple-50/50 dark:bg-purple-900/20' : ''
-                              }`}
-                              onClick={async () => {
-                                await openNotification(n);
-                              }}
-                            >
-                              <div className="flex items-start gap-3">
-                                <div className={`mt-1 w-2 h-2 rounded-full ${!n.is_read ? 'bg-purple-600' : 'bg-transparent'}`} />
-                                <div className="flex-1">
-                                  <div className="text-sm text-gray-900 dark:text-gray-100 line-clamp-2">
-                                    <span className="font-semibold">Novo comentário</span>{' '}
-                                    em uma publicação sua
-                                  </div>
-
-                                  {n.comment_content && (
-                                    <div className="mt-1 text-xs text-gray-600 dark:text-gray-300 line-clamp-2">
-                                      “{n.comment_content}”
-                                    </div>
-                                  )}
-
-                                  <div className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
-                                    {new Date(n.created_at).toLocaleString('pt-BR')}
-                                  </div>
-                                </div>
-
-                                <div className="text-[11px] text-purple-700 dark:text-purple-300">
-                                  Ver
-                                </div>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
             {isPremium && (
               <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full text-white font-semibold">
                 ⭐ Premium
@@ -1377,7 +1132,14 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
 
                 {post.commentsOpen && (
                   <div className="space-y-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+                    {replyTargetByPostId[post.id] && (
+                      <div className="flex items-center justify-between gap-2 rounded-xl border border-violet-400/30 bg-violet-400/10 px-3 py-2 text-xs text-violet-100">
+                        <span>Respondendo a um comentário</span>
+                        <button type="button" className="font-semibold text-violet-200 underline underline-offset-2" onClick={() => setReplyTargetByPostId((prev) => ({ ...prev, [post.id]: null }))}>Cancelar</button>
+                      </div>
+                    )}
                     <textarea
+                      id={"comment-reply-input-" + post.id}
                       value={replyByPostId[post.id] || ''}
                       onChange={(e) =>
                         setReplyByPostId((prev) => ({
@@ -1385,7 +1147,7 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
                           [post.id]: e.target.value,
                         }))
                       }
-                      disabled={!user || !isPremium || post.userHasCommented || !mod.canComment || isBlockedUntil(mod.commentBlockedUntil)}
+                      disabled={!user || !isPremium || (post.userHasCommented && !replyTargetByPostId[post.id]) || !mod.canComment || isBlockedUntil(mod.commentBlockedUntil)}
                       placeholder={
                         !user
                           ? 'Faça login para responder'
@@ -1395,7 +1157,7 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
                           ? 'Comentários desativados para sua conta'
                           : isBlockedUntil(mod.commentBlockedUntil)
                           ? `Comentários bloqueados até ${formatDateTimeBR(mod.commentBlockedUntil!)}`
-                          : post.userHasCommented
+                          : post.userHasCommented && !replyTargetByPostId[post.id]
                           ? 'Você já respondeu este post'
                           : 'Escreva uma resposta...'
                       }
@@ -1409,7 +1171,7 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
                           !isPremium ||
                           !mod.canComment ||
                           isBlockedUntil(mod.commentBlockedUntil) ||
-                          post.userHasCommented ||
+                          (post.userHasCommented && !replyTargetByPostId[post.id]) ||
                           !replyByPostId[post.id]?.trim() ||
                           sendingReplyFor === post.id
                         }
@@ -1468,8 +1230,11 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
                       const view = commentViewByPostId[post.id] || 'all';
                       const visible =
                         view === 'mine' && user
-                          ? post.comments.filter((c) => c.user_id === user.id)
+                          ? post.comments.filter((c) =>
+                              c.user_id === user.id ||
+                              (!!c.parent_comment_id && post.comments.some((p) => p.id === c.parent_comment_id && p.user_id === user.id)))
                           : post.comments;
+                      const ordered = orderCommunityThread(visible);
 
                       if (visible.length === 0) {
                         return (
@@ -1483,13 +1248,14 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
 
                       return (
                         <div className="mt-3 space-y-2">
-                          {visible.map((comment) => {
+                          {ordered.map(({ comment, depth }) => {
                             const cIcon = resolveIcon(comment.author_icon);
                           
                             return (
                               <div
                                 key={comment.id}
-                                className="bg-purple-50 dark:bg-purple-900/20 px-4 py-3 rounded-xl text-xs"
+                                id={"comment-" + comment.id}
+                                className={"scroll-mt-32 rounded-xl border border-white/10 bg-violet-400/[.08] px-4 py-3 text-xs " + (depth > 0 ? "ml-4 border-l-2 border-l-violet-400/40 sm:ml-8" : "")}
                               >
                                 <div className="flex justify-between items-center">
                                   <span className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
@@ -1505,7 +1271,7 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
                                         <span className="text-sm">{cIcon}</span>
                                       )}
                                     </span>
-                                    <span>Resposta anônima</span>
+                                    <span>{comment.parent_comment_id ? 'Resposta ao comentário' : 'Resposta anônima'}</span>
                                   </span>
                                   <button
                                     onClick={() => handleReport({ commentId: comment.id })}
@@ -1534,9 +1300,19 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
                                   {comment.content}
                                 </p>
                           
-                                <span className="text-[10px] text-gray-500 dark:text-gray-400">
-                                  {formatDate(comment.created_at)}
-                                </span>
+                                <div className="mt-2 flex items-center justify-between gap-3">
+                                  <span className="text-[10px] text-gray-400">{formatDate(comment.created_at)}</span>
+                                  <button
+                                    type="button"
+                                    disabled={!user || !isPremium || !mod.canComment || isBlockedUntil(mod.commentBlockedUntil)}
+                                    className="rounded-lg px-2 py-1 text-[11px] font-semibold text-violet-200 hover:bg-violet-300/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                    onClick={() => {
+                                      setReplyTargetByPostId((prev) => ({ ...prev, [post.id]: comment.id }));
+                                      setReplyByPostId((prev) => ({ ...prev, [post.id]: '' }));
+                                      document.getElementById("comment-reply-input-" + post.id)?.focus();
+                                    }}
+                                  >Responder</button>
+                                </div>
                               </div>
                             );
                           })}
