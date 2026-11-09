@@ -623,3 +623,10 @@ body.wr-app-body.wr-noise::after {
     transition-duration: .01ms !important;
   }
 }
+
+
+/* Fixed global notification header: retain visibility of page-local sticky titles. */
+.wr-global-topbar + .wr-screen > header {
+  top: 3.5rem !important;
+  scroll-margin-top: 7rem;
+}
