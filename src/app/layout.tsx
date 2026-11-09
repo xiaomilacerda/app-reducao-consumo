@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Inter, Inter_Tight } from "next/font/google";
 import "./globals.css";
+import NotificationBell from "@/components/notifications/NotificationBell";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -173,6 +174,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           (showNavigation
             ? "pb-[calc(104px+env(safe-area-inset-bottom))] lg:pb-8 lg:pl-[244px]"
             : "pb-8")}>
+          {showNavigation && (
+            <header className="wr-global-topbar sticky top-0 z-[60] border-b border-white/10 bg-[#110e22]/90 backdrop-blur-xl">
+              <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
+                <Link href="/" className="inline-flex items-center gap-2 text-sm font-bold tracking-tight text-white" aria-label="Ir para o início do WeedReset">
+                  <Sparkles className="h-4 w-4 text-violet-300" aria-hidden="true" />
+                  <span>WeedReset</span>
+                </Link>
+                <NotificationBell />
+              </div>
+            </header>
+          )}
           {children}
         </main>
 
