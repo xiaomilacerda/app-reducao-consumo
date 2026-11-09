@@ -449,46 +449,17 @@ export default function RewardsPage() {
     try {
       setBusy(true)
 
-      // 1) Deduz moedas (update; se não existir linha, faz upsert)
-      const nextCoins = wallet.coins - price
-      const up = await supabase
-        .from('user_wallet')
-        .update({ coins: nextCoins })
-        .eq('user_id', userId)
-        .select('coins')
-        .maybeSingle()
-
-      if (up.error) throw up.error
-
-      let finalCoins = Number((up.data as any)?.coins ?? nextCoins)
-      if (!up.data) {
-        const ups = await supabase
-          .from('user_wallet')
-          .upsert({ user_id: userId, coins: nextCoins })
-          .select('coins')
-          .maybeSingle()
-        if (ups.error) throw ups.error
-        finalCoins = Number((ups.data as any)?.coins ?? nextCoins)
+      // A compra é validada e concluída integralmente no servidor.
+      // Nunca confiar no preço, no saldo ou no inventário do navegador.
+      const { data: purchase, error: purchaseError } = await supabase.rpc(
+        'purchase_avatar_secure',
+        { p_code: code }
+      )
+      if (purchaseError || purchase?.ok !== true) {
+        throw purchaseError || new Error('Compra não confirmada pelo servidor.')
       }
 
-      // 2) Registra compra
-      const ins = await supabase.from('user_store_items').insert({
-        user_id: userId,
-        item_id: `avatar_${code}`,
-        equipped: false,
-      })
-      if (ins.error) {
-        // Nunca cobre por um item duplicado ou por uma gravação que falhou.
-        // A compra ideal deve ser transacional no banco; fazemos o estorno
-        // defensivo enquanto a operação atômica não for implementada.
-        const refund = await supabase.from('user_wallet')
-          .update({ coins: wallet.coins })
-          .eq('user_id', userId)
-        if (refund.error) console.error('Falha ao estornar moedas:', refund.error)
-        throw ins.error
-      }
-
-      setWallet({ coins: finalCoins })
+      setWallet({ coins: Number(purchase.coins) })
       setOwned((prev) => new Set([...Array.from(prev), code]))
 
       setCelebrating(code)
