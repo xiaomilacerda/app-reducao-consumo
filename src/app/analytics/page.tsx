@@ -230,7 +230,7 @@ export default function AnalyticsPage() {
             <div>
               <div className="flex items-center gap-2">
                 <BarChart3 className="w-7 h-7 text-purple-500" />
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                <h1 className="text-lg font-bold text-white sm:text-2xl">
                   Análises da Sua Jornada
                 </h1>
               </div>
@@ -253,9 +253,9 @@ export default function AnalyticsPage() {
       </header>
 
       {/* MAIN */}
-      <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8 space-y-8">
+      <main className="wr-analytics-main mx-auto max-w-7xl space-y-4 px-3 py-4 sm:px-6 sm:py-6 sm:space-y-6 lg:px-8">
         {/* Resumo principal */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <section className="wr-analytics-summary grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-3">
           <div className="bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl p-6 shadow-xl text-white">
             <div className="flex items-center gap-2 mb-2">
               <Calendar className="w-5 h-5" />

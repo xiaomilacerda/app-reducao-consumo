@@ -374,7 +374,7 @@ export default function HomePage() {
 
   return (
     <div
-      className={`wr-screen min-h-screen ${
+      className={`wr-screen wr-home-screen min-h-screen ${
         userData.themeMode === 'focus'
           ? 'bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900'
           : 'bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900'
@@ -388,11 +388,11 @@ export default function HomePage() {
             <div className="flex items-center gap-2">
               <Sparkles className="w-8 h-8 text-purple-500" />
               <div className="flex flex-col">
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  WEED RESET
+                <h1 className="text-xl font-bold text-white">
+                  Meu painel
                 </h1>
                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                  Evolução real, dia após dia.
+                  Sua jornada hoje.
                 </span>
               </div>
 
@@ -447,7 +447,7 @@ export default function HomePage() {
           </div>
 
           {/* MOBILE NAV */}
-          <nav className="lg:hidden flex items-center gap-2 mt-4 overflow-x-auto pb-2">
+          <nav className="wr-home-subnav lg:hidden flex items-center gap-2 mt-3 overflow-x-auto pb-1">
             <Link
               href="/"
               className="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-100 text-purple-600 font-semibold whitespace-nowrap text-sm"
@@ -484,27 +484,47 @@ export default function HomePage() {
       </header>
 
       {/* MAIN */}
-      <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8 space-y-8">
+      <main className="wr-home-main max-w-7xl mx-auto px-3 py-4 sm:px-6 lg:px-8 space-y-4 sm:space-y-6">
         {syncError && (
           <div role="alert" className="rounded-xl border border-amber-400/50 bg-amber-950/75 px-4 py-3 text-sm text-amber-100">
             {syncError}
           </div>
         )}
+        {/* Indicador principal: compacto no celular e com o dado em destaque */}
+        <section className="wr-home-progress relative overflow-hidden rounded-2xl border border-violet-400/25 bg-[#201931] px-4 py-4 text-white shadow-[0_10px_32px_rgba(3,2,14,.24)] sm:px-6 sm:py-6" aria-label="Seu tempo de progresso">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="flex items-center gap-2 text-xs font-semibold text-violet-200">
+                <Trophy className="h-4 w-4" aria-hidden="true" />
+                Tempo de progresso
+              </p>
+              <p className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <span className="text-[42px] font-extrabold leading-none tracking-tight tabular-nums sm:text-5xl">{timeInfo.value}</span>
+                <span className="text-lg font-semibold text-violet-100 sm:text-xl">{timeInfo.unit}</span>
+              </p>
+              <p className="mt-2 text-xs text-slate-300 sm:text-sm">{timeInfo.detail}</p>
+            </div>
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-violet-300/20 bg-violet-300/10 sm:h-16 sm:w-16">
+              <Sparkles className="h-6 w-6 text-violet-200 sm:h-8 sm:w-8" aria-hidden="true" />
+            </div>
+          </div>
+        </section>
+
         {/* FRASE DO DIA */}
         {dailyMessage && (
-          <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-5 border border-purple-100 dark:border-purple-900/40">
-            <h3 className="text-lg font-semibold text-purple-600 dark:text-purple-300 mb-2 flex items-center gap-2">
+          <div className="wr-home-daily-note rounded-xl border border-violet-300/15 bg-[#1b182b] p-3 shadow-sm sm:p-4">
+            <h3 className="mb-1 flex items-center gap-2 text-xs font-semibold text-violet-200 sm:text-sm">
               <Sparkles className="w-5 h-5" />
               Mensagem do Dia
             </h3>
-            <p className="text-gray-700 dark:text-gray-300 text-base leading-relaxed">
+            <p className="text-sm leading-relaxed text-slate-300">
               {dailyMessage}
             </p>
           </div>
         )}
 
         {/* GRID PRINCIPAL (10 BOTÕES) */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <div className="wr-home-actions grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-5 sm:gap-3">
           <Link
             href="/sos"
             className="p-4 bg-gradient-to-br from-red-500 to-pink-600 rounded-xl shadow-lg text-white text-center hover:shadow-2xl transition-all"
@@ -586,35 +606,9 @@ export default function HomePage() {
           </Link>
         </div>
 
-        {/* a */}
-        <div className="bg-gradient-to-br from-purple-600 to-pink-600 rounded-3xl p-8 shadow-2xl text-white">
-          <div className="text-center space-y-4">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <Trophy className="w-8 h-8" />
-              <h2 className="text-2xl font-bold">Tempo Limpo</h2>
-            </div>
-
-            <div className="space-y-2">
-              <div className="text-7xl font-bold">{timeInfo.value}</div>
-              <div className="text-3xl font-semibold opacity-90">
-                {timeInfo.unit}
-              </div>
-              <div className="text-xl opacity-75">{timeInfo.detail}</div>
-            </div>
-
-            {safeCleanDays > 0 && (
-              <div className="mt-6 pt-6 border-t border-white/20">
-                <p className="text-lg opacity-90">
-                  Você está fazendo um trabalho incrível. Continue assim! 💪
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
         {/* RESUMO DO DIA */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl border border-gray-200 dark:border-gray-700">
-          <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-4 flex items-center gap-2">
+        <div className="wr-home-summary rounded-2xl border border-white/10 bg-[#19172a] p-4 shadow-sm sm:p-6">
+          <h3 className="text-base font-bold text-gray-800 dark:text-gray-200 mb-4 flex items-center gap-2">
             <Sparkles className="w-6 h-6 text-purple-500" />
             Seu Resumo de Hoje
           </h3>
@@ -731,7 +725,7 @@ export default function HomePage() {
         </div>
 
         {/* BARRAS DE SAÚDE ORIGINAL */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl">
+        <div className="rounded-2xl border border-white/10 bg-[#19172a] p-4 shadow-sm sm:p-6">
           <HealthBars metrics={healthMetrics} />
         </div>
 

@@ -630,3 +630,86 @@ body.wr-app-body.wr-noise::after {
   top: 3.5rem !important;
   scroll-margin-top: 7rem;
 }
+
+
+/* ===== WeedReset Mobile Density Review (Galaxy S24 Ultra) ===== */
+/* Intentionally scoped to mobile and to the affected pages. */
+@media (max-width: 639px) {
+  .wr-global-topbar > div { height: 44px !important; }
+  .wr-global-topbar + .wr-screen > header { top: 44px !important; }
+  .wr-screen > header > div { padding-top: 8px !important; padding-bottom: 8px !important; }
+  .wr-screen > header h1 { font-size: 1.0625rem !important; line-height: 1.25 !important; }
+  .wr-screen > header .text-xs { font-size: 10px; }
+  .wr-screen > main { padding-top: 12px !important; }
+
+  .wr-home-screen .wr-home-subnav { display: none !important; }
+  .wr-home-screen > header .w-8.h-8 { width: 22px; height: 22px; }
+  .wr-home-screen .wr-home-actions > a {
+    min-height: 55px;
+    padding: 10px 12px !important;
+    border: 1px solid rgba(185, 166, 235, .15);
+    border-radius: 13px;
+    background-image: none !important;
+    background-color: #242038 !important;
+    box-shadow: none !important;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 9px;
+    text-align: left;
+  }
+  .wr-home-screen .wr-home-actions > a:hover { background-color: #302a47 !important; }
+  .wr-home-screen .wr-home-actions > a:first-child {
+    background-color: #36202e !important;
+    border-color: rgba(251, 122, 144, .23);
+  }
+  .wr-home-screen .wr-home-actions > a svg {
+    width: 21px;
+    height: 21px;
+    margin: 0 !important;
+    flex: none;
+    opacity: .9;
+  }
+  .wr-home-screen .wr-home-actions > a p {
+    font-size: 11.5px;
+    line-height: 1.25;
+    text-align: left;
+  }
+  .wr-home-screen .wr-home-summary h3 { font-size: 1rem; margin-bottom: .75rem; }
+  .wr-home-screen .wr-home-progress { padding: 15px 16px; }
+
+  .wr-community-main > section { scroll-margin-top: 100px; }
+  .wr-community-main > div { min-width: 0; }
+
+  .wr-analytics-summary > div {
+    padding: 13px !important;
+    background-image: none !important;
+    background-color: #221c38 !important;
+    border: 1px solid rgba(185, 166, 235, .16);
+    box-shadow: none !important;
+    border-radius: 14px;
+  }
+  .wr-analytics-summary > div:nth-child(2) {
+    background-color: #16392e !important;
+    border-color: rgba(83, 227, 164, .16);
+  }
+  .wr-analytics-summary > div:nth-child(3) {
+    grid-column: span 2;
+    background-color: #162b3d !important;
+    border-color: rgba(103, 190, 244, .16);
+  }
+  .wr-analytics-summary > div :is(.text-4xl, .text-5xl) {
+    font-size: clamp(1.55rem, 7vw, 2.1rem) !important;
+    line-height: 1.2;
+  }
+  .wr-analytics-summary > div h2 { font-size: .75rem; line-height: 1.25; }
+  .wr-analytics-summary > div p { font-size: .6875rem; line-height: 1.4; }
+  .wr-analytics-summary > div svg { width: 16px; height: 16px; }
+  .wr-analytics-main > section:not(.wr-analytics-summary) {
+    padding: 15px !important;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, .12) !important;
+  }
+}
+@media (min-width: 640px) {
+  .wr-analytics-summary > div:nth-child(3) { grid-column: auto; }
+}

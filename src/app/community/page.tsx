@@ -896,14 +896,14 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
 
             <MessagesSquare className="w-8 h-8 text-purple-500" />
 
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            <h1 className="text-lg font-bold text-white sm:text-xl">
               Sua Comunidade
             </h1>
           </div>
 
           <div className="flex items-center gap-3">
             {isPremium && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full text-white font-semibold">
+              <div className="flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1.5 text-xs font-semibold text-amber-200">
                 ⭐ Premium
               </div>
             )}
@@ -913,22 +913,25 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
       </header>
 
       {/* MAIN CONTENT */}
-      <main className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8 space-y-6">
-        {/* BLOCO INTRODUTÓRIO */}
-        <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-7 shadow-2xl text-white space-y-3">
-          <h2 className="text-3xl font-bold">Compartilhe. Inspire. Apoie.</h2>
-          <p className="text-lg opacity-90">
-            Este é o seu espaço seguro para deixar recados, desabafar ou motivar outras
-            pessoas na jornada sem fumar.  
+      <main className="wr-community-main mx-auto max-w-6xl space-y-4 px-3 py-4 sm:px-6 sm:py-6">
+        {/* Orientações acessíveis e discretas, sem ocupar a tela inteira */}
+        <section className="wr-community-intro rounded-2xl border border-violet-300/15 bg-[#1b182e] px-4 py-3 text-white sm:p-5" aria-label="Sobre a comunidade">
+          <h2 className="text-base font-bold sm:text-lg">Compartilhe no seu ritmo</h2>
+          <p className="mt-1 text-xs leading-relaxed text-slate-300 sm:text-sm">
+            Um espaço anônimo para trocar experiências e apoiar outras pessoas.
           </p>
-
-          <ul className="text-sm opacity-90 space-y-1">
-            <li>• Respeito sempre, sem exceção.</li>
-            <li>• Conteúdo ofensivo ou explícito é removido.</li>
-            <li>• Publicações e respostas são anônimas para seu conforto.</li>
-            <li>• Membros Premium podem postar e responder.</li>
-          </ul>
-        </div>
+          <details className="mt-2 text-xs text-slate-300">
+            <summary className="cursor-pointer py-1 font-semibold text-violet-200 hover:text-white">
+              Regras e orientações
+            </summary>
+            <ul className="mt-2 space-y-1.5 border-t border-white/10 pt-3 leading-relaxed">
+              <li>• Respeito sempre, sem exceção.</li>
+              <li>• Conteúdo ofensivo ou explícito é removido.</li>
+              <li>• Publicações e respostas são anônimas.</li>
+              <li>• Membros Premium podem postar e responder.</li>
+            </ul>
+          </details>
+        </section>
 
         {/* MENSAGENS */}
         {(globalError || globalInfo) && (
@@ -949,7 +952,7 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
         )}
 
         {/* CAIXA DE POSTAGEM */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl space-y-4">
+        <div className="rounded-2xl border border-white/10 bg-[#1a192d] p-4 shadow-sm space-y-3 sm:p-5">
           <p className="text-sm text-gray-600 dark:text-gray-300">
             Deixe uma mensagem motivacional ou um desabafo para a comunidade.
           </p>
