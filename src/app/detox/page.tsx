@@ -558,7 +558,7 @@ export default function DetoxPage() {
   // ---------- render guards ----------
   if (!mounted || !userData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-cyan-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <div className="wr-screen min-h-screen flex items-center justify-center bg-gradient-to-br from-cyan-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-cyan-500 border-t-transparent" />
       </div>
     );
@@ -595,7 +595,7 @@ export default function DetoxPage() {
 
   return (
     <div
-      className={`min-h-screen ${
+      className={`wr-screen min-h-screen ${
         isFocusMode
           ? 'bg-gradient-to-br from-gray-950 via-slate-900 to-gray-950'
           : 'bg-gradient-to-br from-cyan-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900'

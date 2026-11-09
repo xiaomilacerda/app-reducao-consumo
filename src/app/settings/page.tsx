@@ -289,7 +289,7 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-black to-gray-900">
+      <div className="wr-screen min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-black to-gray-900">
         <div className="animate-spin rounded-full h-10 w-10 border-4 border-purple-500 border-t-transparent" />
       </div>
     );
@@ -299,7 +299,7 @@ export default function SettingsPage() {
     displayName || (userId ? `WeedReset User #${userId.slice(0, 4)}` : 'WeedReset User');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-black to-gray-900">
+    <div className="wr-screen min-h-screen bg-gradient-to-br from-purple-900 via-black to-gray-900">
       {/* HEADER */}
       <header className="bg-black/40 backdrop-blur-sm shadow-sm sticky top-0 z-30 border-b border-purple-500/20">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-3">

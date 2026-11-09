@@ -990,7 +990,7 @@ export default function AiInsightsPage() {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900">
+      <div className="wr-screen min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent" />
       </div>
     );
@@ -999,7 +999,7 @@ export default function AiInsightsPage() {
   const lockedPremium = !isPremium;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-slate-950 to-gray-950 text-white">
+    <div className="wr-screen min-h-screen bg-gradient-to-br from-gray-950 via-slate-950 to-gray-950 text-white">
       <header className="sticky top-0 z-40 border-b border-white/10 bg-black/40 backdrop-blur-xl">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">

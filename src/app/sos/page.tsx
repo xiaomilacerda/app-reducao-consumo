@@ -664,7 +664,7 @@ export default function SosPage() {
   // ---------------- RENDER ----------------
   if (!mounted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <div className="wr-screen min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent" />
       </div>
     );
@@ -674,7 +674,7 @@ export default function SosPage() {
 
   return (
     <div
-      className={`min-h-screen w-full overflow-x-clip ${
+      className={`wr-screen min-h-screen w-full overflow-x-clip ${
         isFocusMode
           ? 'bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900'
           : 'bg-gradient-to-br from-red-50 via-orange-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900'

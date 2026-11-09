@@ -160,7 +160,7 @@ export default function PremiumPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-black text-slate-50 flex items-center justify-center">
+      <main className="wr-screen min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-black text-slate-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-6 h-6 animate-spin" />
           <p className="text-sm text-slate-300">
@@ -186,7 +186,7 @@ export default function PremiumPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-black text-slate-50">
+    <main className="wr-screen min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-black text-slate-50">
       <div className="mx-auto max-w-4xl px-4 py-6 pb-20">
         {/* Cabeçalho */}
         <header className="flex items-center justify-between gap-3 mb-6">

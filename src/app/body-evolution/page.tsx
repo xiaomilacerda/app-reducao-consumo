@@ -887,7 +887,7 @@ export default function BodyEvolutionPage() {
   // ---------- UI ----------
   if (!mounted || !userData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+      <div className="wr-screen min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent" />
       </div>
     );
@@ -895,7 +895,7 @@ export default function BodyEvolutionPage() {
 
   return (
     <div
-      className={`min-h-screen ${
+      className={`wr-screen min-h-screen ${
         isFocusMode
           ? 'bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900'
           : 'bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900'

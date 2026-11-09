@@ -107,7 +107,7 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen text-white px-4 py-8 relative z-10">
+    <div className="wr-screen min-h-screen text-white px-4 py-8 relative z-10">
       <div className="max-w-5xl mx-auto grid gap-8 md:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] items-center">
         {/* Lado de apresentação / benefícios da conta */}
         <section className="space-y-6">
@@ -179,7 +179,7 @@ export default function SignupPage() {
         </section>
 
         {/* Lado do formulário de cadastro */}
-        <section className="w-full max-w-md mx-auto bg-gray-900/80 backdrop-blur-xl rounded-3xl shadow-2xl p-7 border border-purple-500/20">
+        <section className="w-full max-w-md mx-auto wr-glass rounded-3xl p-5 shadow-2xl sm:p-7">
           <div className="text-center mb-5">
             <h2 className="text-xl font-semibold text-white">
               Criar conta no WeedReset

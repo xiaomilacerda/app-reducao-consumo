@@ -70,7 +70,7 @@ export default function LoginPage() {
 
   // UI PRINCIPAL
   return (
-    <div className="min-h-screen text-white px-4 py-8 relative z-10">
+    <div className="wr-screen min-h-screen text-white px-4 py-8 relative z-10">
       <div className="max-w-5xl mx-auto grid gap-8 md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] items-center">
         {/* Lado de apresentação do app */}
         <section className="space-y-6">
@@ -80,7 +80,7 @@ export default function LoginPage() {
             </p>
             <h1 className="text-3xl md:text-4xl font-bold leading-tight">
               Sua jornada de{' '}
-              <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+              <span className="wr-gradient-text">
                 redução e liberdade
               </span>{' '}
               em um só lugar.
@@ -127,7 +127,7 @@ export default function LoginPage() {
         </section>
 
         {/* Lado do formulário de login */}
-        <section className="w-full max-w-md mx-auto bg-gray-900/80 backdrop-blur-xl rounded-3xl shadow-2xl p-7 border border-purple-500/20">
+        <section className="w-full max-w-md mx-auto wr-glass rounded-3xl p-5 shadow-2xl sm:p-7">
           <div className="mb-5 text-center">
             <h2 className="text-xl font-semibold">Entrar na sua conta</h2>
             <p className="text-gray-400 text-xs mt-1">

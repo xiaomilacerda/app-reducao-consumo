@@ -94,8 +94,8 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-2xl w-full p-8 md:p-12">
+    <div className="wr-screen min-h-screen bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center p-4">
+      <div className="wr-glass rounded-3xl shadow-2xl max-w-2xl w-full p-5 sm:p-8 md:p-12">
         
         {/* Passo 1: Boas-vindas */}
         {step === 1 && (
