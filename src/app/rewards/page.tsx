@@ -483,7 +483,7 @@ export default function RewardsPage() {
     rarity === 'Raro' ? 'border-sky-400/40' : 'border-white/15'
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-950 via-black to-black">
+    <div className="wr-screen min-h-screen bg-gradient-to-br from-purple-950 via-black to-black">
       <div className="mx-auto w-full max-w-6xl px-4 py-6">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">

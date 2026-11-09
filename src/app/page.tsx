@@ -297,7 +297,7 @@ export default function HomePage() {
 
   if (!mounted || !userData) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-3">
+      <div className="wr-screen min-h-screen flex flex-col items-center justify-center gap-3">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent" />
         <div className="text-sm text-white/70">Carregando seu painel…</div>
       </div>
@@ -374,7 +374,7 @@ export default function HomePage() {
 
   return (
     <div
-      className={`min-h-screen ${
+      className={`wr-screen min-h-screen ${
         userData.themeMode === 'focus'
           ? 'bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900'
           : 'bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900'

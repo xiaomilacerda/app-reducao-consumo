@@ -391,3 +391,235 @@ input.wr-auth-input:-webkit-autofill:focus,
 input.wr-auth-input:autofill:focus {
   border-color: #a78bfa !important;
 }
+
+
+/* ===========================================================
+   WEEDRESET CINEMA DESIGN SYSTEM — 2026
+   Tokens compartilhados para todas as rotas; nenhuma regra de
+   negócio, estado de usuário ou autorização depende deste tema.
+   =========================================================== */
+:root {
+  --wr-canvas: #090916;
+  --wr-surface: #171528;
+  --wr-surface-raised: #211d37;
+  --wr-purple: #ad92ff;
+  --wr-emerald: #65e3b9;
+  --wr-text: #f7f5ff;
+  --wr-text-soft: #c5bed8;
+  --wr-stroke: rgba(191, 175, 239, .18);
+  --wr-shadow: 0 20px 64px rgba(3, 2, 14, .35);
+  --wr-radius-card: 1.25rem;
+  --wr-radius-control: .875rem;
+  --wr-space-1: .25rem;
+  --wr-space-2: .5rem;
+  --wr-space-3: .75rem;
+  --wr-space-4: 1rem;
+  --wr-space-6: 1.5rem;
+  --wr-space-8: 2rem;
+}
+
+.dark {
+  --radius: 1rem;
+  --background: #090916;
+  --foreground: #f7f5ff;
+  --card: #19162b;
+  --card-foreground: #f7f5ff;
+  --popover: #211c37;
+  --popover-foreground: #f7f5ff;
+  --primary: #ad92ff;
+  --primary-foreground: #130d25;
+  --secondary: #29233f;
+  --secondary-foreground: #f7f5ff;
+  --muted: #242037;
+  --muted-foreground: #c5bed8;
+  --accent: #302747;
+  --accent-foreground: #f7f5ff;
+  --destructive: #f18593;
+  --border: rgba(191, 175, 239, .18);
+  --input: rgba(191, 175, 239, .28);
+  --ring: #bba4ff;
+  --chart-1: #ad92ff;
+  --chart-2: #65e3b9;
+  --chart-3: #f4c17f;
+  --chart-4: #83b6ff;
+  --chart-5: #f08bc3;
+  --sidebar: #120f22;
+  --sidebar-foreground: #f7f5ff;
+  --sidebar-primary: #ad92ff;
+  --sidebar-primary-foreground: #130d25;
+  --sidebar-accent: #302747;
+  --sidebar-accent-foreground: #f7f5ff;
+  --sidebar-border: rgba(191, 175, 239, .16);
+  --sidebar-ring: #bba4ff;
+}
+
+html {
+  color-scheme: dark;
+  scroll-padding-top: 5.5rem;
+}
+
+body.wr-app-body {
+  min-width: 320px;
+  overflow-x: clip;
+  background-color: var(--wr-canvas);
+  color: var(--wr-text);
+}
+
+body.wr-app-body.wr-premium-bg {
+  background:
+    radial-gradient(ellipse 900px 570px at 53% -240px, rgba(124, 76, 213, .30), transparent 78%),
+    radial-gradient(ellipse 590px 510px at 100% 20%, rgba(46, 64, 143, .13), transparent 76%),
+    radial-gradient(ellipse 510px 510px at 0% 75%, rgba(57, 114, 94, .07), transparent 80%),
+    linear-gradient(180deg, #0d0b1d 0%, #090916 54%, #080912 100%);
+  background-attachment: scroll;
+  animation: none;
+  will-change: auto;
+}
+
+body.wr-app-body.wr-focus-bg {
+  background:
+    radial-gradient(ellipse 850px 520px at 50% -250px, rgba(62, 89, 154, .22), transparent 78%),
+    linear-gradient(180deg, #0b101d, #080b15 65%, #070910);
+  background-attachment: scroll;
+  animation: none;
+  will-change: auto;
+}
+
+body.wr-app-body.wr-noise::before {
+  opacity: .022;
+}
+
+body.wr-app-body.wr-noise::after {
+  height: 100px;
+  opacity: .55;
+}
+
+.wr-shell-main {
+  min-width: 0;
+}
+
+/* Usado apenas no invólucro superior das páginas do aplicativo.
+   Unifica o canvas sem apagar o estilo de cartões e alertas internos. */
+.wr-screen {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
+  background-color: transparent !important;
+  background-image: none !important;
+  color: var(--wr-text);
+}
+
+.wr-screen > header {
+  background-color: rgba(16, 13, 32, .84) !important;
+  background-image: none !important;
+  border-bottom: 1px solid var(--wr-stroke) !important;
+  box-shadow: 0 12px 36px rgba(2, 2, 12, .20);
+  backdrop-filter: blur(18px) saturate(1.22);
+  -webkit-backdrop-filter: blur(18px) saturate(1.22);
+}
+
+.wr-glass {
+  background: rgba(26, 22, 46, .76);
+  border: 1px solid var(--wr-stroke);
+  box-shadow: var(--wr-shadow);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.wr-eyebrow {
+  color: var(--wr-emerald);
+  font-size: .6875rem;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+.wr-gradient-text {
+  background: linear-gradient(110deg, #ece1ff 0%, #b7a0ff 48%, #7feac5 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.wr-app-body :is(button, a, input, select, textarea, [role="button"]):focus-visible {
+  outline: 2px solid #c9b7ff;
+  outline-offset: 3px;
+}
+
+.wr-app-body :is(input, textarea, select) {
+  accent-color: var(--wr-purple);
+}
+
+.wr-app-body :is(input, textarea, select)::placeholder {
+  color: #aaa3bd;
+  opacity: 1;
+}
+
+.wr-mobile-nav {
+  background: rgba(16, 13, 31, .95);
+  border-top: 1px solid rgba(196, 175, 254, .16);
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, .28);
+  backdrop-filter: blur(22px) saturate(1.15);
+  -webkit-backdrop-filter: blur(22px) saturate(1.15);
+}
+
+.wr-desktop-nav {
+  background:
+    radial-gradient(ellipse 300px 330px at 30% 0%, rgba(104, 72, 182, .15), transparent 80%),
+    rgba(15, 12, 29, .97);
+  border-right: 1px solid var(--wr-stroke);
+}
+
+.wr-nav-link {
+  transition: color .18s ease, background-color .18s ease, border-color .18s ease, transform .18s ease;
+}
+
+.wr-nav-link[data-active="true"] {
+  background: linear-gradient(112deg, rgba(173,146,255,.18), rgba(72,51,119,.22));
+  color: #f8f6ff;
+  border-color: rgba(186, 160, 255, .32);
+}
+
+.wr-nav-link[data-active="false"]:hover {
+  background: rgba(173, 146, 255, .08);
+  color: #f8f6ff;
+}
+
+[data-slot="card"] {
+  box-shadow: 0 12px 40px rgba(3, 2, 12, .20);
+}
+
+[data-slot="button"]:active:not(:disabled) {
+  transform: translateY(1px) scale(.99);
+}
+
+[data-slot="input"]:focus-visible {
+  box-shadow: 0 0 0 3px rgba(173, 146, 255, .12);
+}
+
+@media (min-width: 1024px) {
+  .wr-shell-main {
+    transition: padding-left .18s ease;
+  }
+}
+
+@media (max-width: 640px) {
+  .wr-screen > header {
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  .wr-screen :is(h1, h2) {
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wr-app-body *, .wr-app-body *::before, .wr-app-body *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}

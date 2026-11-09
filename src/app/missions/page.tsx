@@ -1356,14 +1356,14 @@ Não minta para você mesmo só para coletar XP e moedas.`,
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-black to-gray-900">
+      <div className="wr-screen min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-black to-gray-900">
         <div className="animate-spin rounded-full h-10 w-10 border-4 border-purple-500 border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen w-full overflow-x-clip bg-gradient-to-br from-purple-900 via-black to-gray-900 text-white">
+    <div className="wr-screen min-h-screen w-full overflow-x-clip bg-gradient-to-br from-purple-900 via-black to-gray-900 text-white">
       {/* HEADER */}
       <header className="sticky top-0 z-40 bg-black/40 backdrop-blur-sm border-b border-purple-500/20">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
