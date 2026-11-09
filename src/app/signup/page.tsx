@@ -72,7 +72,6 @@ export default function SignupPage() {
         full_name: nomeTrimmed,
         display_name: nomeTrimmed,
         email: emailTrimmed,
-        is_premium: false,
         created_at: new Date().toISOString(),
         preferred_language: 'pt',
       });
