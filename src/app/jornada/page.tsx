@@ -417,7 +417,7 @@ export default function Jornada365Page() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#05020B] text-zinc-100">
+      <div className="wr-screen min-h-screen flex items-center justify-center bg-[#05020B] text-zinc-100">
         <div className="flex items-center gap-3">
           <Loader2 className="h-6 w-6 animate-spin" />
           <span>Carregando sua Jornada 365...</span>
@@ -428,7 +428,7 @@ export default function Jornada365Page() {
 
   if (!currentMission) {
     return (
-      <div className="min-h-screen bg-[#05020B] text-zinc-100 p-4">
+      <div className="wr-screen min-h-screen bg-[#05020B] text-zinc-100 p-4">
         <div className="max-w-3xl mx-auto">
           <button
             onClick={() => router.back()}
@@ -448,7 +448,7 @@ export default function Jornada365Page() {
   }
 
   return (
-    <div className="min-h-screen bg-[#05020B] text-zinc-100">
+    <div className="wr-screen min-h-screen bg-[#05020B] text-zinc-100">
       <div className="max-w-4xl mx-auto px-4 py-6">
         {/* HEADER */}
         <header className="flex items-center justify-between mb-5 gap-4">

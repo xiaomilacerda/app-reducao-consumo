@@ -206,7 +206,7 @@ export default function MoodHistoryPage(){
     </article>;
   }
 
-  return <div className="min-h-screen w-full overflow-x-clip bg-[#100f1f] pb-24 text-white">
+  return <div className="wr-screen min-h-screen w-full overflow-x-clip bg-[#100f1f] pb-24 text-white">
     <ProfileActionNotice error={error} success={notice} onDismiss={dismiss}/>
     <header className="sticky top-0 z-40 border-b border-white/10 bg-[#100f1f]/95 backdrop-blur-lg">
       <div className="mx-auto flex max-w-5xl items-center gap-3 px-3 py-3 sm:px-6">

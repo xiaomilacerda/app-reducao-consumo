@@ -326,7 +326,7 @@ export default function StoryPage() {
   const iconFrameStyle: CSSProperties = frameStyle(equippedFrame);
 
   return (
-    <div className="min-h-screen wr-noise wr-premium-bg" style={bgStyle}>
+    <div className="wr-screen min-h-screen wr-noise wr-premium-bg" style={bgStyle}>
       <div className="mx-auto max-w-5xl px-4 pb-16 pt-6">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">

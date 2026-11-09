@@ -301,7 +301,7 @@ export default function SosHistoryPage() {
 
   if (checkingSession) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-50 flex items-center justify-center">
+      <div className="wr-screen min-h-screen bg-slate-950 text-slate-50 flex items-center justify-center">
         <div className="text-center space-y-2">
           <div className="text-sm text-slate-400 animate-pulse">
             Conferindo sua sessão segura...
@@ -312,7 +312,7 @@ export default function SosHistoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50">
+    <div className="wr-screen min-h-screen bg-slate-950 text-slate-50">
       {/* Cabeçalho */}
       <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur-sm sticky top-0 z-20">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">

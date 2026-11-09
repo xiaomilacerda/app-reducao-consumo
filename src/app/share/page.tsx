@@ -140,7 +140,7 @@ export default function ShareProgressPage() {
   }
   if (!userData) return <main className="flex min-h-screen items-center justify-center bg-slate-950 text-white">Preparando suas conquistas…</main>;
   return (
-    <div className="min-h-screen bg-[#090F1E] text-white">
+    <div className="wr-screen min-h-screen bg-[#090F1E] text-white">
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#090F1E]/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-4">
           <Link href="/" aria-label="Voltar" className="rounded-xl p-2 hover:bg-white/10"><ArrowLeft className="h-5 w-5" /></Link>

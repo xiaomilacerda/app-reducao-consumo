@@ -221,7 +221,7 @@ export default function JourneyHistoryPage() {
   const hasFilterActive = !!searchTerm.trim() || !!searchDate;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-black text-slate-50">
+    <div className="wr-screen min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-black text-slate-50">
       <div className="max-w-4xl mx-auto px-4 py-6">
         {/* HEADER */}
         <header className="flex items-center justify-between mb-5">
