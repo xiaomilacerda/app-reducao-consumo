@@ -26,6 +26,5 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Release security regression checks
         run: npm run test:release
-      - name: TypeScript audit (informational until existing errors are fixed)
-        run: npx tsc --noEmit --pretty false
-        continue-on-error: true
+      - name: TypeScript strict validation (required)
+        run: npm run typecheck
