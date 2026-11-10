@@ -243,8 +243,8 @@ export default function MissionsEngagement({ userId, onReward, onProgress, onReq
 
   return (
     <section className="min-w-0 space-y-5" aria-label="Seu ritual diário e jornada de sete dias">
-      <div className="min-w-0 overflow-hidden rounded-3xl border border-violet-400/25 bg-gradient-to-br from-violet-950 via-[#111124] to-[#071a17] shadow-[0_16px_48px_rgba(0,0,0,.30)]">
-        <div className="relative min-w-0 px-4 py-5 sm:px-7 sm:py-7">
+      <div className="min-w-0 overflow-hidden rounded-2xl border border-violet-400/25 bg-gradient-to-br from-violet-950 via-[#111124] to-[#071a17] shadow-[0_16px_48px_rgba(0,0,0,.30)]">
+        <div className="relative min-w-0 px-4 py-4 sm:px-6 sm:py-5">
           <div className="absolute right-0 top-0 h-36 w-36 rounded-full bg-emerald-400/10 blur-[56px]" aria-hidden="true" />
           <div className="relative flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -284,7 +284,7 @@ export default function MissionsEngagement({ userId, onReward, onProgress, onReq
               </div>
             </div>
           ) : (
-            <div className="mt-6 space-y-5">
+            <div className="mt-4 space-y-4">
               <div>
                 <h3 className="text-sm font-semibold text-white">1. O que faz mais sentido para você hoje?</h3>
                 <div className="mt-3 grid min-w-0 gap-2 sm:grid-cols-3">
@@ -294,7 +294,7 @@ export default function MissionsEngagement({ userId, onReward, onProgress, onReq
                     return (
                       <button key={option.id} type="button" onClick={() => setSelected(option.id)}
                         aria-pressed={active}
-                        className={`min-h-[124px] rounded-2xl border p-4 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 ${active
+                        className={`min-h-[82px] rounded-xl border p-3 sm:min-h-[100px] sm:p-4 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 ${active
                           ? 'border-emerald-400 bg-emerald-400/15 shadow-[0_0_0_1px_rgba(52,211,153,.35)]'
                           : 'border-white/15 bg-white/5 hover:-translate-y-0.5 hover:border-white/40 hover:bg-white/10'}`}>
                         <div className="flex items-center justify-between">

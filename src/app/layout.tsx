@@ -165,8 +165,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             : "pb-8")}>
           {showNav && (
             <header className="wr-global-topbar sticky top-0 z-[60] border-b border-white/10 bg-[#110e22]/95 backdrop-blur-xl">
-              <div className="mx-auto flex h-12 max-w-7xl items-center justify-between gap-2 px-3 sm:h-14 sm:px-6">
-                <Link href="/" className="inline-flex min-w-0 items-center gap-2 rounded-lg px-1 text-sm font-bold tracking-tight text-white outline-offset-2 lg:text-slate-200" aria-label="WeedReset, ir para o início">
+              <div className="mx-auto flex h-12 max-w-7xl items-center justify-between gap-2 px-3 sm:h-14 sm:px-6 lg:justify-end">
+                <Link href="/" className="inline-flex min-w-0 items-center gap-2 rounded-lg px-1 text-sm font-bold tracking-tight text-white outline-offset-2 lg:hidden" aria-label="WeedReset, ir para o início">
                   <Sparkles className="h-4 w-4 shrink-0 text-violet-300" aria-hidden="true" />
                   <span className="truncate lg:font-medium">WeedReset</span>
                 </Link>

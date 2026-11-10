@@ -140,7 +140,7 @@ export default function NotificationBell() {
       </button>
       {open && (
         <div role="dialog" aria-label="Notificações da comunidade"
-          className="absolute right-0 top-full z-[70] mt-2 w-[min(390px,calc(100vw-24px))] overflow-hidden rounded-2xl border border-violet-300/20 bg-[#19152d] shadow-[0_28px_90px_rgba(0,0,0,.6)]">
+          className="absolute -right-12 top-full z-[70] mt-2 w-[min(390px,calc(100vw-24px))] overflow-hidden rounded-2xl sm:right-0 border border-violet-300/20 bg-[#19152d] shadow-[0_28px_90px_rgba(0,0,0,.6)]">
           <div className="flex items-center justify-between gap-2 border-b border-white/10 px-4 py-3">
             <div><h2 className="text-sm font-semibold text-white">Notificações</h2><p className="text-[11px] text-[#c5bed8]">{unread ? unread + " não lidas" : "Tudo em dia"}</p></div>
             <div className="flex items-center gap-1">

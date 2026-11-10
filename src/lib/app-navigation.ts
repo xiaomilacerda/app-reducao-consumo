@@ -3,7 +3,7 @@ import {
   Activity, BarChart3, BookOpen, Brain, CalendarDays, Crown, Droplets,
   FileText, FlaskConical, Gift, HeartPulse, History, Home, LayoutGrid,
   MessageCircle, Settings, Share2, Shield, SmilePlus, Sparkles, Target,
-  UserRound, Users, Wallet, WandSparkles
+  UserRound, Users
 } from "lucide-react";
 
 export type AppNavItem = {

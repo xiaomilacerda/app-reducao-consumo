@@ -1,5 +1,7 @@
 'use client';
 
+import PageSkeleton from '@/components/ui/page-skeleton';
+
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
@@ -1355,15 +1357,11 @@ Não minta para você mesmo só para coletar XP e moedas.`,
   // ---------------- RENDER ----------------
 
   if (loading) {
-    return (
-      <div className="wr-screen min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-black to-gray-900">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-purple-500 border-t-transparent" />
-      </div>
-    );
+    return <PageSkeleton label="Preparando suas missões" />;
   }
 
   return (
-    <div className="wr-screen min-h-screen w-full overflow-x-clip bg-gradient-to-br from-purple-900 via-black to-gray-900 text-white">
+    <div className="wr-screen wr-missions-screen min-h-screen w-full overflow-x-clip bg-gradient-to-br from-purple-900 via-black to-gray-900 text-white">
       {/* HEADER */}
       <header className="sticky top-0 z-40 bg-black/40 backdrop-blur-sm border-b border-purple-500/20">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
@@ -1392,7 +1390,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
       </header>
 
       {/* MAIN */}
-      <main className="mx-auto w-full max-w-5xl min-w-0 space-y-5 px-3 py-5 pb-28 sm:space-y-6 sm:px-6 sm:py-6 sm:pb-28">
+      <main className="mx-auto w-full max-w-5xl min-w-0 space-y-4 px-3 py-4 pb-10 sm:space-y-5 sm:px-6 sm:py-5">
         {/* INDICADORES CONCISOS: dados verificados, nunca zeros falsos em falhas. */}
         <section className="grid min-w-0 grid-cols-3 gap-2 sm:gap-4" aria-label="Seu progresso e recompensas">
           <div className="min-w-0 rounded-2xl border border-violet-400/25 bg-gradient-to-br from-violet-700/65 to-[#1c1640] p-3 shadow-lg sm:p-5">
@@ -1496,7 +1494,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                 !done;
 
               return (
-                <article className="flex min-w-0 flex-col gap-3 overflow-hidden rounded-3xl border border-white/10 bg-white/5 px-4 py-4 shadow-lg sm:px-5">
+                <article className="flex min-w-0 flex-col gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/5 px-4 py-4 shadow-lg sm:px-5">
                   <div className="flex items-center gap-2">
                     <CheckCircle
                       className={`w-4 h-4 ${
@@ -1662,7 +1660,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
 
               return (
                 <article
-                  className="flex min-w-0 flex-col gap-4 overflow-hidden rounded-3xl border border-amber-400/20 bg-gradient-to-r from-amber-500/[.09] to-white/[.03] px-4 py-4 shadow-lg sm:flex-row sm:items-center sm:px-5"
+                  className="flex min-w-0 flex-col gap-4 overflow-hidden rounded-2xl border border-amber-400/20 bg-gradient-to-r from-amber-500/[.09] to-white/[.03] px-4 py-4 shadow-lg sm:flex-row sm:items-center sm:px-5"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -1760,7 +1758,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
         </section>
 
                 {/* Histórico recolhível: mantém acesso, deixa a ação principal em destaque. */}
-                <details className="group mt-5 min-w-0 overflow-hidden rounded-3xl border border-white/10 bg-white/[.035]">
+                <details className="group mt-5 min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[.035]">
                   <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 font-semibold text-white hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 [&::-webkit-details-marker]:hidden">
                     <span className="min-w-0 flex flex-col">
                       <span>Minhas conquistas e reflexões</span>
@@ -1770,7 +1768,7 @@ Não minta para você mesmo só para coletar XP e moedas.`,
                     <span className="hidden text-xs text-violet-200 group-open:inline">Fechar ↑</span>
                   </summary>
                 <section className="mt-1">
-                  <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <h2 className="text-white font-semibold text-lg">

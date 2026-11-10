@@ -18,6 +18,8 @@ import {
   calculateDailyFrequency,
 } from '@/lib/utils-recovery';
 
+import PageSkeleton from '@/components/ui/page-skeleton';
+
 import {
   BarChart3,
   ArrowLeft,
@@ -43,6 +45,12 @@ function formatPercentage(value: number): string {
 function formatNumber(value: number): string {
   if (!Number.isFinite(value)) return '0';
   return value.toLocaleString('pt-BR');
+}
+
+// Dias completos: não mostrar frações como "27,986 dias" na interface.
+function formatWholeDays(value: number): string {
+  if (!Number.isFinite(value)) return '0';
+  return Math.max(0, Math.floor(value)).toLocaleString('pt-BR');
 }
 
 // Média de um grupo de indicadores
@@ -119,11 +127,7 @@ export default function AnalyticsPage() {
   }, []);
 
   if (!mounted || !userData) {
-    return (
-      <div className="wr-screen min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent"></div>
-      </div>
-    );
+    return <PageSkeleton label="Carregando análises" />;
   }
 
   // ===== Cálculos principais (sempre seguros) =====
@@ -234,21 +238,13 @@ export default function AnalyticsPage() {
                   Análises da Sua Jornada
                 </h1>
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Esta tela mostra projeções e indicadores com base no seu tempo
-                limpo. São estimativas internas do aplicativo e não substituem
-                avaliação profissional de saúde.
+              <p className="mt-1 max-w-xl text-[11px] leading-relaxed text-slate-400">
+                Indicadores e projeções são estimativas do aplicativo, não substituem avaliação profissional.
               </p>
             </div>
           </div>
 
-          <Link
-            href="/profile"
-            className="px-3 py-2 rounded-lg text-sm flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-purple-600 dark:text-purple-300"
-          >
-            <Brain className="w-4 h-4" />
-            <span>Perfil & Configurações</span>
-          </Link>
+
         </div>
       </header>
 
@@ -256,20 +252,20 @@ export default function AnalyticsPage() {
       <main className="wr-analytics-main mx-auto max-w-7xl space-y-4 px-3 py-4 sm:px-6 sm:py-6 sm:space-y-6 lg:px-8">
         {/* Resumo principal */}
         <section className="wr-analytics-summary grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-3">
-          <div className="bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl p-6 shadow-xl text-white">
+          <div className="rounded-2xl border border-violet-300/20 bg-[#241d3b] p-4 text-white shadow-sm sm:p-5">
             <div className="flex items-center gap-2 mb-2">
               <Calendar className="w-5 h-5" />
               <h2 className="text-lg font-semibold">Dias limpos</h2>
             </div>
             <div className="text-5xl font-bold mb-1">
-              {formatNumber(cleanDays)}
+              {formatWholeDays(cleanDays)}
             </div>
             <p className="text-sm opacity-80">
               Tempo total desde o início da sua jornada registrada
             </p>
           </div>
 
-          <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 shadow-xl text-white">
+          <div className="rounded-2xl border border-emerald-300/20 bg-[#183229] p-4 text-white shadow-sm sm:p-5">
             <div className="flex items-center gap-2 mb-2">
               <Wallet className="w-5 h-5" />
               <h2 className="text-lg font-semibold">Economia acumulada</h2>
@@ -282,13 +278,13 @@ export default function AnalyticsPage() {
             </p>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl p-6 shadow-xl text-white">
+          <div className="rounded-2xl border border-sky-300/20 bg-[#1b2b3e] p-4 text-white shadow-sm sm:p-5">
             <div className="flex items-center gap-2 mb-2">
               <TrendingUp className="w-5 h-5" />
               <h2 className="text-lg font-semibold">Baseados evitados</h2>
             </div>
             <div className="text-4xl font-bold mb-1">
-              {formatNumber(jointsAvoided)}
+              {formatNumber(Math.max(0, Math.round(jointsAvoided)))}
             </div>
             <p className="text-sm opacity-80">
               Quantidade estimada que você decidiu não fumar
@@ -306,7 +302,7 @@ export default function AnalyticsPage() {
               </h3>
             </div>
             <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
-              {formatNumber(cleanDays)} / {yearlyTarget} dias
+              {formatWholeDays(cleanDays)} / {yearlyTarget} dias
             </span>
           </div>
 

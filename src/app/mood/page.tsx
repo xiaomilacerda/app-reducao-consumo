@@ -273,7 +273,7 @@ export default function MoodTrackerPage(){
   }
 
   return (
-    <div className="wr-screen min-h-screen w-full overflow-x-clip bg-[#100f1f] pb-24 text-white">
+    <div className="wr-screen wr-mood-screen min-h-screen w-full overflow-x-clip bg-[#100f1f] pb-24 text-white">
       <ProfileActionNotice success={success} error={saveError} onDismiss={clearNotice}/>
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#100f1f]/95 backdrop-blur-lg">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-3 py-3 sm:px-6">
@@ -287,9 +287,9 @@ export default function MoodTrackerPage(){
         </div>
       </header>
       <main className="mx-auto w-full max-w-5xl min-w-0 space-y-5 px-3 py-5 sm:space-y-6 sm:px-6">
-        <section className="rounded-3xl border border-violet-400/20 bg-gradient-to-br from-[#2e224b] via-[#211a39] to-[#152033] p-4 shadow-xl sm:p-6" aria-label="Registrar como me sinto">
+        <section className="rounded-2xl border border-violet-400/20 bg-[#231c37] p-4 shadow-sm sm:p-5" aria-label="Registrar como me sinto">
           <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-violet-200"><Sparkles className="h-4 w-4"/> Um momento para você</p>
-          <h2 className="mt-2 text-xl font-extrabold sm:text-2xl">Como você está se sentindo agora?</h2>
+          <h2 className="mt-2 text-lg font-extrabold sm:text-xl">Como você está se sentindo agora?</h2>
           <p className="mt-2 text-sm leading-relaxed text-slate-300">Você pode registrar quantas vezes precisar. Cada momento fica salvo separadamente, sem julgamentos ou notas de desempenho.</p>
           {!userId && !loading ? <div className="mt-4 rounded-2xl border border-white/15 bg-black/20 p-4">
             <p className="text-sm text-slate-200">Entre para guardar seu diário e acessá-lo em outros dispositivos.</p>

@@ -12,6 +12,7 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 import { createBrowserClient } from '@supabase/ssr';
+import PageSkeleton from '@/components/ui/page-skeleton';
 
 type SupabaseClient = ReturnType<typeof createBrowserClient>;
 
@@ -868,16 +869,12 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
   };
 
   if (loading) {
-    return (
-      <div className="wr-screen min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full" />
-      </div>
-    );
+    return <PageSkeleton label="Carregando comunidade" />;
   }
 
   return (
     <div
-      className={`wr-screen min-h-screen ${
+      className={`wr-screen wr-community-screen min-h-screen ${
         themeMode === 'focus'
           ? 'bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900'
           : 'bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900'

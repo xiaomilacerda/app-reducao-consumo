@@ -713,3 +713,56 @@ body.wr-app-body.wr-noise::after {
 @media (min-width: 640px) {
   .wr-analytics-summary > div:nth-child(3) { grid-column: auto; }
 }
+
+
+/* WeedReset — unified accessible navigation and page density */
+.wr-global-topbar + .wr-screen > header {
+  top: 3.5rem !important;
+}
+.wr-explore-page {
+  scroll-padding-top: 8.5rem;
+}
+.wr-explore-page :is(a, button, input):focus-visible,
+.wr-mobile-nav a:focus-visible,
+.wr-desktop-nav a:focus-visible {
+  outline: 2px solid #c9b7ff;
+  outline-offset: 3px;
+}
+.wr-desktop-nav > nav {
+  scrollbar-color: rgba(178,155,235,.35) transparent;
+  scrollbar-width: thin;
+}
+.wr-nav-link[data-active="true"] {
+  background: linear-gradient(110deg, rgba(173,146,255,.16), rgba(73,53,120,.20));
+  border-color: rgba(180,154,255,.27);
+}
+.wr-nav-link[data-active="true"] svg {
+  color: #beaaff;
+}
+
+@media (max-width: 639px) {
+  .wr-global-topbar > div { height: 48px !important; }
+  .wr-global-topbar + .wr-screen > header { top: 48px !important; }
+  .wr-screen > header > div {
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+  }
+  .wr-screen > header h1 {
+    font-size: 1.05rem !important;
+    line-height: 1.25 !important;
+    letter-spacing: -.015em;
+  }
+  .wr-screen > header .w-8.h-8 {
+    width: 22px;
+    height: 22px;
+  }
+  .wr-home-main {
+    padding-top: 14px !important;
+  }
+  .wr-explore-page .wr-explore-search { top: 48px; }
+  .wr-analytics-summary > div:nth-child(3) { grid-column: span 2; }
+  .wr-mobile-nav .wr-nav-link {
+    min-height: 58px;
+    letter-spacing: -.01em;
+  }
+}
