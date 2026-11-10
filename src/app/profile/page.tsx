@@ -367,7 +367,7 @@ export default function ProfilePage() {
     level: 1,
     completedMissions: [],
     unlockedRewards: [],
-    themeMode: 'normal',
+    themeMode: 'default',
     detoxCycleActive: false,
     detoxCycleStartDate: null,
     friends: [],
