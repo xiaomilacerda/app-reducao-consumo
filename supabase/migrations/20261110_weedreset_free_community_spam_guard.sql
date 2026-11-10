@@ -17,6 +17,7 @@ BEGIN
     RAISE EXCEPTION 'A publicação deve ter entre 3 e 2000 caracteres.' USING ERRCODE='22023';
   END IF;
   -- Serialize concurrent attempts per user to enforce 1 post / rolling 24h.
+  NEW.created_at := now();
   PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('wr-post:' || NEW.user_id::text, 0));
   IF EXISTS (
     SELECT 1 FROM public.community_posts AS existing
@@ -48,6 +49,7 @@ BEGIN
   IF length(btrim(coalesce(NEW.content, ''))) NOT BETWEEN 1 AND 800 THEN
     RAISE EXCEPTION 'A resposta deve ter entre 1 e 800 caracteres.' USING ERRCODE='22023';
   END IF;
+  NEW.created_at := now();
   PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('wr-comment:' || NEW.user_id::text, 0));
   IF EXISTS (
     SELECT 1 FROM public.community_comments AS existing
@@ -70,6 +72,7 @@ CREATE POLICY weedreset_posts_insert_guard ON public.community_posts
   FOR INSERT TO authenticated
   WITH CHECK (
     user_id = (SELECT auth.uid()) AND
+    coalesce(auth.jwt()->>'is_anonymous','false') <> 'true' AND
     status IN ('active','published') AND
     coalesce(likes,0)=0 AND
     moderated_by IS NULL AND moderated_at IS NULL AND
@@ -88,6 +91,7 @@ CREATE POLICY weedreset_comments_insert_guard ON public.community_comments
   FOR INSERT TO authenticated
   WITH CHECK (
     user_id = (SELECT auth.uid()) AND
+    coalesce(auth.jwt()->>'is_anonymous','false') <> 'true' AND
     moderated_by IS NULL AND moderated_at IS NULL AND
     length(btrim(content)) BETWEEN 1 AND 800 AND
     EXISTS (
