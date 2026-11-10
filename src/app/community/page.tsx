@@ -7,6 +7,7 @@ import {
   MessagesSquare,
   ArrowLeft,
   AlertTriangle,
+  UserX,
   Heart,
   MessageCircle,
   ArrowUpRight,
@@ -211,6 +212,7 @@ export default function CommunityPage() {
   const [loading, setLoading] = useState(true);
 
   const [posts, setPosts] = useState<PostWithMeta[]>([]);
+  const [blockedIds, setBlockedIds] = useState<string[]>([]);
   const [orderBy, setOrderBy] = useState<'recent' | 'top'>('recent');
 
   const [feedFilter, setFeedFilter] = useState<'all' | 'my_comments'>('all');
@@ -231,6 +233,42 @@ export default function CommunityPage() {
 
   const [themeMode, setThemeMode] = useState<'focus' | 'normal'>('normal');
   const [reloadFlag, setReloadFlag] = useState(0);
+
+  // Community user blocks are stored per account; blocked authors disappear
+  // from the feed and from comment threads without affecting other readers.
+  useEffect(() => {
+    let live = true;
+    if (!user?.id) { setBlockedIds([]); return; }
+    void supabase.from("community_blocks").select("blocked_id")
+      .eq("blocker_id", user.id).then(({ data, error }: any) => {
+        if (!live) return;
+        if (error) console.warn("Não foi possível consultar bloqueios da comunidade.");
+        else setBlockedIds((data || []).map((row: any) => String(row.blocked_id)));
+      });
+    return () => { live = false; };
+  }, [user?.id, supabase]);
+
+  async function blockAuthor(targetId: string | null) {
+    if (!user?.id || !targetId || targetId === user.id || blockedIds.includes(targetId)) return;
+    if (!window.confirm("Bloquear esta pessoa? As publicações e comentários dela deixarão de aparecer para você.")) return;
+    const { error } = await supabase.from("community_blocks")
+      .insert({ blocker_id: user.id, blocked_id: targetId });
+    if (error && error.code !== "23505") {
+      setGlobalError("Não foi possível bloquear. Tente novamente.");
+      return;
+    }
+    setBlockedIds((previous) => previous.includes(targetId) ? previous : [...previous, targetId]);
+    setGlobalInfo("Pessoa bloqueada. Você pode desbloquear em Gerenciar bloqueios.");
+  }
+
+  async function unblockAuthor(targetId: string) {
+    if (!user?.id) return;
+    const { error } = await supabase.from("community_blocks")
+      .delete().eq("blocker_id", user.id).eq("blocked_id", targetId);
+    if (error) { setGlobalError("Não foi possível desbloquear."); return; }
+    setBlockedIds((previous) => previous.filter((id) => id !== targetId));
+    setGlobalInfo("Pessoa desbloqueada.");
+  }
 
   // ✅ novo: ícone equipado do usuário (para gravar junto no post/comentário)
   const [myIcon, setMyIcon] = useState<string>(DEFAULT_ICON);
@@ -930,7 +968,21 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
           </details>
         </section>
 
-        {/* MENSAGENS */}
+        {blockedIds.length > 0 && (
+          <details className="rounded-xl border border-white/10 bg-white/[.04] p-3 text-xs text-slate-200">
+            <summary className="cursor-pointer font-semibold text-violet-200">Gerenciar bloqueios ({blockedIds.length})</summary>
+            <p className="mt-2 text-slate-400">Contas bloqueadas não aparecem no seu mural. Para sua privacidade, exibimos apenas uma referência curta.</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {blockedIds.map((id, index) => (
+                <button key={id} type="button" onClick={() => void unblockAuthor(id)}
+                  className="min-h-10 rounded-xl border border-white/15 px-3 text-xs font-semibold text-violet-200 hover:bg-white/10">
+                  Desbloquear pessoa {index + 1}
+                </button>
+              ))}
+            </div>
+          </details>
+        )}
+        {/* MENSAGENS */
         {(globalError || globalInfo) && (
           <div className="space-y-2">
             {globalError && (
@@ -1031,7 +1083,7 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
 
         {/* LISTA DE POSTS */}
         <div className="space-y-5 pb-10">
-          {posts.length === 0 && (
+          {posts.filter((post) => !post.user_id || !blockedIds.includes(post.user_id)).length === 0 && (
             <p className="text-center text-gray-500 dark:text-gray-400 text-sm py-10">
               {feedFilter === 'my_comments'
                 ? 'Você ainda não comentou em nenhuma postagem ainda. Comente em algum post e ele vai aparecer aqui.'
@@ -1039,7 +1091,7 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
             </p>
           )}
 
-          {posts.map((post) => {
+          {posts.filter((post) => !post.user_id || !blockedIds.includes(post.user_id)).map((post) => {
             const postIcon = resolveIcon(post.author_icon);
 
             return (
@@ -1065,7 +1117,7 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
 
                     <div>
                       <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                        Anônimo
+                        Membro (nome oculto)
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
                         {formatDate(post.created_at)}
@@ -1073,7 +1125,15 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
                     </div>
                   </div>
 
-                  <button
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    {user && post.user_id && post.user_id !== user.id && (
+                      <button type="button" onClick={() => void blockAuthor(post.user_id)}
+                        title="Bloquear pessoa" aria-label="Bloquear autor desta publicação"
+                        className="inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-xs text-rose-300 hover:bg-rose-400/10">
+                        <UserX className="h-3.5 w-3.5" aria-hidden="true"/> Bloquear
+                      </button>
+                    )}
+                    <button
                     onClick={() => handleReport({ postId: post.id })}
                     disabled={!user || !mod.canReport || isBlockedUntil(mod.reportBlockedUntil)}
                     title={
@@ -1094,6 +1154,7 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
                     <AlertTriangle className="w-4 h-4" />
                     Denunciar
                   </button>
+                  </div>
                 </div>
 
                 <p className="text-sm text-gray-800 dark:text-gray-100 whitespace-pre-wrap">
@@ -1231,9 +1292,9 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
                       const visible =
                         view === 'mine' && user
                           ? post.comments.filter((c) =>
-                              c.user_id === user.id ||
+                              (!c.user_id || !blockedIds.includes(c.user_id)) && (c.user_id === user.id ||
                               (!!c.parent_comment_id && post.comments.some((p) => p.id === c.parent_comment_id && p.user_id === user.id)))
-                          : post.comments;
+                          : post.comments.filter((c) => !c.user_id || !blockedIds.includes(c.user_id));
                       const ordered = orderCommunityThread(visible);
 
                       if (visible.length === 0) {
@@ -1271,9 +1332,17 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
                                         <span className="text-sm">{cIcon}</span>
                                       )}
                                     </span>
-                                    <span>{comment.parent_comment_id ? 'Resposta ao comentário' : 'Resposta anônima'}</span>
+                                    <span>{comment.parent_comment_id ? 'Resposta ao comentário' : 'Resposta sem nome'}</span>
                                   </span>
-                                  <button
+                                  <div className="flex items-center gap-1.5">
+                                    {user && comment.user_id && user.id !== comment.user_id && (
+                                      <button type="button" onClick={() => void blockAuthor(comment.user_id)}
+                                        title="Bloquear pessoa" aria-label="Bloquear autor deste comentário"
+                                        className="inline-flex min-h-8 items-center gap-1 rounded-lg px-1.5 text-[10px] text-rose-300 hover:bg-rose-400/10">
+                                        <UserX className="h-3 w-3" aria-hidden="true"/> Bloquear
+                                      </button>
+                                    )}
+                                    <button
                                     onClick={() => handleReport({ commentId: comment.id })}
                                     disabled={!user || !mod.canReport || isBlockedUntil(mod.reportBlockedUntil)}
                                     title={
@@ -1294,6 +1363,7 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
                                     <AlertTriangle className="w-3 h-3" />
                                     Denunciar
                                   </button>
+                                  </div>
                                 </div>
                           
                                 <p className="text-gray-700 dark:text-gray-200 whitespace-pre-wrap">

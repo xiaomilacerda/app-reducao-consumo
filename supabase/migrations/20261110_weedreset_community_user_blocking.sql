@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS public.community_blocks (blocker_id uuid NOT NULL, blocked_id uuid NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), CONSTRAINT community_blocks_pkey PRIMARY KEY(blocker_id,blocked_id), CONSTRAINT community_blocks_distinct_users CHECK (blocker_id <> blocked_id));
+CREATE INDEX IF NOT EXISTS community_blocks_blocked_idx ON public.community_blocks(blocked_id);
+ALTER TABLE public.community_blocks ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.community_blocks FROM PUBLIC, anon;
+GRANT SELECT, INSERT, DELETE ON public.community_blocks TO authenticated;
+DROP POLICY IF EXISTS community_blocks_read_own ON public.community_blocks;
+CREATE POLICY community_blocks_read_own ON public.community_blocks FOR SELECT TO authenticated USING ((select auth.uid()) = blocker_id);
+DROP POLICY IF EXISTS community_blocks_insert_own ON public.community_blocks;
+CREATE POLICY community_blocks_insert_own ON public.community_blocks FOR INSERT TO authenticated WITH CHECK ((select auth.uid()) = blocker_id AND blocked_id <> blocker_id);
+DROP POLICY IF EXISTS community_blocks_delete_own ON public.community_blocks;
+CREATE POLICY community_blocks_delete_own ON public.community_blocks FOR DELETE TO authenticated USING ((select auth.uid()) = blocker_id);
