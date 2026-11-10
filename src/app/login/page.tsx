@@ -109,7 +109,7 @@ export default function LoginPage() {
             <div className="rounded-2xl border border-pink-500/40 bg-pink-900/25 px-4 py-3">
               <p className="font-semibold text-pink-100 mb-1">Ferramentas de apoio</p>
               <p className="text-pink-100/80">
-                SOS, missão diária, evolução do corpo e comunidade anônima focada em apoio.
+                SOS, missão diária, evolução do corpo e comunidade de apoio entre participantes.
               </p>
             </div>
           </div>
