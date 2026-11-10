@@ -15,6 +15,8 @@ export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [nome, setNome] = useState('');
+  const [adultConfirmed, setAdultConfirmed] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState<string | null>(null);
@@ -29,6 +31,14 @@ export default function SignupPage() {
       const emailTrimmed = email.trim();
       const nomeTrimmed = nome.trim();
 
+      if (!adultConfirmed || !termsAccepted) {
+        setErro('Confirme que você tem pelo menos 18 anos e concorda com os termos e a política de privacidade.');
+        return;
+      }
+      if (senha.length < 10) {
+        setErro('Escolha uma senha com pelo menos 10 caracteres.');
+        return;
+      }
       if (!emailTrimmed || !nomeTrimmed) {
         setErro('Preencha nome e e-mail corretamente.');
         setLoading(false);
@@ -41,7 +51,7 @@ export default function SignupPage() {
         password: senha,
         options: {
           // Preserva o nome mesmo se a conta precisar de confirmação de e-mail.
-          data: { full_name: nomeTrimmed, display_name: nomeTrimmed },
+          data: { full_name: nomeTrimmed, display_name: nomeTrimmed, declared_18_plus: true, terms_acknowledged_at: new Date().toISOString() },
         },
       });
 
@@ -173,8 +183,7 @@ export default function SignupPage() {
           </div>
 
           <p className="text-[11px] text-purple-200/80 max-w-sm">
-            Você começa no plano gratuito. Se fizer sentido, poderá migrar para
-            o Premium dentro do próprio aplicativo, sem compromisso.
+            Você começa no plano gratuito. Novas assinaturas Premium ainda não estão disponíveis.
           </p>
         </section>
 
@@ -248,13 +257,25 @@ export default function SignupPage() {
                 onChange={(e) => setSenha(e.target.value)}
               />
               <p id="signup-password-hint" className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                Use uma senha forte e que você não utilize em outros serviços.
+                Use ao menos 10 caracteres e uma senha exclusiva para o WeedReset.
               </p>
             </div>
 
+            <div className="space-y-3 rounded-xl border border-violet-300/15 bg-white/[.035] p-3">
+              <label className="flex cursor-pointer items-start gap-3 text-xs leading-relaxed text-slate-200">
+                <input type="checkbox" required checked={adultConfirmed} onChange={(event) => setAdultConfirmed(event.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-violet-400" />
+                <span>Confirmo que tenho <strong>18 anos ou mais</strong>. O WeedReset não é destinado a menores de idade.</span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-3 text-xs leading-relaxed text-slate-200">
+                <input type="checkbox" required checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-violet-400" />
+                <span>Li e concordo com os <Link href="/terms" className="font-semibold text-violet-200 underline">Termos de Uso</Link> e a <Link href="/privacy" className="font-semibold text-violet-200 underline">Política de Privacidade</Link>.</span>
+              </label>
+            </div>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !adultConfirmed || !termsAccepted}
               className="w-full mt-3 flex items-center justify-center gap-2 bg-gradient-to-r from-fuchsia-500 to-purple-600 px-4 py-2.5 rounded-xl text-white font-semibold text-sm disabled:opacity-60 disabled:cursor-not-allowed hover:opacity-90 transition"
             >
               {loading ? (
@@ -283,7 +304,7 @@ export default function SignupPage() {
 
           <div className="mt-4 border-t border-gray-800 pt-3">
             <p className="text-[11px] text-gray-400 text-center leading-relaxed">
-              Ao criar sua conta, você declara que leu e concorda com os{' '}
+              Para usar o aplicativo, você deve ser maior de 18 anos e consultar os{' '}
               <Link
                 href="/terms"
                 className="text-purple-300 hover:text-purple-100 underline"
