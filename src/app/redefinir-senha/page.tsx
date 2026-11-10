@@ -26,7 +26,8 @@ export default function RedefinirSenhaPage() {
     });
     void supabase.auth.getUser().then(({ data, error: authError }: any) => {
       if (!active) return;
-      setAuthorized(!authError && Boolean(data.user));
+      // Do not overwrite a PASSWORD_RECOVERY event with a stale getUser result.
+      if (!authError && data.user) setAuthorized(true);
       setChecking(false);
     }).catch(() => { if (active) setChecking(false); });
     return () => { active = false; subscription.unsubscribe(); };

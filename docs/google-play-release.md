@@ -49,3 +49,16 @@ Denunciar conteúdo e bloquear autores já foram implementados; verificar com du
 - Páginas públicas `/recuperar-senha` e `/redefinir-senha` usam Supabase Auth (`resetPasswordForEmail` e `updateUser`).
 - No Supabase Auth → URL Configuration, permitir explicitamente `https://app-reducao-consumo.vercel.app/redefinir-senha` na lista de Redirect URLs. Configurar também o Site URL canônico.
 - Validar o fluxo completo com e-mail real de teste, link expirado, sessão ausente e login após redefinição. O build por si só não verifica a entrega de e-mails.
+
+## Comunidade gratuita e segurança contra spam
+
+- Publicações e respostas ficam disponíveis a usuários autenticados, sem Premium, mantendo políticas RLS de proprietário e moderação.
+- Uma pessoa pode publicar uma vez a cada 24 horas e deve aguardar 30 segundos entre respostas; as duas regras são validadas em trigger no servidor, evitando simples manipulação do frontend.
+- Verificar com duas contas de teste: postagem, resposta, denúncia, bloqueio, tentativa de spam, conta com moderação suspensa e acesso a registros de terceiros.
+
+## Digital Asset Links configurável sem certificado falso
+
+- A rota `/.well-known/assetlinks.json` retorna 404 até a Vercel receber **ANDROID_APP_PACKAGE_ID** e **ANDROID_APP_SIGNING_SHA256** (fingerprint SHA-256 de certificado real da Play App Signing).
+- Permite múltiplos fingerprints separados por vírgula, somente quando formatados como 32 pares hexadecimais com dois-pontos.
+- Após configurar esses dados, republicar o projeto, validar o JSON via HTTPS e testar a TWA instalada.
+- Nenhum AAB, chave privada ou assinatura fictícia foi criado no repositório. Essas etapas dependem da identidade definitiva do app e da conta no Play Console.

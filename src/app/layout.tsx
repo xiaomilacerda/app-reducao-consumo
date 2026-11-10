@@ -45,7 +45,7 @@ function NavigationLink({
       className={
         "wr-nav-link border " +
         (mobile
-          ? "flex min-h-[58px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl border-transparent px-0.5 py-1 text-[10.5px] font-medium leading-none min-[400px]:text-[11px] "
+          ? "flex min-h-[58px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl border-transparent px-0.5 py-1 text-[11.5px] font-medium leading-tight min-[400px]:text-[12px] "
           : "flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium ") +
         (current ? "border-violet-300/25 text-white" : "border-transparent text-[#c5bed8] hover:text-white")
       }
