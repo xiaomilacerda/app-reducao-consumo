@@ -254,8 +254,6 @@ export const storage = {
       currency: 'BRL',
       onboardingCompleted: true,
       isPremium: false,
-      relapseHistory: [],
-      consumptionMethods: [],
       thcPotency: 0,
       gramsPerJoint: 0,
       dailyCost: 0,
@@ -265,12 +263,9 @@ export const storage = {
       // Novos recursos avançados
       xp: 0,
       level: 1,
-      completedMissions: [],
-      unlockedRewards: [],
       themeMode: 'default',
       detoxCycleActive: false,
       detoxCycleStartDate: null,
-      friends: [],
       ...data,
       // Garantir que arrays sejam sempre arrays
       consumptionMethods: Array.isArray(data.consumptionMethods) ? data.consumptionMethods : [],
