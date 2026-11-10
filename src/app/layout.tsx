@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Inter, Inter_Tight } from "next/font/google";
 import NotificationBell from "@/components/notifications/NotificationBell";
+import PwaRegistrar from "@/components/pwa/PwaRegistrar";
 import { APP_NAV_GROUPS, MAIN_TABS, activeMainTab, isRouteActive } from "@/lib/app-navigation";
 import "./globals.css";
 
@@ -99,6 +100,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR" className={inter.variable + " " + interTight.variable + " dark"}>
       <body className={"wr-app-body min-h-screen " + theme + " " + bgClass + " wr-noise relative font-sans text-white"}>
+        <PwaRegistrar />
         {profile?.frame && (
           <div
             className="pointer-events-none fixed inset-0 z-50"
