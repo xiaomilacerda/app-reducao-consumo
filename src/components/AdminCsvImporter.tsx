@@ -211,7 +211,9 @@ export default function AdminCsvImporter({ defaultTable = 'missions' }: { defaul
             }
           }
         } else {
-          successes += (data?.length ?? 0);
+          // Supabase insert() does not return rows unless select() is requested.
+          // No error means every row in the batch was accepted.
+          successes += transformed.length;
         }
       }
 
