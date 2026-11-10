@@ -640,6 +640,14 @@ export default function SettingsPage() {
           </button>
         </section>
 
+        <section className="rounded-2xl border border-rose-300/20 bg-[#211724] p-4 sm:p-5">
+          <h2 className="text-sm font-bold text-white">Privacidade e dados da conta</h2>
+          <p className="mt-1 text-xs leading-relaxed text-slate-300">Você pode solicitar a exclusão definitiva da sua conta e dos registros associados.</p>
+          <Link href="/excluir-conta" className="mt-3 inline-flex min-h-11 items-center rounded-xl border border-rose-300/30 px-4 text-xs font-semibold text-rose-200 hover:bg-rose-300/10">
+            Excluir minha conta
+          </Link>
+        </section>
+
         {/* SOBRE & PRIVACIDADE */}
         <section className="bg-white/10 rounded-3xl border border-white/10 p-4 space-y-2 text-[11px] text-purple-100/90 mb-6">
           <div className="flex items-center gap-2 text-xs font-semibold text-purple-50">

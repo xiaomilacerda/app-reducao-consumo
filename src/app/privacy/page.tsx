@@ -2,6 +2,7 @@
 
 import { ArrowLeft, Shield } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function PrivacyPage() {
   const router = useRouter();
@@ -131,6 +132,9 @@ export default function PrivacyPage() {
 
         <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-3">
           <h2 className="text-base font-semibold">7. Seus direitos e contato</h2>
+          <p>Você pode solicitar a exclusão da conta e dos seus dados pessoais diretamente pela <Link href="/excluir-conta" className="font-semibold text-violet-700 underline dark:text-violet-200">página de exclusão de conta</Link>, acessível também fora do aplicativo.</p>
+          <p>Se ainda tiver acesso à sua conta, confirme o pedido por meio da sessão autenticada. Caso não consiga entrar, envie sua solicitação para o suporte, que verificará a titularidade antes do processamento.</p>
+          <p>Removemos os dados dos sistemas ativos após a exclusão. Registros que precisem ser mantidos por obrigações legais e cópias técnicas de segurança podem seguir períodos de retenção específicos.</p>
           <p>
             Dependendo da legislação aplicável, você pode ter direito de acessar, corrigir ou
             solicitar a exclusão de seus dados, bem como retirar consentimentos concedidos.

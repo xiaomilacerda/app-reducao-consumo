@@ -1926,10 +1926,16 @@ if (lastIso) {
           </div>
         </section>
 
+        <section className="rounded-2xl border border-rose-300/20 bg-[#211724] px-4 py-4 sm:px-5">
+          <h2 className="text-sm font-bold text-white">Privacidade e exclusão de conta</h2>
+          <p className="mt-1 text-xs text-slate-300">Se desejar, você pode excluir permanentemente a conta e os dados armazenados.</p>
+          <Link href="/excluir-conta" className="mt-3 inline-flex min-h-11 items-center rounded-xl border border-rose-300/30 px-4 text-xs font-semibold text-rose-200 hover:bg-rose-300/10">Solicitar exclusão da conta</Link>
+        </section>
+
         {/* 7) Info complementar */}
         <section className="text-[11px] text-purple-100/90 space-y-1 pb-8">
           <p>
-            • Seu nome/apelido e o seu avatar são usados apenas dentro do app, e não são exibidos na comunidade (que é totalmente anônima).
+            • Seu nome/apelido e o seu avatar são usados apenas dentro do app, e não são exibidos na comunidade (que não exibe nomes nas publicações, mas usa identificadores internos para moderação).
           </p>
           <p>
             • THC, dados de consumo, dinheiro e registros internos são usados
