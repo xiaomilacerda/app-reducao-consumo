@@ -168,12 +168,23 @@ export default function SosSessionControls({
         </div>
 
         {/* Player que controla a duração e chama handleComplete */}
-        <SosPlayer
-          toolId={toolId}
-          toolTitle={toolTitle}
-          isRunning={isRunning}
-          onComplete={handleComplete}
-        />
+        {isRunning && (
+          <SosPlayer
+            tool={{
+              id: toolId,
+              title: toolTitle || 'Ferramenta SOS',
+              description: null,
+              category: null,
+              duration_minutes: null,
+              thumbnail: null,
+              tags: null,
+              premium_only: false,
+              steps_json: null,
+            }}
+            onComplete={handleComplete}
+            onCancel={() => setIsRunning(false)}
+          />
+        )}
       </div>
 
       <RewardModal
