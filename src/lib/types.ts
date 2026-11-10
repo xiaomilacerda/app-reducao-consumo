@@ -210,3 +210,13 @@ export interface Trigger {
   people: string[];
   objects: string[];
 }
+
+
+/** A milestone on the educational body-evolution timeline. */
+export interface BodyEvolution {
+  hours: number;
+  title: string;
+  description: string;
+  icon: string;
+  completed: boolean;
+}
