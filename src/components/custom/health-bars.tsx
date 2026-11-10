@@ -1,79 +1,50 @@
-'use client';
+"use client";
 
-import { HealthMetric } from '@/lib/types';
+import Link from "next/link";
+import { Activity, Heart, Moon, Smile } from "lucide-react";
+import type { HealthMetric } from "@/lib/types";
 
 interface HealthBarsProps {
   metrics: HealthMetric[];
 }
 
-// Formata o valor em percentual, começando em 0,01% e com 2 casas decimais
-function formatPercentage(value: number): string {
-  if (!Number.isFinite(value)) return '0,01%';
-
-  // valor vem em escala 0–100; para exibição não queremos nada menor que 0,01
-  const minDisplay = 0.01;
-  const safe = Math.max(minDisplay, value);
-
-  return safe.toFixed(2).replace('.', ',') + '%';
-}
-
-export default function HealthBars({ metrics }: HealthBarsProps) {
+/**
+ * Former percentages scaled with elapsed days, without a validated clinical
+ * relationship. They have been removed to avoid suggesting medical recovery.
+ */
+export default function HealthBars({ metrics: _metrics }: HealthBarsProps) {
   return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">
-        Indicadores de Saúde
-      </h3>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {metrics.map((metric) => {
-          const rawValue = Number.isFinite(metric.value) ? metric.value : 0;
-          const max = Number.isFinite(metric.maxValue) ? metric.maxValue : 100;
-
-          // Garante que a barra nunca passe de 0–100
-          const safeValue = Math.min(Math.max(rawValue, 0), max);
-          const width = `${safeValue}%`;
-
+    <section aria-label="Cuidados e bem-estar" className="space-y-4">
+      <div>
+        <h3 className="flex items-center gap-2 text-sm font-bold text-white sm:text-base">
+          <Activity className="h-4 w-4 text-violet-200" aria-hidden="true" />
+          Cuidando do seu bem-estar
+        </h3>
+        <p className="mt-1 text-xs leading-relaxed text-slate-400">
+          O tempo sem consumir é um registro de progresso pessoal; não mede a recuperação dos pulmões,
+          do sono ou da saúde mental. Cada pessoa tem sua própria experiência.
+        </p>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-3">
+        {[
+          { title: "Descanso", body: "Observe como seu sono varia ao longo dos dias.", icon: Moon },
+          { title: "Humor", body: "Registre sentimentos e identifique padrões.", icon: Smile },
+          { title: "Autocuidado", body: "Movimento, hidratação e apoio podem fazer parte da rotina.", icon: Heart },
+        ].map((item) => {
+          const Icon = item.icon;
           return (
-            <div
-              key={metric.id}
-              className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-md dark:shadow-none border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-xl hover:scale-105"
-            >
-              {/* Título + valor */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">{metric.icon}</span>
-                  <span className="font-semibold text-gray-800 dark:text-gray-200">
-                    {metric.name}
-                  </span>
-                </div>
-
-                <span className="text-lg font-bold text-gray-700 dark:text-gray-300">
-                  {formatPercentage(safeValue)}
-                </span>
-              </div>
-
-              {/* Barra de progresso */}
-              <div className="relative w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                <div
-                  className={`absolute top-0 left-0 h-full bg-gradient-to-r ${metric.color} rounded-full transition-all duration-1000 ease-out`}
-                  style={{ width }}
-                >
-                  <div className="absolute inset-0 bg-white/20 animate-pulse" />
-                </div>
-              </div>
-
-              {/* Mensagem motivacional */}
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                {safeValue < 25 && 'Começando a recuperar...'}
-                {safeValue >= 25 && safeValue < 50 && 'Progresso visível!'}
-                {safeValue >= 50 && safeValue < 75 && 'Ótima evolução!'}
-                {safeValue >= 75 && safeValue < 100 && 'Quase lá!'}
-                {safeValue === 100 && 'Recuperação completa! 🎉'}
-              </p>
+            <div key={item.title} className="rounded-xl border border-white/10 bg-white/[.04] p-3">
+              <Icon className="h-4 w-4 text-violet-200" aria-hidden="true" />
+              <h4 className="mt-2 text-xs font-bold text-white">{item.title}</h4>
+              <p className="mt-1 text-[11px] leading-relaxed text-slate-400">{item.body}</p>
             </div>
           );
         })}
       </div>
-    </div>
+      <Link href="/mood" className="inline-flex min-h-10 items-center rounded-lg px-2 text-xs font-semibold text-violet-200 hover:bg-violet-400/10">
+        Registrar meu humor
+      </Link>
+      <p className="text-[11px] leading-relaxed text-slate-500">Não substitui avaliação médica ou psicológica. Não há percentual clínico de recuperação calculado pelo aplicativo.</p>
+    </section>
   );
 }

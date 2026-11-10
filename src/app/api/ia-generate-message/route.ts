@@ -1,84 +1,41 @@
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
 
 /**
- * Rota POST /api/ia-generate-message
- * Body: { moodValue: number, moodLabel: string }
+ * Release-safe fallback until authenticated AI generation, abuse prevention,
+ * consent and billing controls have passed review.
  *
- * Behavior:
- * - Try to call OpenAI (chat completion)
- * - If success -> return { text }
- * - If failure (429 or any error) -> pick a fallback message from LOCAL_MESSAGES and return it
- *
- * Obs: ajuste MODEL, TEMPERATURE e MAX_TOKENS conforme desejar.
+ * The endpoint is intentionally local-only and never calls a paid API.
  */
-
-const MODEL = "gpt-4o-mini";
 const LOCAL_MESSAGES = [
-  "Respire fundo — você está fazendo o melhor que pode hoje. Um passo de cada vez.",
-  "Mesmo em dias difíceis, sua coragem existe. Cuide-se com calma e gentileza.",
-  "Você não está sozinho nisso. Pequenos passos contam e você já começou.",
-  "Permita-se pausar. Cuidar de você é parte da jornada.",
-  "Você tem motivos para seguir — hoje pode ser um dia de cuidado e recuperação.",
-  "Se precisar, escreva mais: às vezes botar para fora ajuda a clarear a mente.",
-  "Continue registrando — cada entrada é um pequeno mapa do seu progresso."
-  // (adicione suas 60 mensagens aqui se quiser)
+  "Seu registro de hoje pode ajudar a reconhecer padrões com mais clareza.",
+  "Se estiver difícil, observe o que está sentindo e procure alguém de confiança.",
+  "Pequenos cuidados hoje podem fazer diferença na sua rotina.",
+  "Você pode registrar como se sente sem precisar se julgar.",
+  "Se precisar de apoio, use os recursos da seção SOS ou procure um profissional.",
 ];
-
-function pickLocalMessage(moodValue:number, moodLabel:string) {
-  // simples: escolhe aleatória. Você pode sofisticar: filtrar por moodValue ranges.
-  const idx = Math.floor(Math.random() * LOCAL_MESSAGES.length);
-  return LOCAL_MESSAGES[idx];
-}
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const moodValue = Number(body?.moodValue ?? 50);
-    const moodLabel = String(body?.moodLabel ?? "Humor");
-
-    // se não tiver chave, caí direto no fallback
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      const fallback = pickLocalMessage(moodValue, moodLabel);
-      return NextResponse.json({ text: fallback });
+    const size = Number(req.headers.get("content-length") || 0);
+    if (size > 4096) return NextResponse.json({ error: "Solicitação muito grande." }, { status: 413 });
+    const origin = req.headers.get("origin");
+    if (origin && new URL(origin).host !== new URL(req.url).host) {
+      return NextResponse.json({ error: "Origem não autorizada." }, { status: 403 });
     }
-
-    const client = new OpenAI({ apiKey });
-
-    const prompt = `
-Gere uma mensagem curta, acolhedora e empática para um diário emocional.
-Use segunda pessoa ("você") e um tom humano, caloroso e motivador.
-Baseie-se no humor de ${moodValue}/100 (${moodLabel}).
-Máximo 2-3 frases. Não mencione IA nem instruções técnicas.
-`;
-
-    // tentativa de chamar a OpenAI
-    const response = await client.chat.completions.create({
-      model: MODEL,
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 120,
-      temperature: 0.8,
+    const text = await req.text();
+    if (text.length > 4096) return NextResponse.json({ error: "Solicitação muito grande." }, { status: 413 });
+    let data: Record<string, unknown> = {};
+    try { data = JSON.parse(text || "{}"); } catch {
+      return NextResponse.json({ error: "Formato inválido." }, { status: 400 });
+    }
+    const mood = Number(data.moodValue);
+    const index = Number.isFinite(mood) ? Math.min(LOCAL_MESSAGES.length - 1, Math.max(0, Math.floor(mood / 21))) : 0;
+    return NextResponse.json({ text: LOCAL_MESSAGES[index], source: "conteudo_local" }, {
+      headers: { "Cache-Control": "no-store" },
     });
-
-    const text = response?.choices?.[0]?.message?.content?.trim();
-    if (text) {
-      return NextResponse.json({ text });
-    }
-
-    // se a resposta estiver vazia, fallback
-    const fallback = pickLocalMessage(moodValue, moodLabel);
-    return NextResponse.json({ text: fallback });
-  } catch (err:any) {
-    // detecta 429 (quota) ou outros erros e retorna fallback
-    console.error("Erro IA (fallback):", err?.message ?? err);
-
-    // tente extrair o status code se disponível
-    const message = pickLocalMessage(
-      Number((await (async()=>{try{return (await req.json()).moodValue}catch{return 50}})()) || 50),
-      "Humor"
-    );
-
-    return NextResponse.json({ text: message }, { status: 200 });
+  } catch {
+    return NextResponse.json({ text: LOCAL_MESSAGES[0], source: "conteudo_local" }, {
+      headers: { "Cache-Control": "no-store" },
+    });
   }
 }

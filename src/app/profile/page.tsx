@@ -1883,7 +1883,7 @@ if (lastIso) {
                 <p className="text-xs text-gray-500 mt-1 max-w-xl">
                   {isPremium
                     ? 'Você tem acesso liberado à IA de prevenção, análises avançadas e histórico completo do que escreve nas áreas especiais do app.'
-                    : 'Assinando o Premium você libera a IA de prevenção, análises avançadas e o histórico completo de tudo que registrar nas áreas especiais do app, além de outros recursos extras.'}
+                    : 'Novas assinaturas ainda estão indisponíveis. A página Premium mostra quais recursos serão oferecidos após a integração de pagamentos.'}
                 </p>
               </div>
             </div>
@@ -1892,7 +1892,7 @@ if (lastIso) {
               href="/premium"
               className="inline-flex items-center justify-center px-4 py-2 rounded-full text-xs font-semibold bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md hover:opacity-90 transition"
             >
-              {isPremium ? 'Gerenciar plano Premium' : 'Ver plano Premium'}
+              {isPremium ? 'Ver meu status Premium' : 'Conhecer o Premium'}
             </Link>
           </div>
 

@@ -450,193 +450,24 @@ export default function AnalyticsPage() {
           </div>
         </section>
 
-        {/* Saúde física x saúde mental */}
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl border border-gray-100 dark:border-gray-700">
-            <div className="flex items-center gap-2 mb-3">
-              <Activity className="w-5 h-5 text-emerald-500" />
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-                Saúde física (interno do app)
-              </h3>
-            </div>
-
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              Este agrupamento considera indicadores como pulmões, energia e
-              sono dentro da lógica do aplicativo.
-            </p>
-
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600 dark:text-gray-300">
-                Pontuação média
-              </span>
-              <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {physicalScore !== null
-                  ? formatPercentage(physicalScore)
-                  : '—'}
-              </span>
-            </div>
-
-            <div className="relative w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div
-                className="absolute top-0 left-0 h-full bg-gradient-to-r from-emerald-500 to-green-500 rounded-full transition-all duration-700"
-                style={{
-                  width: `${
-                    physicalScore !== null
-                      ? Math.min(Math.max(physicalScore, 0), 100)
-                      : 0
-                  }%`,
-                }}
-              />
-            </div>
-
-            <ul className="mt-4 text-xs text-gray-500 dark:text-gray-400 space-y-1">
-              <li>• Pulmões, energia e sono são puxados pelo tempo limpo.</li>
-              <li>
-                • Não é um laudo médico, é apenas um termômetro interno para
-                acompanhar sua evolução.
-              </li>
-            </ul>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl border border-gray-100 dark:border-gray-700">
-            <div className="flex items-center gap-2 mb-3">
-              <Brain className="w-5 h-5 text-purple-500" />
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-                Saúde mental (interno do app)
-              </h3>
-            </div>
-
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              Aqui entram indicadores como foco, humor e clareza mental dentro
-              da escala do app.
-            </p>
-
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600 dark:text-gray-300">
-                Pontuação média
-              </span>
-              <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {mentalScore !== null ? formatPercentage(mentalScore) : '—'}
-              </span>
-            </div>
-
-            <div className="relative w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div
-                className="absolute top-0 left-0 h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-700"
-                style={{
-                  width: `${
-                    mentalScore !== null
-                      ? Math.min(Math.max(mentalScore, 0), 100)
-                      : 0
-                  }%`,
-                }}
-              />
-            </div>
-
-            <ul className="mt-4 text-xs text-gray-500 dark:text-gray-400 space-y-1">
-              <li>
-                • A evolução tende a ficar mais perceptível conforme você
-                acumula mais dias limpo.
-              </li>
-              <li>
-                • Use esses números como motivação, não como diagnóstico.
-              </li>
-            </ul>
-          </div>
-        </section>
-
-        {/* Indicadores de saúde principais em detalhe */}
-        <section className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl">
-          <div className="flex items-center gap-2 mb-4">
-            <Activity className="w-5 h-5 text-purple-500" />
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-              Indicadores de Saúde (escala interna)
-            </h3>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[lungs, energy, focus, sleep, mood, clarity]
-              .filter(Boolean)
-              .map((metric) => {
-                const value = Number.isFinite(metric!.value)
-                  ? metric!.value
-                  : 0;
-                const width = `${Math.min(Math.max(value, 0), 100)}%`;
-
-                return (
-                  <div
-                    key={metric!.id}
-                    className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 border border-gray-100 dark:border-gray-600"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">{metric!.icon}</span>
-                        <span className="font-semibold text-gray-800 dark:text-gray-100">
-                          {metric!.name}
-                        </span>
-                      </div>
-                      <span className="text-sm font-bold text-gray-700 dark:text-gray-200">
-                        {formatPercentage(value)}
-                      </span>
-                    </div>
-
-                    <div className="relative w-full h-2.5 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
-                      <div
-                        className={`absolute top-0 left-0 h-full bg-gradient-to-r ${metric!.color} rounded-full transition-all duration-700`}
-                        style={{ width }}
-                      />
-                    </div>
-
-                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                      {value < 25 && 'Começando a recuperar...'}
-                      {value >= 25 && value < 50 && 'Progresso visível!'}
-                      {value >= 50 && value < 75 && 'Ótima evolução em curso.'}
-                      {value >= 75 && value < 100 && 'Quase totalmente recuperado.'}
-                      {value === 100 && 'Indicador totalmente recuperado! 🎉'}
-                    </p>
-                  </div>
-                );
-              })}
-          </div>
-
-          {extraMetrics.length > 0 && (
-            <div className="mt-6">
-              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                Outros indicadores monitorados pelo app
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {extraMetrics.map((metric) => {
-                  const value = Number.isFinite(metric.value)
-                    ? metric.value
-                    : 0;
-                  return (
-                    <div
-                      key={metric.id}
-                      className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded-lg px-3 py-2 border border-gray-100 dark:border-gray-600"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">{metric.icon}</span>
-                        <span className="text-sm text-gray-700 dark:text-gray-200">
-                          {metric.name}
-                        </span>
-                      </div>
-                      <span className="text-sm font-bold text-gray-800 dark:text-gray-100">
-                        {formatPercentage(value)}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          <p className="mt-4 text-xs text-gray-500 dark:text-gray-400 flex items-start gap-2">
-            <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
-            Todos os indicadores desta seção são calculados apenas com base no
-            tempo limpo dentro da lógica do Weed Reset. Eles servem para ajudar
-            na motivação e organização da jornada e não devem ser interpretados
-            como diagnóstico médico.
+        {/* Indicadores clínicos arbitrários removidos na revisão de segurança. */}
+        <section className="rounded-2xl border border-violet-300/20 bg-[#201a32] px-4 py-5 text-white sm:p-6" aria-label="Bem-estar e limites dos dados">
+          <h2 className="flex items-center gap-2 text-base font-bold">
+            <Activity className="h-5 w-5 text-violet-200" aria-hidden="true" />
+            Bem-estar é mais do que um percentual
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-slate-300">
+            Seu tempo de progresso e suas estimativas de consumo não determinam quanto seus
+            pulmões, seu sono ou sua saúde mental se recuperaram. Por isso, retiramos
+            as porcentagens automáticas de recuperação que não tinham validação clínica.
           </p>
+          <p className="mt-2 text-xs leading-relaxed text-slate-400">
+            Para acompanhar mudanças percebidas no dia a dia, use o registro de humor.
+            Procure um profissional de saúde se tiver sintomas ou preocupações.
+          </p>
+          <Link href="/mood" className="mt-3 inline-flex min-h-11 items-center rounded-xl border border-violet-300/30 px-4 text-xs font-semibold text-violet-200 hover:bg-violet-300/10">
+            Registrar como me sinto
+          </Link>
         </section>
       </main>
     </div>
