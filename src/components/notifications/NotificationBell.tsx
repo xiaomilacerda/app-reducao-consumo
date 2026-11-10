@@ -37,10 +37,10 @@ export default function NotificationBell() {
 
   useEffect(() => {
     let active = true;
-    void client.auth.getUser().then(({ data }) => {
+    void client.auth.getUser().then(({ data }: { data: { user: { id: string } | null } }) => {
       if (active) setUserId(data.user?.id || null);
     }).catch(() => { if (active) setUserId(null); });
-    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = client.auth.onAuthStateChange((_event: string, session: { user: { id: string } } | null) => {
       if (active) setUserId(session?.user.id || null);
     });
     return () => { active = false; subscription.unsubscribe(); };
@@ -61,7 +61,7 @@ export default function NotificationBell() {
       if (ids.length) {
         const { data: comments } = await client.from("community_comments")
           .select("id,content").in("id", ids);
-        const map = new Map((comments || []).map((row: any) => [row.id, row.content]));
+        const map = new Map<string, string>((comments || []).map((row: any) => [String(row.id), String(row.content || '')]));
         rows.forEach((row) => { row.content = map.get(row.comment_id || "") || null; });
       }
       setNotices(rows);

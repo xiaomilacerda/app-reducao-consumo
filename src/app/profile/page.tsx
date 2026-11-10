@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { prepareLocalAccount, readPrivateState, restoreJourney, snapshotJourney, type PrivateState } from '@/lib/private-state';
 import ProfileActionNotice from '@/components/profile/ProfileActionNotice';
 import { storage } from '@/lib/storage';
+import type { UserData } from '@/lib/types';
 import {
   ArrowLeft,
   User,
@@ -27,7 +28,6 @@ import {
 import Link from 'next/link';
 import ProfileGrowthHub from '@/components/profile/ProfileGrowthHub';
 
-type UserData = ReturnType<typeof storage.getUserData> extends infer T ? T : any;
 
 // Valores padrão importantes para o funcionamento do app
 const DEFAULT_CORE_VALUES = {
@@ -659,9 +659,10 @@ if (lastIso) {
 
             if (!cloudState?.userData?.lastUseDateTime && typeof profile.last_use === 'string') {
               if (data) {
-                data = { ...data, startDate: profile.last_use, lastUseDateTime: profile.last_use } as UserData;
-                storage.saveUserData(data);
-                setUserData(data);
+                const nextData: UserData = { ...data, startDate: profile.last_use, lastUseDateTime: profile.last_use };
+                data = nextData;
+                storage.saveUserData(nextData);
+                setUserData(nextData);
               }
               const formatted = formatDateInputFromIso(profile.last_use);
               if (formatted.date) {
