@@ -982,7 +982,7 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
             </div>
           </details>
         )}
-        {/* MENSAGENS */
+        {/* MENSAGENS */}
         {(globalError || globalInfo) && (
           <div className="space-y-2">
             {globalError && (
