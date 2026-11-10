@@ -891,7 +891,7 @@ if (lastIso) {
       // O servidor confirma tudo junto ou não aplica nenhuma alteração.
       const { data: saveResult, error: saveError } = await supabase.rpc(
         'save_profile_preferences_secure', {
-          p_user_data: snapshotJourney(updated),
+          p_user_data: snapshotJourney(updated as UserData),
           p_preferences: {
             displayName: displayName.trim(),
             // Avatar é salvo por sua própria operação atômica, para que
