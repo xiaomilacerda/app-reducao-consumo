@@ -134,7 +134,7 @@ export default function SettingsPage() {
             const allowed = ['detox', 'mood', 'money', 'health'] as const;
             const value = p.preferred_focus_area as any;
             setPreferredFocusArea(
-              allowed.includes(value) ? value : ('detox' as 'detox')
+              allowed.includes(value) ? value : ('detox' as const)
             );
           }
 

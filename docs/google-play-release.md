@@ -67,3 +67,9 @@ Denunciar conteúdo e bloquear autores já foram implementados; verificar com du
 
 - Configuração de lint nativa para Next.js 15 / ESLint 9 via FlatCompat; o comando npm run lint executa a inspeção. Executa em CI de modo informativo até que a dívida histórica esteja corrigida; TypeScript e testes de regressão continuam obrigatórios.
 - Não declarar lint aprovado nem habilitar bloqueio da compilação até eliminar os achados reais; ver logs do GitHub Actions.
+
+## Resultado real do primeiro lint (10/11/2026)
+
+- O primeiro lint completo encontrou **410 ocorrências (318 erros e 92 avisos)**, principalmente 314 usos históricos de `any`; não foi uma validação aprovada só porque a execução estava marcada como informativa.
+- Foram corrigidos os quatro erros restantes de `prefer-const` e `prefer-as-const`. Para não esconder essas ocorrências, `no-explicit-any` continua visível como **warning** até a migração gradual para tipos explícitos.
+- A partir de agora o lint deixa de ser informativo e falha o GitHub Actions para erros de outras regras. Avisos antigos ainda não representam código limpo ou acessibilidade certificada.

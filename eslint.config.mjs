@@ -10,4 +10,7 @@ export default [
     'src/app/PAGES/**', 'supabase/functions/**',
   ] },
   ...compat.extends('next/core-web-vitals', 'next/typescript'),
+  // Existing legacy untyped data adapters are still being migrated.
+  // Keep these findings visible as warnings without hiding other lint errors.
+  { rules: { '@typescript-eslint/no-explicit-any': 'warn' } },
 ];

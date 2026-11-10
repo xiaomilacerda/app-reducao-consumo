@@ -593,7 +593,7 @@ if (lastIso) {
               const allowed = ['detox', 'mood', 'money', 'health'] as const;
               const value = profile.preferred_focus_area as any;
               setPreferredFocusArea(
-                allowed.includes(value) ? value : ('detox' as 'detox')
+                allowed.includes(value) ? value : ('detox' as const)
               );
             }
 
