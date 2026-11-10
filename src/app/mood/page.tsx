@@ -54,6 +54,8 @@ const GROUPS: GroupInfo[] = [
   { key:'other',label:'Outros registros',color:'#8390A6',short:'Outros' },
 ];
 const FRONT_KEYS = ['feliz','bem','normal','ansioso','triste'];
+const DRAFT_PREFIX = 'weedreset:mood-draft:v1:';
+const DRAFT_TTL_MS = 12 * 60 * 60 * 1000;
 const FEEDBACK: Record<Group,string> = {
   positive:'É bom perceber momentos leves. Vale guardar o que ajudou você hoje.',
   calm:'Momentos de tranquilidade também merecem ser reconhecidos.',
@@ -160,6 +162,7 @@ export default function MoodTrackerPage(){
   const [saveError,setSaveError]=useState('');
   const [lastFeedback,setLastFeedback]=useState<Group|null>(null);
   const [canLoadMore,setCanLoadMore]=useState(false);
+  const [draftReadyFor,setDraftReadyFor]=useState<string|null>(null);
   const inFlight=useRef(false);
   const clearNotice=useCallback(()=>{setSuccess('');setSaveError('');},[]);
 
@@ -174,14 +177,18 @@ export default function MoodTrackerPage(){
       const uid=auth.data.user.id;
       setUserId(uid);
       const p=await supabase.from('profiles').select('timezone').eq('id',uid).maybeSingle();
-      if(!p.error&&typeof p.data?.timezone==='string'&&p.data.timezone) setTimeZone(p.data.timezone);
+      const profileTimeZone=(!p.error&&typeof p.data?.timezone==='string'&&p.data.timezone)
+        ? p.data.timezone : 'America/Sao_Paulo';
+      setTimeZone(profileTimeZone);
+      // Only the last 12 months are needed for the charts on this page.
+      const firstDate=rangeStart(isoLocal(new Date(),profileTimeZone),'year');
       const result:MoodEntry[]=[];
       const size=500,maxRows=5000;
       while(result.length<maxRows){
         const from=result.length;
         const page=await supabase.from('mood_entries')
           .select('id,user_id,mood,mood_value,date,time,created_at,notes,note,trigger_note,helpful_action,daily_message')
-          .eq('user_id',uid).order('date',{ascending:false}).order('time',{ascending:false})
+          .eq('user_id',uid).gte('date',firstDate).order('date',{ascending:false}).order('time',{ascending:false})
           .order('created_at',{ascending:false}).range(from,from+size-1);
         if(page.error)throw page.error;
         result.push(...(page.data??[]) as MoodEntry[]);
@@ -196,6 +203,57 @@ export default function MoodTrackerPage(){
   },[]);
 
   useEffect(()=>{void load();},[load]);
+
+  // Drafts are scoped to this signed-in user and this browser tab. They expire
+  // after 12 hours and are never sent to Supabase until Save is pressed.
+  useEffect(()=>{
+    if(!userId){setDraftReadyFor(null);return;}
+    const key=DRAFT_PREFIX+userId;
+    try{
+      const raw=window.sessionStorage.getItem(key);
+      if(raw){
+        const draft=JSON.parse(raw) as Record<string,unknown>;
+        if(typeof draft.savedAt==='number' && Date.now()-draft.savedAt<=DRAFT_TTL_MS &&
+          draft.savedAt<=Date.now()){
+          if(typeof draft.notes==='string')setNotes(draft.notes.slice(0,600));
+          if(typeof draft.trigger==='string')setTrigger(draft.trigger.slice(0,160));
+          if(typeof draft.helpful==='string')setHelpful(draft.helpful.slice(0,160));
+          if(typeof draft.selectedKey==='string'){
+            const restored=OPTIONS.find(o=>o.key===draft.selectedKey);
+            if(restored)setSelected(restored);
+          }
+          if(draft.trigger||draft.helpful)setDetailsOpen(true);
+        }else{
+          window.sessionStorage.removeItem(key);
+        }
+      }
+    }catch{
+      try{window.sessionStorage.removeItem(key);}catch{}
+    }
+    setDraftReadyFor(userId);
+  },[userId]);
+
+  useEffect(()=>{
+    if(!userId||draftReadyFor!==userId)return;
+    const key=DRAFT_PREFIX+userId;
+    try{
+      if(!selected&&!notes.trim()&&!trigger.trim()&&!helpful.trim()){
+        window.sessionStorage.removeItem(key);
+      }else{
+        window.sessionStorage.setItem(key,JSON.stringify({
+          savedAt:Date.now(),selectedKey:selected?.key??null,notes,trigger,helpful,
+        }));
+      }
+    }catch{
+      // Private browsing may disable storage; cloud saves still work.
+    }
+  },[userId,draftReadyFor,selected,notes,trigger,helpful]);
+
+  function discardDraft(){
+    setSelected(null);setNotes('');setTrigger('');setHelpful('');setDetailsOpen(false);
+    if(userId)try{window.sessionStorage.removeItem(DRAFT_PREFIX+userId);}catch{}
+  }
+
 
   const visible=useMemo(()=>entries.filter(e=>e.date>=start&&e.date<=today),[entries,start,today]);
   const counts=GROUPS.map(group=>visible.filter(e=>groupOf(e)===group.key).length);
@@ -267,7 +325,7 @@ export default function MoodTrackerPage(){
       setEntries(prev=>[res.data as MoodEntry,...prev]);
       setSuccess('Seu humor foi salvo na nuvem, sem apagar os registros anteriores.');
       setLastFeedback(selected.group);
-      setSelected(null);setNotes('');setTrigger('');setHelpful('');setDetailsOpen(false);
+      discardDraft();
     }catch(e){setSaveError(e instanceof Error?e.message:'Não foi possível salvar. Tente novamente.');}
     finally {setSaving(false);inFlight.current=false;}
   }
@@ -326,6 +384,7 @@ export default function MoodTrackerPage(){
               placeholder="Um pensamento, uma conquista ou algo que pesou hoje..."
               className="mt-2 w-full resize-y rounded-xl border border-white/15 bg-black/20 px-3 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-violet-300"/>
           </label>
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-2"><span className="text-[11px] text-slate-400">Rascunho temporário nesta aba, por até 12h. Só é enviado ao salvar.</span>{(notes||trigger||helpful||selected)&&<button type="button" onClick={discardDraft} className="min-h-10 text-[11px] font-semibold text-violet-200 underline underline-offset-2">Descartar rascunho</button>}</div>
           <div className="mt-1 flex justify-between gap-2"><button type="button" aria-expanded={detailsOpen} onClick={()=>setDetailsOpen(v=>!v)} className="inline-flex min-h-10 items-center gap-1.5 text-xs font-semibold text-violet-200">+ {detailsOpen?'Ocultar detalhes':'Adicionar detalhes'} <ChevronDown className={'h-4 w-4 transition-transform '+(detailsOpen?'rotate-180':'')}/></button><span className="text-[11px] text-slate-400">{noteCount}/600</span></div>
           {detailsOpen&&<div className="mt-2 grid gap-3 rounded-2xl border border-white/10 bg-white/[.035] p-3 sm:grid-cols-2">
             <label className="text-xs text-slate-200">O que influenciou? (opcional)<input value={trigger} maxLength={160} onChange={e=>setTrigger(e.target.value)} placeholder="Ex.: trabalho, descanso" className="mt-2 min-h-11 w-full min-w-0 rounded-xl border border-white/15 bg-black/20 px-3 text-sm outline-none focus:border-violet-300"/></label>
