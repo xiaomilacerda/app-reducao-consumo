@@ -610,7 +610,8 @@ body.wr-app-body.wr-noise::after {
     -webkit-backdrop-filter: blur(14px);
   }
   .wr-screen :is(h1, h2) {
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
+    word-break: normal;
     text-wrap: balance;
   }
 }

@@ -953,7 +953,7 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
         <section className="wr-community-intro rounded-2xl border border-violet-300/15 bg-[#1b182e] px-4 py-3 text-white sm:p-5" aria-label="Sobre a comunidade">
           <h2 className="text-base font-bold sm:text-lg">Compartilhe no seu ritmo</h2>
           <p className="mt-1 text-xs leading-relaxed text-slate-300 sm:text-sm">
-            Um espaço anônimo para trocar experiências e apoiar outras pessoas.
+            Um espaço de apoio para trocar experiências sem exibir nomes no mural.
           </p>
           <details className="mt-2 text-xs text-slate-300">
             <summary className="cursor-pointer py-1 font-semibold text-violet-200 hover:text-white">
@@ -962,8 +962,8 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
             <ul className="mt-2 space-y-1.5 border-t border-white/10 pt-3 leading-relaxed">
               <li>• Respeito sempre, sem exceção.</li>
               <li>• Conteúdo ofensivo ou explícito é removido.</li>
-              <li>• Publicações e respostas são anônimas.</li>
-              <li>• Membros Premium podem postar e responder.</li>
+              <li>• Nomes não são exibidos; identificadores técnicos são mantidos para segurança e moderação.</li>
+              <li>• Por enquanto, somente contas com Premium já habilitado podem postar e responder. Novas assinaturas não estão disponíveis.</li>
             </ul>
           </details>
         </section>

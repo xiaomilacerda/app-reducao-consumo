@@ -26,7 +26,7 @@ const interTight = Inter_Tight({
   variable: "--font-inter-tight",
 });
 
-const withoutNav = new Set(["/login", "/signup", "/onboarding", "/privacy", "/terms"]);
+const withoutNav = new Set(["/login", "/signup", "/onboarding", "/privacy", "/terms", "/recuperar-senha", "/redefinir-senha"]);
 
 function NavigationLink({
   href, label, icon: Icon, current, mobile = false,
@@ -55,7 +55,7 @@ function NavigationLink({
         strokeWidth={current ? 2.2 : 1.8}
         aria-hidden="true"
       />
-      <span className={mobile ? "block max-w-full truncate whitespace-nowrap" : "min-w-0 truncate"}>{label}</span>
+      <span className={mobile ? "block max-w-full whitespace-normal break-words text-center leading-tight" : "min-w-0 truncate"}>{label}</span>
     </Link>
   );
 }

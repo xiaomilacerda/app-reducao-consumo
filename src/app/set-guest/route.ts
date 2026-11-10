@@ -1,42 +1,35 @@
-// src/app/set-guest/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
+// Legacy development-only bridge. Never allow anonymous callers to select a
+// guest identifier or use this endpoint as an open redirect in production.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export async function GET(req: NextRequest) {
-  try {
-    const url = new URL(req.url);
-    const guestId = url.searchParams.get('guest');
-    const nextParam = url.searchParams.get('next') || '/';
-
-    if (!guestId) {
-      return NextResponse.json({ error: 'missing guest id' }, { status: 400 });
-    }
-
-    // Build an absolute URL for redirect. If nextParam is already absolute, use it.
-    let redirectUrl: string;
-    try {
-      const candidate = new URL(nextParam);
-      // valid absolute URL
-      redirectUrl = candidate.toString();
-    } catch {
-      // relative path -> build absolute using the request origin
-      redirectUrl = new URL(nextParam, url.origin).toString();
-    }
-
-    const res = NextResponse.redirect(redirectUrl);
-
-    // set cookie server-side (HttpOnly so middleware can read it next request)
-    res.cookies.set({
-      name: 'weedreset_guest_id',
-      value: guestId,
-      httpOnly: true,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 365,
-    });
-
-    return res;
-  } catch (err: any) {
-    console.error('set-guest route error', err);
-    return NextResponse.json({ error: err?.message ?? String(err) }, { status: 500 });
+  if (process.env.NODE_ENV === 'production') {
+    return new NextResponse(null, { status: 404 });
   }
+
+  const guestId = req.nextUrl.searchParams.get('guest') ?? '';
+  if (!UUID_RE.test(guestId)) {
+    return NextResponse.json({ error: 'Identificador inválido.' }, { status: 400 });
+  }
+
+  const target = req.nextUrl.searchParams.get('next') ?? '/';
+  // Restrict navigation to a single-origin absolute path, not a scheme-relative
+  // URL, backslash trick, or external destination.
+  const safePath = target.startsWith('/') && !target.startsWith('//') &&
+    !target.includes('\\') && !/[\r\n]/.test(target) ? target : '/';
+
+  const res = NextResponse.redirect(new URL(safePath, req.nextUrl.origin));
+  res.headers.set('Cache-Control', 'no-store');
+  res.cookies.set({
+    name: 'weedreset_guest_id',
+    value: guestId,
+    httpOnly: true,
+    secure: req.nextUrl.protocol === 'https:',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 60 * 24,
+  });
+  return res;
 }

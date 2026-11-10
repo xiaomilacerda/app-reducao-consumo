@@ -24,7 +24,7 @@ Identificador Android proposto (confirmar antes da criação no Play Console): \
 9. Preencher **Data Safety**, declaração de Saúde, classificação indicativa, política de conteúdo gerado pelos usuários, URL pública de exclusão, conta de avaliação, screenshots, contato e conteúdo da loja.
 10. O Premium permanece **indisponível para compras** até integrar Play Billing e verificar as compras pelo backend. Não apresentar botões fictícios em produção.
 11. Se a conta pessoal do desenvolvedor estiver sujeita às regras de teste fechado do Google, concluir o período e número de testadores aplicáveis antes de solicitar produção.
-12. Habilitar compilação com TypeScript e lint sem ignorar erros e adicionar suíte automatizada antes da classificação final de pronto para produção.
+12. TypeScript estrito agora é verificado no CI e na compilação (após correção dos erros anteriores). O lint ainda está temporariamente ignorado no build; migrar configuração ESLint e adicionar testes de integração e ponta a ponta antes da classificação final de pronto para produção.
 
 ## Exclusão de conta
 
@@ -43,3 +43,9 @@ Denunciar conteúdo e bloquear autores já foram implementados; verificar com du
 - https://github.com/GoogleChromeLabs/bubblewrap/tree/main/packages/cli
 - https://support.google.com/googleplay/android-developer/answer/18265346
 - https://developer.android.com/health-and-fitness/health-connect/publish
+
+## Recuperação de senha (validação obrigatória)
+
+- Páginas públicas `/recuperar-senha` e `/redefinir-senha` usam Supabase Auth (`resetPasswordForEmail` e `updateUser`).
+- No Supabase Auth → URL Configuration, permitir explicitamente `https://app-reducao-consumo.vercel.app/redefinir-senha` na lista de Redirect URLs. Configurar também o Site URL canônico.
+- Validar o fluxo completo com e-mail real de teste, link expirado, sessão ausente e login após redefinição. O build por si só não verifica a entrega de e-mails.

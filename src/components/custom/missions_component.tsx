@@ -4,7 +4,7 @@ import { traduzirErro } from '@/lib/traduzir-erro';
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
-import { Check, Star, Coin } from 'lucide-react';
+import { Check, Star } from 'lucide-react';
 
 function createClient() {
   return createBrowserClient(

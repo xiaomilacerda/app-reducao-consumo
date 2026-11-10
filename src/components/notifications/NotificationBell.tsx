@@ -33,20 +33,22 @@ export default function NotificationBell() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const container = useRef<HTMLDivElement>(null);
+  const refreshing = useRef(false);
 
   useEffect(() => {
     let active = true;
-    void client.auth.getUser().then(({ data }) => {
+    void client.auth.getUser().then(({ data }: { data: { user: { id: string } | null } }) => {
       if (active) setUserId(data.user?.id || null);
     }).catch(() => { if (active) setUserId(null); });
-    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = client.auth.onAuthStateChange((_event: string, session: { user: { id: string } } | null) => {
       if (active) setUserId(session?.user.id || null);
     });
     return () => { active = false; subscription.unsubscribe(); };
   }, [client]);
 
   const refresh = useCallback(async (showLoading = false) => {
-    if (!userId) return;
+    if (!userId || refreshing.current) return;
+    refreshing.current = true;
     if (showLoading) setLoading(true);
     try {
       const { data, error: queryError } = await client
@@ -59,7 +61,7 @@ export default function NotificationBell() {
       if (ids.length) {
         const { data: comments } = await client.from("community_comments")
           .select("id,content").in("id", ids);
-        const map = new Map((comments || []).map((row: any) => [row.id, row.content]));
+        const map = new Map<string, string>((comments || []).map((row: any) => [String(row.id), String(row.content || '')]));
         rows.forEach((row) => { row.content = map.get(row.comment_id || "") || null; });
       }
       setNotices(rows);
@@ -68,6 +70,7 @@ export default function NotificationBell() {
       console.warn("Falha ao consultar notificações", cause);
       setError("Não foi possível atualizar os avisos.");
     } finally {
+      refreshing.current = false;
       if (showLoading) setLoading(false);
     }
   }, [client, userId]);
@@ -77,7 +80,9 @@ export default function NotificationBell() {
     setOpen(false);
     if (!userId) return;
     void refresh();
-    const timer = window.setInterval(() => { void refresh(); }, 20000);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void refresh();
+    }, 20000);
     const focus = () => { void refresh(); };
     const visible = () => { if (document.visibilityState === "visible") void refresh(); };
     window.addEventListener("focus", focus);
