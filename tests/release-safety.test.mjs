@@ -55,7 +55,13 @@ test('Free community keeps server-side anti-spam and TWA requires real certifica
   const migration = read('supabase/migrations/20261110_weedreset_free_community_spam_guard.sql');
   assert.match(migration, /weedreset_guard_community_post/);
   assert.match(migration, /pg_advisory_xact_lock/);
-  const assetlinks = read('src/app/.well-known/assetlinks.json/route.ts');
+  const assetlinks = read('src/app/api/android-assetlinks/route.ts');
   assert.match(assetlinks, /ANDROID_APP_SIGNING_SHA256/);
   assert.match(assetlinks, /status: 404/);
+});
+
+test('Android Digital Asset Links uses a public well-known rewrite', () => {
+  const config = read('next.config.ts');
+  assert.match(config, /source: '\/\.well-known\/assetlinks\.json'/);
+  assert.match(config, /destination: '\/api\/android-assetlinks'/);
 });

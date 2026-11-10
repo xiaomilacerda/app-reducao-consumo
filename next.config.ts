@@ -194,6 +194,15 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
   },
   
+  // Next App Router ignores dot-prefixed route folders. Route through a real
+  // API handler while keeping Digital Asset Links at its required public path.
+  async rewrites() {
+    return [{
+      source: '/.well-known/assetlinks.json',
+      destination: '/api/android-assetlinks',
+    }];
+  },
+
   // No wildcard CORS: Supabase is called on its own origin. Credentialed
   // responses must never be exposed to arbitrary third-party websites.
   async headers() {
