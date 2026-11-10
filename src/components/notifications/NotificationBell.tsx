@@ -33,6 +33,7 @@ export default function NotificationBell() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const container = useRef<HTMLDivElement>(null);
+  const refreshing = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -46,7 +47,8 @@ export default function NotificationBell() {
   }, [client]);
 
   const refresh = useCallback(async (showLoading = false) => {
-    if (!userId) return;
+    if (!userId || refreshing.current) return;
+    refreshing.current = true;
     if (showLoading) setLoading(true);
     try {
       const { data, error: queryError } = await client
@@ -68,6 +70,7 @@ export default function NotificationBell() {
       console.warn("Falha ao consultar notificações", cause);
       setError("Não foi possível atualizar os avisos.");
     } finally {
+      refreshing.current = false;
       if (showLoading) setLoading(false);
     }
   }, [client, userId]);
@@ -77,7 +80,9 @@ export default function NotificationBell() {
     setOpen(false);
     if (!userId) return;
     void refresh();
-    const timer = window.setInterval(() => { void refresh(); }, 20000);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void refresh();
+    }, 20000);
     const focus = () => { void refresh(); };
     const visible = () => { if (document.visibilityState === "visible") void refresh(); };
     window.addEventListener("focus", focus);

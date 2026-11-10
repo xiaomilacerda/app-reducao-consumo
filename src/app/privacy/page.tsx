@@ -14,7 +14,8 @@ export default function PrivacyPage() {
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-3">
           <button
             onClick={() => router.back()}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            aria-label="Voltar à página anterior"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-white/80" />
           </button>
@@ -60,6 +61,8 @@ export default function PrivacyPage() {
           <h2 className="text-base font-semibold">2. Dados que coletamos</h2>
           <ul className="list-disc list-inside space-y-1">
             <li><strong>Dados de cadastro:</strong> e-mail e credenciais de acesso.</li>
+            <li><strong>Diário emocional:</strong> emoções, reflexões, situações e estratégias que você registra voluntariamente. Essas informações podem ser sensíveis.</li>
+            <li><strong>Comunidade:</strong> publicações, comentários, reações, denúncias e bloqueios. O conteúdo publicado é visível a outros participantes, mesmo quando o nome não é exibido.</li>
             <li>
               <strong>Dados de progresso:</strong> tempo limpo, recaídas, frequência de uso
               anterior, estimativas de consumo e outras informações que você decide registrar.
@@ -80,6 +83,7 @@ export default function PrivacyPage() {
           <p>
             Parte dos dados fica armazenada apenas no seu dispositivo, e parte é guardada em
             servidores seguros para que você possa acessar sua conta em diferentes aparelhos.
+            Rascunhos não enviados do diário podem permanecer temporariamente nesta aba do navegador.
           </p>
         </section>
 
@@ -89,6 +93,7 @@ export default function PrivacyPage() {
             <li>Criar e manter sua conta no WeedReset.</li>
             <li>Calcular tempo limpo, economia e estimativas de saúde.</li>
             <li>Exibir estatísticas da sua jornada e evolução.</li>
+            <li>Exibir seu diário emocional e viabilizar interações e moderação na Comunidade.</li>
             <li>Liberar recursos Premium, quando aplicável.</li>
             <li>Melhorar o funcionamento, segurança e estabilidade do app.</li>
             <li>Cumprir obrigações legais, quando necessário.</li>
@@ -106,6 +111,10 @@ export default function PrivacyPage() {
           <p>
             Também podemos compartilhar dados se formos obrigados por lei ou decisão de autoridade
             competente.
+          </p>
+          <p>
+            As mensagens automáticas de apoio não são aconselhamento clínico. Nunca publique na
+            Comunidade dados que você não deseja compartilhar com outras pessoas.
           </p>
         </section>
 

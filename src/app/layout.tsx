@@ -55,7 +55,7 @@ function NavigationLink({
         strokeWidth={current ? 2.2 : 1.8}
         aria-hidden="true"
       />
-      <span className={mobile ? "block max-w-full truncate whitespace-nowrap" : "min-w-0 truncate"}>{label}</span>
+      <span className={mobile ? "block max-w-full whitespace-normal break-words text-center leading-tight" : "min-w-0 truncate"}>{label}</span>
     </Link>
   );
 }
