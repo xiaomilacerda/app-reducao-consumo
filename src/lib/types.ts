@@ -28,6 +28,8 @@ export interface UserData {
   // Dados básicos de progresso
   startDate: string;
   lastRelapseDate: string | null;
+  daysClean?: number;
+  moneySaved?: number;
   totalRelapses: number;
   currency: string;
   onboardingCompleted: boolean;
