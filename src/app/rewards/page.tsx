@@ -557,10 +557,10 @@ export default function RewardsPage() {
           {/* Preview */}
           <div id="avatar-detalhes" className="scroll-mt-24 lg:col-span-5">
             <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-semibold text-white">{selectedItem.name}</h2>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="min-w-0 text-lg font-semibold leading-tight text-white">{selectedItem.name}</h2>
                     <Badge className="bg-white/10 text-white border-white/10">{selectedItem.rarity}</Badge>
                     {owned.has(selectedItem.code) && (
                       <Badge className="bg-emerald-500/15 text-emerald-200 border-emerald-400/20">Possuído</Badge>
@@ -572,7 +572,7 @@ export default function RewardsPage() {
                   <p className="mt-1 text-sm text-white/70">{selectedItem.description}</p>
                 </div>
 
-                <div className="text-right">
+                <div className="shrink-0 text-left sm:text-right">
                   <div className="text-xs text-white/70">Preço</div>
                   <div className="text-white font-semibold">
                     {selectedItem.coins === 0 ? 'Grátis' : `${formatCoins(selectedItem.coins)} moedas`}
@@ -580,8 +580,8 @@ export default function RewardsPage() {
                 </div>
               </div>
 
-              <div className="mt-5 flex items-center gap-4">
-                <div className={"relative h-32 w-32 shrink-0 overflow-hidden rounded-2xl border-2 bg-black/30 shadow-xl "+rarityClass(selectedItem.rarity)}>
+              <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-start">
+                <div className={"relative h-24 w-24 shrink-0 sm:h-32 sm:w-32 overflow-hidden rounded-2xl border-2 bg-black/30 shadow-xl "+rarityClass(selectedItem.rarity)}>
                   <Image
                     src={avatarSrc(selectedItem.code)}
                     alt={selectedItem.name}
@@ -592,9 +592,9 @@ export default function RewardsPage() {
                   />
                 </div>
 
-                <div className="flex-1">
+                <div className="w-full min-w-0 sm:flex-1">
                   {selectedItem.coins > 0 && <div className="mb-3">
-                    <div className="flex justify-between gap-2 text-xs text-white/70"><span>Progresso até este avatar</span><span>{goalProgress}%</span></div>
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-white/70"><span>Progresso até este avatar</span><span>{goalProgress}%</span></div>
                     <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-violet-400 to-amber-300 transition-all" style={{width:goalProgress+'%'}}/></div>
                     <p className="mt-2 text-xs text-white/70">{goalRemaining===0?'Você já tem moedas suficientes!':formatCoins(goalRemaining)+' moedas para conquistar'}</p>
                   </div>}
