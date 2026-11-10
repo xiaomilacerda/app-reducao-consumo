@@ -22,7 +22,7 @@ export default function SosSessionControls({
   const [showReward, setShowReward] = useState(false);
   const [lastDuration, setLastDuration] = useState<number | undefined>(undefined);
 
-  const { processTriggers, processing } = useProcessSosTriggers();
+  const { run: processTriggers, loading: processing } = useProcessSosTriggers();
 
   // ===========================
   // 1) Carregar sessão/usuário
@@ -105,11 +105,7 @@ export default function SosSessionControls({
         }
 
         // Processa missões / recompensas ligadas ao SOS
-        await processTriggers({
-          userId,
-          toolId,
-          durationSeconds,
-        });
+        await processTriggers(userId, toolId);
       } catch (err) {
         console.error('Erro pós-sessão SOS:', err);
       }
