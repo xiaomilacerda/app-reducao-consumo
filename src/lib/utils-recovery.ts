@@ -84,59 +84,9 @@ export function calculateJointsAvoided(days: number, jointsPerDay: number): numb
 }
 
 // Calcular métricas de saúde
-export function calculateHealthMetrics(days: number): HealthMetric[] {
-  const metrics: HealthMetric[] = [
-    {
-      id: 'lungs',
-      name: 'Pulmões',
-      value: Math.min(100, days * 2),
-      maxValue: 100,
-      icon: '🩹',
-      color: 'from-blue-500 to-cyan-500',
-    },
-    {
-      id: 'energy',
-      name: 'Energia',
-      value: Math.min(100, days * 3),
-      maxValue: 100,
-      icon: '⚡',
-      color: 'from-yellow-500 to-orange-500',
-    },
-    {
-      id: 'focus',
-      name: 'Foco',
-      value: Math.min(100, days * 2.5),
-      maxValue: 100,
-      icon: '🎯',
-      color: 'from-purple-500 to-pink-500',
-    },
-    {
-      id: 'mood',
-      name: 'Humor',
-      value: Math.min(100, days * 1.5),
-      maxValue: 100,
-      icon: '😊',
-      color: 'from-green-500 to-emerald-500',
-    },
-    {
-      id: 'sleep',
-      name: 'Sono',
-      value: Math.min(100, days * 2),
-      maxValue: 100,
-      icon: '😴',
-      color: 'from-indigo-500 to-blue-500',
-    },
-    {
-      id: 'clarity',
-      name: 'Clareza',
-      value: Math.min(100, days * 2.8),
-      maxValue: 100,
-      icon: '🧠',
-      color: 'from-pink-500 to-rose-500',
-    },
-  ];
-
-  return metrics;
+/** No unvalidated clinical recovery percentages from elapsed days. */
+export function calculateHealthMetrics(_days: number): HealthMetric[] {
+  return [];
 }
 
 // Calcular frequência diária baseada no período
