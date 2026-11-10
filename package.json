@@ -6,7 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint src",
     "prebuild": "node scripts/generate-pwa-icons.mjs",
     "test:release": "node --test tests/release-safety.test.mjs",
     "typecheck": "tsc --noEmit --pretty false"

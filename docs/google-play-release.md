@@ -62,3 +62,8 @@ Denunciar conteúdo e bloquear autores já foram implementados; verificar com du
 - Permite múltiplos fingerprints separados por vírgula, somente quando formatados como 32 pares hexadecimais com dois-pontos.
 - Após configurar esses dados, republicar o projeto, validar o JSON via HTTPS e testar a TWA instalada.
 - Nenhum AAB, chave privada ou assinatura fictícia foi criado no repositório. Essas etapas dependem da identidade definitiva do app e da conta no Play Console.
+
+## Auditoria de ESLint
+
+- Configuração de lint nativa para Next.js 15 / ESLint 9 via FlatCompat; o comando npm run lint executa a inspeção. Executa em CI de modo informativo até que a dívida histórica esteja corrigida; TypeScript e testes de regressão continuam obrigatórios.
+- Não declarar lint aprovado nem habilitar bloqueio da compilação até eliminar os achados reais; ver logs do GitHub Actions.
