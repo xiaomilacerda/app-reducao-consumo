@@ -59,7 +59,7 @@ export default function NotificationBell() {
       if (ids.length) {
         const { data: comments } = await client.from("community_comments")
           .select("id,content").in("id", ids);
-        const map = new Map((comments || []).map((row: any) => [row.id, row.content]));
+        const map = new Map<string, string>((comments || []).map((row: any) => [String(row.id), String(row.content || '')]));
         rows.forEach((row) => { row.content = map.get(row.comment_id || "") || null; });
       }
       setNotices(rows);
