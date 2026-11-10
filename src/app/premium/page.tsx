@@ -41,7 +41,7 @@ export default function PremiumPage() {
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">WeedReset Premium</h1>
           <p className="mt-2 text-sm leading-relaxed text-slate-300">
-            Recursos extras para aprofundar sua jornada, com acesso vinculado à sua conta.
+            O WeedReset está disponível gratuitamente durante a preparação para a loja. Novas assinaturas ainda não estão sendo oferecidas.
           </p>
 
           <div className="mt-5 flex items-start gap-3 rounded-xl border border-white/10 bg-black/20 p-4 text-sm">

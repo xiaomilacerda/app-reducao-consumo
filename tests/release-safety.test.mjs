@@ -40,3 +40,28 @@ test('Public account deletion link and offline fallback remain available', () =>
   assert.match(sw, /request\.mode !== "navigate"/);
   assert.doesNotMatch(sw, /cache\.put\(/);
 });
+
+test('Health surfaces do not claim clinical relapse prediction or invent default spending', () => {
+  const ai = read('src/app/ai-insights/page.tsx');
+  const analytics = read('src/app/analytics/page.tsx');
+  assert.doesNotMatch(ai, /Risco alto \(pico de fissura provável\)/);
+  assert.match(ai, /Não mede risco clínico/);
+  assert.match(analytics, /sem dados, não presumimos gastos/);
+  assert.match(read('src/app/sos/page.tsx'), /tel:192/);
+});
+
+test('Free community keeps server-side anti-spam and TWA requires real certificate', () => {
+  assert.doesNotMatch(read('src/app/community/page.tsx'), /Apenas membros Premium podem/);
+  const migration = read('supabase/migrations/20261110_weedreset_free_community_spam_guard.sql');
+  assert.match(migration, /weedreset_guard_community_post/);
+  assert.match(migration, /pg_advisory_xact_lock/);
+  const assetlinks = read('src/app/api/android-assetlinks/route.ts');
+  assert.match(assetlinks, /ANDROID_APP_SIGNING_SHA256/);
+  assert.match(assetlinks, /status: 404/);
+});
+
+test('Android Digital Asset Links uses a public well-known rewrite', () => {
+  const config = read('next.config.ts');
+  assert.match(config, /source: '\/\.well-known\/assetlinks\.json'/);
+  assert.match(config, /destination: '\/api\/android-assetlinks'/);
+});

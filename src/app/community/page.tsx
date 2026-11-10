@@ -330,14 +330,13 @@ export default function CommunityPage() {
             reportBlockedUntil,
           });
 
-          const startOfDay = new Date();
-          startOfDay.setHours(0, 0, 0, 0);
+          const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
           const { data: todaysPosts, error: todayErr } = await supabase
             .from('community_posts')
             .select('id')
             .eq('user_id', currentUser.id)
-            .gte('created_at', startOfDay.toISOString());
+            .gte('created_at', last24Hours.toISOString());
 
           if (todayErr) {
             // silencioso (não quebra a página)
@@ -619,15 +618,18 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
       setGlobalError('Faça login para publicar.');
       return;
     }
-    if (!isPremium) {
-      setGlobalError('Apenas membros Premium podem publicar.');
+    if (!mod.canComment || isBlockedUntil(mod.commentBlockedUntil)) {
+      setGlobalError('Sua conta está temporariamente impedida de publicar. Confira as regras da comunidade.');
       return;
     }
     if (hasPostedToday) {
-      setGlobalError('Você já publicou um post hoje.');
+      setGlobalError('Você já publicou nas últimas 24 horas.');
       return;
     }
-    if (!newPost.trim()) return;
+    if (newPost.trim().length < 3 || newPost.trim().length > 2000) {
+      setGlobalError('Escreva entre 3 e 2000 caracteres para publicar.');
+      return;
+    }
     if (hasProfanity(newPost)) {
       setGlobalError('O texto contém palavras bloqueadas.');
       return;
@@ -641,7 +643,7 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
         user_id: user.id,
         content: newPost.trim(),
         status: 'published',
-        is_premium_post: true,
+        is_premium_post: isPremium,
         likes: 0,
         author_icon: myIcon || DEFAULT_ICON,
       };
@@ -749,14 +751,12 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
     }
 
     const text = replyByPostId[postId]?.trim() || '';
-    if (!text) return;
-
-    if (!isPremium) {
-      setGlobalError('Apenas membros Premium podem responder.');
+    if (!text || text.length > 800) {
+      setGlobalError('A resposta deve ter entre 1 e 800 caracteres.');
       return;
     }
 
-    // bloqueio/ban de comentários (via profiles)
+        // bloqueio/ban de comentários (via profiles)
     if (!mod.canComment) {
       setGlobalError('Comentários desativados para sua conta.');
       return;
@@ -963,7 +963,7 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
               <li>• Respeito sempre, sem exceção.</li>
               <li>• Conteúdo ofensivo ou explícito é removido.</li>
               <li>• Nomes não são exibidos; identificadores técnicos são mantidos para segurança e moderação.</li>
-              <li>• Por enquanto, somente contas com Premium já habilitado podem postar e responder. Novas assinaturas não estão disponíveis.</li>
+              <li>• Publicar e responder é gratuito para contas autenticadas, respeitando os limites de segurança e moderação.</li>
             </ul>
           </details>
         </section>
@@ -1011,22 +1011,22 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
             placeholder={
               !user
                 ? 'Faça login para publicar...'
-                : !isPremium
-                ? 'Apenas membros Premium podem publicar...'
                 : hasPostedToday
-                ? 'Você já publicou hoje.'
+                ? 'Você já publicou nas últimas 24 horas.'
                 : 'Escreva algo que você gostaria de ler num dia difícil...'
             }
             value={newPost}
             onChange={(e) => setNewPost(e.target.value)}
-            disabled={!user || !isPremium || hasPostedToday}
-            rows={4}
+            disabled={!user || hasPostedToday || !mod.canComment || isBlockedUntil(mod.commentBlockedUntil)}
+            rows={3}
+            maxLength={2000}
+            aria-label="Escrever publicação na comunidade"
           />
 
           <button
             onClick={handleCreatePost}
             disabled={
-              !user || !isPremium || hasPostedToday || sendingPost || !newPost.trim()
+              !user || hasPostedToday || sendingPost || newPost.trim().length < 3 || !mod.canComment || isBlockedUntil(mod.commentBlockedUntil)
             }
             className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -1202,18 +1202,18 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
                     <textarea
                       id={"comment-reply-input-" + post.id}
                       value={replyByPostId[post.id] || ''}
+                      aria-label="Escrever resposta à publicação"
+                      maxLength={800}
                       onChange={(e) =>
                         setReplyByPostId((prev) => ({
                           ...prev,
                           [post.id]: e.target.value,
                         }))
                       }
-                      disabled={!user || !isPremium || (post.userHasCommented && !replyTargetByPostId[post.id]) || !mod.canComment || isBlockedUntil(mod.commentBlockedUntil)}
+                      disabled={!user || (post.userHasCommented && !replyTargetByPostId[post.id]) || !mod.canComment || isBlockedUntil(mod.commentBlockedUntil)}
                       placeholder={
                         !user
                           ? 'Faça login para responder'
-                          : !isPremium
-                          ? 'Resposta permitida apenas para Premium'
                           : !mod.canComment
                           ? 'Comentários desativados para sua conta'
                           : isBlockedUntil(mod.commentBlockedUntil)
@@ -1229,7 +1229,7 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
                       <button
                         onClick={() => handleSendReply(post.id)}
                         disabled={
-                          !isPremium ||
+                          !user ||
                           !mod.canComment ||
                           isBlockedUntil(mod.commentBlockedUntil) ||
                           (post.userHasCommented && !replyTargetByPostId[post.id]) ||
@@ -1374,7 +1374,7 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
                                   <span className="text-[10px] text-gray-400">{formatDate(comment.created_at)}</span>
                                   <button
                                     type="button"
-                                    disabled={!user || !isPremium || !mod.canComment || isBlockedUntil(mod.commentBlockedUntil)}
+                                    disabled={!user || !mod.canComment || isBlockedUntil(mod.commentBlockedUntil)}
                                     className="rounded-lg px-2 py-1 text-[11px] font-semibold text-violet-200 hover:bg-violet-300/10 disabled:cursor-not-allowed disabled:opacity-50"
                                     onClick={() => {
                                       setReplyTargetByPostId((prev) => ({ ...prev, [post.id]: comment.id }));

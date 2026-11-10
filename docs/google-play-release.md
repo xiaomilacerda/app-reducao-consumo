@@ -49,3 +49,27 @@ Denunciar conteúdo e bloquear autores já foram implementados; verificar com du
 - Páginas públicas `/recuperar-senha` e `/redefinir-senha` usam Supabase Auth (`resetPasswordForEmail` e `updateUser`).
 - No Supabase Auth → URL Configuration, permitir explicitamente `https://app-reducao-consumo.vercel.app/redefinir-senha` na lista de Redirect URLs. Configurar também o Site URL canônico.
 - Validar o fluxo completo com e-mail real de teste, link expirado, sessão ausente e login após redefinição. O build por si só não verifica a entrega de e-mails.
+
+## Comunidade gratuita e segurança contra spam
+
+- Publicações e respostas ficam disponíveis a usuários autenticados, sem Premium, mantendo políticas RLS de proprietário e moderação.
+- Uma pessoa pode publicar uma vez a cada 24 horas e deve aguardar 30 segundos entre respostas; as duas regras são validadas em trigger no servidor, evitando simples manipulação do frontend.
+- Verificar com duas contas de teste: postagem, resposta, denúncia, bloqueio, tentativa de spam, conta com moderação suspensa e acesso a registros de terceiros.
+
+## Digital Asset Links configurável sem certificado falso
+
+- A rota `/.well-known/assetlinks.json` retorna 404 até a Vercel receber **ANDROID_APP_PACKAGE_ID** e **ANDROID_APP_SIGNING_SHA256** (fingerprint SHA-256 de certificado real da Play App Signing).
+- Permite múltiplos fingerprints separados por vírgula, somente quando formatados como 32 pares hexadecimais com dois-pontos.
+- Após configurar esses dados, republicar o projeto, validar o JSON via HTTPS e testar a TWA instalada.
+- Nenhum AAB, chave privada ou assinatura fictícia foi criado no repositório. Essas etapas dependem da identidade definitiva do app e da conta no Play Console.
+
+## Auditoria de ESLint
+
+- Configuração de lint nativa para Next.js 15 / ESLint 9 via FlatCompat; o comando npm run lint executa a inspeção. Executa em CI de modo informativo até que a dívida histórica esteja corrigida; TypeScript e testes de regressão continuam obrigatórios.
+- Não declarar lint aprovado nem habilitar bloqueio da compilação até eliminar os achados reais; ver logs do GitHub Actions.
+
+## Resultado real do primeiro lint (10/11/2026)
+
+- O primeiro lint completo encontrou **410 ocorrências (318 erros e 92 avisos)**, principalmente 314 usos históricos de `any`; não foi uma validação aprovada só porque a execução estava marcada como informativa.
+- Foram corrigidos os quatro erros restantes de `prefer-const` e `prefer-as-const`. Para não esconder essas ocorrências, `no-explicit-any` continua visível como **warning** até a migração gradual para tipos explícitos.
+- A partir de agora o lint deixa de ser informativo e falha o GitHub Actions para erros de outras regras. Avisos antigos ainda não representam código limpo ou acessibilidade certificada.

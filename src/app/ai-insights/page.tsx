@@ -144,9 +144,9 @@ function riskColor(level: RiskLevel) {
 }
 
 function riskLabel(level: RiskLevel) {
-  if (level === 'high') return 'Risco alto (pico de fissura provável)';
-  if (level === 'medium') return 'Risco moderado (atenção hoje)';
-  return 'Risco baixo (continue o ritmo)';
+  if (level === 'high') return 'Mais registros que merecem atenção';
+  if (level === 'medium') return 'Reserve um momento de autocuidado';
+  return 'Acompanhe seus registros sem pressa';
 }
 
 function pickActionNow(level: RiskLevel) {
@@ -506,9 +506,9 @@ function nextCoachMessage(args: {
   ];
 
   const dreamReframe = [
-    'Sobre o sonho: isso é bem comum na abstinência. Sonho não é recaída — é cérebro descarregando hábito.',
+    'Sonhos sobre o tema podem acontecer. Sonhar não significa que houve recaída; observe como você se sentiu ao acordar.',
     'Sonhar com isso acontece muito quando você está firme. Não significa que você “quer” de verdade.',
-    'Sonho assim é efeito colateral normal. O que importa é o que você faz acordado.',
+    'Se os sonhos estiverem afetando seu sono, vale conversar com um profissional de saúde.',
   ];
 
   const microNow = [
@@ -1012,8 +1012,8 @@ export default function AiInsightsPage() {
             </div>
 
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold">IA Offline — Insights & Plano de Ação</h1>
-              <p className="text-xs sm:text-sm text-white/70">Coach com memória local + respostas variáveis (sem repetir)</p>
+              <h1 className="text-xl sm:text-2xl font-bold">Reflexões e plano de ação</h1>
+              <p className="text-xs sm:text-sm text-white/70">Assistente automático local, sem diagnóstico ou previsão de recaída</p>
             </div>
           </div>
 
@@ -1098,11 +1098,12 @@ export default function AiInsightsPage() {
                   <div>
                     <div className="inline-flex items-center gap-2 text-xs font-semibold text-white/70">
                       <ShieldAlert className="w-4 h-4 text-purple-300" />
-                      Painel de risco (últimos 90 dias)
+                      Seus sinais de atenção (últimos 90 dias)
                     </div>
                     <h2 className="mt-1 text-xl sm:text-2xl font-bold">{riskLabel(derived.risk.level)}</h2>
+                     <p className="mt-2 max-w-md text-xs leading-relaxed text-slate-300">Indicador ilustrativo baseado apenas nos registros informados. Não mede risco clínico, saúde mental nem prevê recaídas. Falta de registros não indica ausência de dificuldades.</p>
                     <p className="mt-1 text-sm text-white/70">
-                      Score: <span className="font-semibold text-white">{derived.risk.score}/100</span>
+                      Índice ilustrativo: <span className="font-semibold text-white">{derived.risk.score}/100</span>
                       {' • '}
                       Humor atual: <span className="font-semibold text-white">{derived.lastMoodPct ?? '—'}%</span>
                       {' • '}
@@ -1114,7 +1115,7 @@ export default function AiInsightsPage() {
                   <div className="w-24 h-24 rounded-2xl bg-black/30 border border-white/10 flex items-center justify-center">
                     <div className="text-center">
                       <div className="text-3xl font-black">{derived.risk.score}</div>
-                      <div className="text-[11px] text-white/60 uppercase tracking-wide">score</div>
+                      <div className="text-[11px] text-white/60 uppercase tracking-wide">índice pessoal</div>
                     </div>
                   </div>
                 </div>
@@ -1134,7 +1135,7 @@ export default function AiInsightsPage() {
                       <div className="text-lg font-bold">{derived.sosAvgDuration ? `${derived.sosAvgDuration}s` : '—'}</div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-                      <div className="text-white/60">Negatividade (diário)</div>
+                      <div className="text-white/60">Expressões difíceis no diário</div>
                       <div className="text-lg font-bold">{derived.journalNegativity}%</div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
@@ -1148,7 +1149,7 @@ export default function AiInsightsPage() {
               <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-purple-600/20 to-pink-600/10 p-6 shadow-xl">
                 <div className="flex items-center gap-2 text-xs font-semibold text-white/70">
                   <Clock className="w-4 h-4 text-pink-200" />
-                  Recomendação imediata
+                  Sugestão de apoio
                 </div>
                 <h3 className="mt-1 text-lg font-bold">{derived.nowProtocol.title}</h3>
 

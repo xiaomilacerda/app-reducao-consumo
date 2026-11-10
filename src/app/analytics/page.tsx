@@ -100,27 +100,27 @@ export default function AnalyticsPage() {
       dailyCost:
         typeof data.dailyCost === 'number' && !Number.isNaN(data.dailyCost)
           ? data.dailyCost
-          : 20,
+          : 0,
       gramsPerJoint:
         typeof data.gramsPerJoint === 'number' &&
         !Number.isNaN(data.gramsPerJoint)
           ? data.gramsPerJoint
-          : 0.5,
+          : 0,
       pricePerGram:
         typeof (data as any).pricePerGram === 'number' &&
         !Number.isNaN((data as any).pricePerGram)
           ? (data as any).pricePerGram
-          : 10,
+          : 0,
       frequencyAmount:
         typeof data.frequencyAmount === 'number' &&
         !Number.isNaN(data.frequencyAmount)
           ? data.frequencyAmount
-          : 4,
+          : 0,
       frequencyPeriod: data.frequencyPeriod || 'day',
       thcPotency:
         typeof data.thcPotency === 'number' && !Number.isNaN(data.thcPotency)
           ? data.thcPotency
-          : 5,
+          : 0,
     };
 
     setUserData(safeData);
@@ -268,13 +268,13 @@ export default function AnalyticsPage() {
           <div className="rounded-2xl border border-emerald-300/20 bg-[#183229] p-4 text-white shadow-sm sm:p-5">
             <div className="flex items-center gap-2 mb-2">
               <Wallet className="w-5 h-5" />
-              <h2 className="text-lg font-semibold">Economia acumulada</h2>
+              <h2 className="text-lg font-semibold">Economia estimada</h2>
             </div>
             <div className="text-4xl font-bold mb-1">
               {formatCurrency(savings)}
             </div>
             <p className="text-sm opacity-80">
-              Baseado no custo diário informado no seu perfil
+              Com base no valor que você informou; sem dados, não presumimos gastos
             </p>
           </div>
 

@@ -446,7 +446,7 @@ export default function MissionsPage() {
 
       try {
         const uid = userId;
-        let completedTodayIds: string[] = [];
+        const completedTodayIds: string[] = [];
         if (!uid || cancelled) {
           setProfile(null);
           setIsPremium(false);

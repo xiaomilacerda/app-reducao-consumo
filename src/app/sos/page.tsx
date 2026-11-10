@@ -723,6 +723,10 @@ export default function SosPage() {
 
       {/* MAIN */}
       <main className="mx-auto w-full max-w-5xl min-w-0 space-y-5 px-3 py-5 pb-28 sm:space-y-7 sm:px-6 sm:py-8">
+        <div role="note" className="rounded-xl border border-violet-300/20 bg-[#211a31] px-4 py-3 text-xs leading-relaxed text-slate-200">
+          <p>Estas práticas são de autocuidado e não substituem apoio profissional nem atendimento de emergência.</p>
+          <p className="mt-1">Se houver risco imediato à sua segurança, procure emergência ou ligue <a className="font-bold underline underline-offset-2" href="tel:192">192 (SAMU)</a>. Para apoio emocional, <a className="font-bold underline underline-offset-2" href="tel:188">188 (CVV)</a>.</p>
+        </div>
         <SosQuickHelp userId={supabaseUser?.id ?? null} />
         <div className="flex flex-wrap items-center justify-between gap-2 px-1">
           <p className="text-xs text-slate-400">Sem pressão. Você escolhe seu próximo passo.</p>

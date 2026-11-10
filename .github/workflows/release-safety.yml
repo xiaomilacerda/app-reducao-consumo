@@ -28,3 +28,5 @@ jobs:
         run: npm run test:release
       - name: TypeScript strict validation (required)
         run: npm run typecheck
+      - name: ESLint check (required; legacy any warnings tracked)
+        run: npm run lint

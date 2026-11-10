@@ -114,7 +114,7 @@ function percentageSplit(counts:number[]) {
   if(!total)return counts.map(()=>0);
   const fractional=counts.map(c=>100*c/total);
   const whole=fractional.map(Math.floor);
-  let remain=100-whole.reduce((a,b)=>a+b,0);
+  const remain=100-whole.reduce((a,b)=>a+b,0);
   const positions=fractional.map((v,i)=>({i,frac:v-Math.floor(v)})).sort((a,b)=>b.frac-a.frac);
   for(let i=0;i<remain;i++)whole[positions[i].i]++;
   return whole;
