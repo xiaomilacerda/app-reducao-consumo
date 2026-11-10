@@ -359,7 +359,19 @@ export default function ProfilePage() {
     moneySaved: 0,
     lastUseDateTime: null,
     ...DEFAULT_CORE_VALUES,
-  } as UserData;
+    totalRelapses: 0,
+    onboardingCompleted: false,
+    isPremium: false,
+    relapseHistory: [],
+    xp: 0,
+    level: 1,
+    completedMissions: [],
+    unlockedRewards: [],
+    themeMode: 'normal',
+    detoxCycleActive: false,
+    detoxCycleStartDate: null,
+    friends: [],
+  } satisfies UserData;
 
   storage.initUserData(data);
 }

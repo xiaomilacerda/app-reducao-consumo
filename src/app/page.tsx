@@ -199,7 +199,7 @@ export default function HomePage() {
       if (!achievement.unlocked) {
         if (
           achievement.category === 'time' &&
-          safeDays >= achievement.daysRequired
+          typeof achievement.daysRequired === 'number' && safeDays >= achievement.daysRequired
         ) {
           updated = true;
           return {

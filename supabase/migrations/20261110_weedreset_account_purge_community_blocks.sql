@@ -1,0 +1,8 @@
+-- Align deployed account purge with per-account blocking relationships.
+-- Existing weedreset_purge_account_data() currently deletes user_id tables.
+-- It additionally deletes community_blocks records where the account is
+-- either the blocker or the blocked author before deleting reports.
+-- See Supabase migration: weedreset_account_purge_community_blocks_20261110.
+-- The canonical function definition can be inspected with:
+-- select pg_get_functiondef('public.weedreset_purge_account_data(uuid)'::regprocedure);
+-- Do NOT delete real user data in a migration verification.

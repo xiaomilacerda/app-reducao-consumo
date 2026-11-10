@@ -28,6 +28,8 @@ export interface UserData {
   // Dados básicos de progresso
   startDate: string;
   lastRelapseDate: string | null;
+  daysClean?: number;
+  moneySaved?: number;
   totalRelapses: number;
   currency: string;
   onboardingCompleted: boolean;
@@ -42,6 +44,7 @@ export interface UserData {
   frequencyAmount: number;
   frequencyPeriod: FrequencyPeriod;
   lastUseDateTime?: string | null;
+  lastMood?: string;
 
   // Histórico
   relapseHistory: RelapseRecord[];
@@ -209,4 +212,14 @@ export interface Trigger {
   time: string;
   people: string[];
   objects: string[];
+}
+
+
+/** A milestone on the educational body-evolution timeline. */
+export interface BodyEvolution {
+  hours: number;
+  title: string;
+  description: string;
+  icon: string;
+  completed: boolean;
 }
