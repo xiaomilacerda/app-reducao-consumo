@@ -27,7 +27,7 @@ import {
 import Link from 'next/link';
 import ProfileGrowthHub from '@/components/profile/ProfileGrowthHub';
 
-type UserData = ReturnType<typeof storage.getUserData> extends infer T ? T : any;
+type UserData = NonNullable<ReturnType<typeof storage.getUserData>>;
 
 // Valores padrão importantes para o funcionamento do app
 const DEFAULT_CORE_VALUES = {
@@ -891,7 +891,7 @@ if (lastIso) {
       // O servidor confirma tudo junto ou não aplica nenhuma alteração.
       const { data: saveResult, error: saveError } = await supabase.rpc(
         'save_profile_preferences_secure', {
-          p_user_data: snapshotJourney(updated as UserData),
+          p_user_data: snapshotJourney(updated),
           p_preferences: {
             displayName: displayName.trim(),
             // Avatar é salvo por sua própria operação atômica, para que
