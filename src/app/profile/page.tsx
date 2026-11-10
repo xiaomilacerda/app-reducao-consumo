@@ -659,9 +659,10 @@ if (lastIso) {
 
             if (!cloudState?.userData?.lastUseDateTime && typeof profile.last_use === 'string') {
               if (data) {
-                data = { ...data, startDate: profile.last_use, lastUseDateTime: profile.last_use } as UserData;
-                storage.saveUserData(data);
-                setUserData(data);
+                const nextData: UserData = { ...data, startDate: profile.last_use, lastUseDateTime: profile.last_use };
+                data = nextData;
+                storage.saveUserData(nextData);
+                setUserData(nextData);
               }
               const formatted = formatDateInputFromIso(profile.last_use);
               if (formatted.date) {
