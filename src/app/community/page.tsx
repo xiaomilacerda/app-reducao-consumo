@@ -1293,7 +1293,7 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
                         view === 'mine' && user
                           ? post.comments.filter((c) =>
                               (!c.user_id || !blockedIds.includes(c.user_id)) && (c.user_id === user.id ||
-                              (!!c.parent_comment_id && post.comments.some((p) => p.id === c.parent_comment_id && p.user_id === user.id)))
+                              (!!c.parent_comment_id && post.comments.some((p) => p.id === c.parent_comment_id && p.user_id === user.id))))
                           : post.comments.filter((c) => !c.user_id || !blockedIds.includes(c.user_id));
                       const ordered = orderCommunityThread(visible);
 
