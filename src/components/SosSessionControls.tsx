@@ -84,7 +84,7 @@ export default function SosSessionControls({
   // ===========================
   // 3) Fim da sessão
   // ===========================
-  const handleComplete = async (durationSeconds: number) => {
+  const handleComplete = async (durationSeconds: number = 0) => {
     setIsRunning(false);
     setLastDuration(durationSeconds);
 
