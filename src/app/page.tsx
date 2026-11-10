@@ -23,6 +23,7 @@ import {
 
 import HealthBars from '@/components/custom/health-bars';
 import AchievementsCard from '@/components/custom/achievements-card';
+import PageSkeleton from '@/components/ui/page-skeleton';
 import RelapseButton from '@/components/custom/relapse-button';
 
 import {
@@ -45,6 +46,8 @@ import {
   Activity,
   AlertCircle,
   Crown,
+  ChevronRight,
+  LayoutGrid,
 } from 'lucide-react';
 
 export default function HomePage() {
@@ -296,14 +299,8 @@ export default function HomePage() {
   };
 
   if (!mounted || !userData) {
-    return (
-      <div className="wr-screen min-h-screen flex flex-col items-center justify-center gap-3">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent" />
-        <div className="text-sm text-white/70">Carregando seu painel…</div>
-      </div>
-    );
+    return <PageSkeleton label="Carregando seu painel" />;
   }
-
   // =========
   // CÁLCULOS
   // =========
@@ -380,111 +377,24 @@ export default function HomePage() {
           : 'bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900'
       } bg-transparent`}
     >
-      {/* HEADER */}
-      <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-lg sticky top-0 z-40 bg-black/35 dark:bg-black/35 border-b border-white/10 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,.35)]">
-        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            {/* TÍTULO */}
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-8 h-8 text-purple-500" />
-              <div className="flex flex-col">
-                <h1 className="text-xl font-bold text-white">
-                  Meu painel
-                </h1>
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  Sua jornada hoje.
-                </span>
-              </div>
-
-              {userData.isPremium && (
-                <Crown className="w-6 h-6 text-yellow-500 ml-1" />
-              )}
-            </div>
-
-            {/* MENU DESKTOP */}
-            <nav className="hidden lg:flex items-center gap-2">
-              <Link
-                href="/"
-                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 font-semibold text-sm"
-              >
-                <Trophy className="w-4 h-4" />
-                <span>Dashboard</span>
-              </Link>
-
-              <Link
-                href="/jornada"
-                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 text-sm"
-              >
-                <Crown className="w-4 h-4" />
-                <span>Jornada 365</span>
-              </Link>
-
-              <Link
-                href="/analytics"
-                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 text-sm"
-              >
-                <BarChart3 className="w-4 h-4" />
-                <span>Análises</span>
-              </Link>
-            </nav>
-
-            {/* AÇÕES */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={toggleTheme}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              >
-                {userData.themeMode === 'focus' ? '🌙' : '☀️'}
-              </button>
-
-              <button
-                onClick={() => router.push('/profile')}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              >
-                <UserIcon className="w-6 h-6 text-purple-500" />
-              </button>
-            </div>
-          </div>
-
-          {/* MOBILE NAV */}
-          <nav className="wr-home-subnav lg:hidden flex items-center gap-2 mt-3 overflow-x-auto pb-1">
-            <Link
-              href="/"
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-100 text-purple-600 font-semibold whitespace-nowrap text-sm"
-            >
-              <Trophy className="w-4 h-4" />
-              Dashboard
-            </Link>
-
-            <Link
-              href="/jornada"
-              className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 whitespace-nowrap text-sm"
-            >
-              <Crown className="w-4 h-4" />
-              Jornada 365
-            </Link>
-
-            <Link
-              href="/analytics"
-              className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 whitespace-nowrap text-sm"
-            >
-              <BarChart3 className="w-4 h-4" />
-              Análises
-            </Link>
-
-            <button
-              onClick={() => router.push('/profile')}
-              className="ml-auto flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-purple-600 whitespace-nowrap text-sm"
-            >
-              <UserIcon className="w-4 h-4" />
-              Perfil
-            </button>
-          </nav>
-        </div>
-      </header>
-
       {/* MAIN */}
-      <main className="wr-home-main max-w-7xl mx-auto px-3 py-4 sm:px-6 lg:px-8 space-y-4 sm:space-y-6">
+      <main className="wr-home-main mx-auto max-w-6xl space-y-4 px-3 py-4 sm:space-y-5 sm:px-6 lg:px-8">
+        <div className="flex min-h-9 items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <h1 className="text-lg font-extrabold tracking-tight text-white sm:text-xl">Meu painel</h1>
+            {userData.isPremium && <Crown className="h-4 w-4 text-amber-300" aria-label="Premium" />}
+          </div>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={userData.themeMode === 'focus' ? 'Desativar modo foco' : 'Ativar modo foco'}
+            title={userData.themeMode === 'focus' ? 'Desativar modo foco' : 'Ativar modo foco'}
+            className="flex min-h-9 items-center gap-2 rounded-xl border border-white/10 bg-white/[.045] px-3 text-xs font-medium text-slate-300 hover:bg-white/10"
+          >
+            <Sparkles className="h-4 w-4 text-violet-300" aria-hidden="true" />
+            {userData.themeMode === 'focus' ? 'Modo foco ativo' : 'Modo foco'}
+          </button>
+        </div>
         {syncError && (
           <div role="alert" className="rounded-xl border border-amber-400/50 bg-amber-950/75 px-4 py-3 text-sm text-amber-100">
             {syncError}
@@ -510,6 +420,38 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* Três ações principais: todas as demais funções estão em Explorar. */}
+        <nav className="wr-home-primary-actions space-y-2.5" aria-label="Ações principais">
+          <div className="grid grid-cols-2 gap-2.5">
+            <Link href="/mood" className="flex min-h-[66px] items-center gap-2.5 rounded-xl border border-violet-300/25 bg-violet-400/10 px-3.5 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-400/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-300">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-400/15">
+                <Smile className="h-5 w-5 text-violet-200" aria-hidden="true" />
+              </span>
+              <span className="leading-snug">Registrar humor</span>
+            </Link>
+            <Link href="/missions" className="flex min-h-[66px] items-center gap-2.5 rounded-xl border border-emerald-300/20 bg-emerald-300/[.07] px-3.5 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-300/[.12] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-300/10">
+                <Target className="h-5 w-5 text-emerald-200" aria-hidden="true" />
+              </span>
+              <span className="leading-snug">Missão de hoje</span>
+            </Link>
+          </div>
+          <Link href="/jornada" className="flex min-h-12 items-center gap-3 rounded-xl border border-white/10 bg-[#1b192c] px-3.5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#282239] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-300">
+            <Crown className="h-5 w-5 shrink-0 text-amber-200" aria-hidden="true" />
+            <span className="min-w-0 flex-1">Continuar Jornada 365</span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+          </Link>
+          <div className="flex items-center justify-between gap-2 px-1">
+            <Link href="/analytics" className="inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-violet-200 hover:bg-violet-400/10">
+              <BarChart3 className="h-4 w-4" aria-hidden="true" /> Ver estatísticas
+            </Link>
+            <Link href="/explorar" className="inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-violet-200 hover:bg-violet-400/10">
+              <LayoutGrid className="h-4 w-4" aria-hidden="true" /> Todas as funções
+              <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </Link>
+          </div>
+        </nav>
+
         {/* FRASE DO DIA */}
         {dailyMessage && (
           <div className="wr-home-daily-note rounded-xl border border-violet-300/15 bg-[#1b182b] p-3 shadow-sm sm:p-4">
@@ -523,161 +465,35 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* GRID PRINCIPAL (10 BOTÕES) */}
-        <div className="wr-home-actions grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-5 sm:gap-3">
-          <Link
-            href="/sos"
-            className="p-4 bg-gradient-to-br from-red-500 to-pink-600 rounded-xl shadow-lg text-white text-center hover:shadow-2xl transition-all"
-          >
-            <AlertCircle className="w-8 h-8 mx-auto mb-2" />
-            <p className="font-bold text-sm">Modo SOS</p>
-          </Link>
-
-          <Link
-            href="/mood"
-            className="p-4 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg text-white text-center hover:shadow-2xl transition-all"
-          >
-            <Smile className="w-8 h-8 mx-auto mb-2" />
-            <p className="font-bold text-sm">Humor</p>
-          </Link>
-
-          <Link
-            href="/missions"
-            className="p-4 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl shadow-lg text-white text-center hover:shadow-2xl transition-all"
-          >
-            <Target className="w-8 h-8 mx-auto mb-2" />
-            <p className="font-bold text-sm">Missões</p>
-          </Link>
-
-          <Link
-            href="/body-evolution"
-            className="p-4 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg text-white text-center hover:shadow-2xl transition-all"
-          >
-            <Activity className="w-8 h-8 mx-auto mb-2" />
-            <p className="font-bold text-sm">Evolução</p>
-          </Link>
-
-          <Link
-            href="/detox"
-            className="p-4 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl shadow-lg text-white text-center hover:shadow-2xl transition-all hidden lg:block"
-          >
-            <Droplet className="w-8 h-8 mx-auto mb-2" />
-            <p className="font-bold text-sm">Detox</p>
-          </Link>
-
-          <Link
-            href="/share"
-            className="p-4 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl shadow-lg text-white text-center hover:shadow-2xl transition-all"
-          >
-            <Share2 className="w-8 h-8 mx-auto mb-2" />
-            <p className="font-bold text-sm">Compartilhar</p>
-          </Link>
-
-          <Link
-            href="/rewards"
-            className="p-4 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-xl shadow-lg text-white text-center hover:shadow-2xl transition-all"
-          >
-            <ShoppingBag className="w-8 h-8 mx-auto mb-2" />
-            <p className="font-bold text-sm">Loja</p>
-          </Link>
-
-          <Link
-            href="/ai-insights"
-            className="p-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg text-white text-center hover:shadow-2xl transition-all"
-          >
-            <Brain className="w-8 h-8 mx-auto mb-2" />
-            <p className="font-bold text-sm">IA de Prevenção</p>
-          </Link>
-
-          <Link
-            href="/community"
-            className="p-4 bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl shadow-lg text-white text-center hover:shadow-2xl transition-all"
-          >
-            <Users className="w-8 h-8 mx-auto mb-2" />
-            <p className="font-bold text-sm">Comunidade</p>
-          </Link>
-
-          <Link
-            href="/cant-stop"
-            className="p-4 bg-gradient-to-br from-pink-500 to-red-600 rounded-xl shadow-lg text-white text-center hover:shadow-2xl transition-all"
-          >
-            <Heart className="w-8 h-8 mx-auto mb-2" />
-            <p className="font-bold text-sm">Não Consigo Parar</p>
-          </Link>
-        </div>
-
-        {/* RESUMO DO DIA */}
-        <div className="wr-home-summary rounded-2xl border border-white/10 bg-[#19172a] p-4 shadow-sm sm:p-6">
-          <h3 className="text-base font-bold text-gray-800 dark:text-gray-200 mb-4 flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-purple-500" />
-            Seu Resumo de Hoje
-          </h3>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg flex flex-col">
-              <span className="text-gray-600 dark:text-gray-400 text-sm">
-                Tempo limpo
-              </span>
-              <span className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                {timeInfo.value} {timeInfo.unit}
-              </span>
+        <section className="wr-home-summary rounded-2xl border border-white/10 bg-[#19172a] px-4 py-4 sm:px-5 sm:py-5" aria-labelledby="wr-summary-title">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 id="wr-summary-title" className="flex items-center gap-2 text-sm font-bold text-white sm:text-base">
+              <Sparkles className="h-4 w-4 text-violet-300" aria-hidden="true" />
+              Seu resumo
+            </h2>
+            <Link href="/analytics" className="text-xs font-semibold text-violet-200 hover:underline">Ver detalhes</Link>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="min-w-0 rounded-xl border border-white/[.07] bg-white/[.045] px-3 py-3">
+              <p className="text-[11px] font-medium text-slate-400">Economia acumulada</p>
+              <p className="mt-1 break-words text-lg font-extrabold tracking-tight text-emerald-200 sm:text-xl">{formatCurrency(savings)}</p>
             </div>
-
-            <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg flex flex-col">
-              <span className="text-gray-600 dark:text-gray-400 text-sm">
-                Economia hoje
-              </span>
-              <span className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                {formatCurrency(userData.dailyCost)}
-              </span>
-            </div>
-
-            <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg flex flex-col">
-              <span className="text-gray-600 dark:text-gray-400 text-sm">
-                Gatilhos evitados
-              </span>
-              <span className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                {Math.floor(safeCleanDays / 1.2)}
-              </span>
-            </div>
-
-            <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg flex flex-col">
-              <span className="text-gray-600 dark:text-gray-400 text-sm">
-                Humor atual
-              </span>
-              <span className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                {userData.lastMood || '—'}
-              </span>
+            <div className="min-w-0 rounded-xl border border-white/[.07] bg-white/[.045] px-3 py-3">
+              <p className="text-[11px] font-medium text-slate-400">Humor atual</p>
+              <p className="mt-1 truncate text-lg font-extrabold text-white sm:text-xl">{userData.lastMood || '—'}</p>
             </div>
           </div>
-        </div>
-        {/* MINI WIDGET — JORNADA 365 */}
-        <div className="bg-gradient-to-br from-indigo-500 to-purple-700 p-6 rounded-2xl shadow-xl text-white">
-          <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
-            <Crown className="w-6 h-6 text-yellow-300" />
-            Jornada 365
-          </h3>
-
-          <p className="opacity-90 mb-4">
-            Continue sua evolução diária. Cada missão te aproxima do seu melhor
-            eu.
-          </p>
-
-          <Link
-            href="/jornada"
-            className="inline-block px-5 py-2 rounded-lg bg-white/20 hover:bg-white/30 transition-all text-white font-semibold"
-          >
-            Continuar Jornada →
-          </Link>
-        </div>
-
+        </section>
+        <details className="group rounded-2xl border border-white/10 bg-[#19172a]">
+          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 text-sm font-semibold text-white hover:bg-white/[.04] focus-visible:outline-2 focus-visible:outline-violet-300 [&::-webkit-details-marker]:hidden">
+            <span>Mais informações do meu registro</span>
+            <ChevronRight className="h-4 w-4 text-violet-200 transition-transform group-open:rotate-90" aria-hidden="true" />
+          </summary>
         {/* ESTATÍSTICAS DETALHADAS */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl">
-          <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-4">
-            Estatísticas Detalhadas
-          </h3>
+        <div className="px-3 pb-3 pt-1 sm:px-5 sm:pb-5">
+          <p className="mb-3 text-xs text-slate-400">Informações adicionais sobre seu registro.</p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
             <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
               <span className="text-gray-600 dark:text-gray-400">
                 Total de recaídas:
@@ -724,10 +540,17 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* BARRAS DE SAÚDE ORIGINAL */}
-        <div className="rounded-2xl border border-white/10 bg-[#19172a] p-4 shadow-sm sm:p-6">
-          <HealthBars metrics={healthMetrics} />
-        </div>
+        </details>
+
+        <details className="group rounded-2xl border border-white/10 bg-[#19172a]">
+          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 text-sm font-semibold text-white hover:bg-white/[.04] focus-visible:outline-2 focus-visible:outline-violet-300 [&::-webkit-details-marker]:hidden">
+            <span>Indicadores de bem-estar <span className="text-xs font-normal text-slate-400">(estimativas)</span></span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-violet-200 transition-transform group-open:rotate-90" aria-hidden="true" />
+          </summary>
+          <div className="border-t border-white/10 p-3 sm:p-5">
+            <HealthBars metrics={healthMetrics} />
+          </div>
+        </details>
 
         {/* COMPONENTE DE CONQUISTAS ORIGINAL */}
         <AchievementsCard achievements={achievements} />
