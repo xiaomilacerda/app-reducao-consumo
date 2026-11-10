@@ -42,7 +42,7 @@ export interface UserData {
   frequencyAmount: number;
   frequencyPeriod: FrequencyPeriod;
   lastUseDateTime?: string | null;
-  lastMood?: string | null;
+  lastMood?: string;
 
   // Histórico
   relapseHistory: RelapseRecord[];
