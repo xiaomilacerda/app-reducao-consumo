@@ -28,7 +28,6 @@ const DEFAULT_USER_DATA: Partial<UserData> = {
   consumptionMethods: [],
   thcPotency: 0,
   gramsPerJoint: 0,
-  costPerGram: 0,
   pricePerGram: 0,
   dailyCost: 0,
   frequencyAmount: 0,
