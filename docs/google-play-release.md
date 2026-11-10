@@ -43,3 +43,9 @@ Denunciar conteúdo e bloquear autores já foram implementados; verificar com du
 - https://github.com/GoogleChromeLabs/bubblewrap/tree/main/packages/cli
 - https://support.google.com/googleplay/android-developer/answer/18265346
 - https://developer.android.com/health-and-fitness/health-connect/publish
+
+## Recuperação de senha (validação obrigatória)
+
+- Páginas públicas `/recuperar-senha` e `/redefinir-senha` usam Supabase Auth (`resetPasswordForEmail` e `updateUser`).
+- No Supabase Auth → URL Configuration, permitir explicitamente `https://app-reducao-consumo.vercel.app/redefinir-senha` na lista de Redirect URLs. Configurar também o Site URL canônico.
+- Validar o fluxo completo com e-mail real de teste, link expirado, sessão ausente e login após redefinição. O build por si só não verifica a entrega de e-mails.

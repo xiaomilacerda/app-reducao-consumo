@@ -115,9 +115,7 @@ export default function LoginPage() {
           </div>
 
           <p className="text-[11px] text-purple-200/80 max-w-sm">
-            Ao criar sua conta, você começa no plano gratuito e pode testar as principais
-            funcionalidades. Se fizer sentido, você pode migrar para o Premium dentro do
-            próprio app.
+            O WeedReset está disponível gratuitamente nesta fase. Não há assinaturas ou cobranças ativas.
           </p>
 
           <div className="hidden md:flex items-center gap-2 text-[11px] text-purple-200/70">
@@ -182,6 +180,12 @@ export default function LoginPage() {
               {submitting ? 'Entrando...' : 'Entrar'}
             </button>
           </form>
+
+          <div className="mt-3 text-right">
+            <Link href="/recuperar-senha" className="inline-flex min-h-10 items-center text-xs font-semibold text-purple-200 underline underline-offset-2 hover:text-white">
+              Esqueci minha senha
+            </Link>
+          </div>
 
           <div className="mt-4 text-center text-xs text-gray-300">
             <span>Ainda não tem conta? </span>

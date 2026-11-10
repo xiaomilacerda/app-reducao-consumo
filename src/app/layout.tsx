@@ -26,7 +26,7 @@ const interTight = Inter_Tight({
   variable: "--font-inter-tight",
 });
 
-const withoutNav = new Set(["/login", "/signup", "/onboarding", "/privacy", "/terms"]);
+const withoutNav = new Set(["/login", "/signup", "/onboarding", "/privacy", "/terms", "/recuperar-senha", "/redefinir-senha"]);
 
 function NavigationLink({
   href, label, icon: Icon, current, mobile = false,
