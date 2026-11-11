@@ -68,8 +68,8 @@ test('Android Digital Asset Links uses a public well-known rewrite', () => {
 
 test('Store listing meets text limits and contains a non-clinical disclaimer', () => {
   const listing = read('docs/play-store-listing-pt-BR.md');
-  const short = listing.match(/<!-- SHORT_DESCRIPTION_START -->([\\s\\S]*?)<!-- SHORT_DESCRIPTION_END -->/)?.[1]?.trim();
-  const full = listing.match(/<!-- FULL_DESCRIPTION_START -->([\\s\\S]*?)<!-- FULL_DESCRIPTION_END -->/)?.[1]?.trim();
+  const short = listing.split('<!-- SHORT_DESCRIPTION_START -->')[1]?.split('<!-- SHORT_DESCRIPTION_END -->')[0]?.trim();
+  const full = listing.split('<!-- FULL_DESCRIPTION_START -->')[1]?.split('<!-- FULL_DESCRIPTION_END -->')[0]?.trim();
   assert.ok(short, 'A descrição curta precisa existir');
   assert.ok(full, 'A descrição longa precisa existir');
   assert.ok(short.length <= 80, 'A descrição curta deve ter até 80 caracteres');
