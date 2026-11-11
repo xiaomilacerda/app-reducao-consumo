@@ -49,10 +49,10 @@ export default function OnboardingPage() {
     const lastUseDateTime = parsedDate.toISOString();
     const payload = {
       currency,
-      frequencyAmount: Number(frequencyAmount) || 1,
+      frequencyAmount: Math.max(0, Number(frequencyAmount) || 0),
       frequencyPeriod,
-      gramsPerJoint: Number(gramsPerJoint) || 0.5,
-      thcPotency: Number(thcPotency) || 15,
+      gramsPerJoint: Math.max(0, Number(gramsPerJoint) || 0),
+      thcPotency: Math.max(0, Number(thcPotency) || 0),
       dailyCost: Number(dailyCost) || 0,
       pricePerGram: Number(pricePerGram) || 0,
       consumptionMethods,
@@ -125,16 +125,21 @@ export default function OnboardingPage() {
                   Reduzir ou parar o consumo é um processo que exige coragem, determinação e, acima de tudo, autocompaixão.
                 </p>
                 <p>
-                  Este aplicativo foi desenvolvido com base em ciência, experiências reais e muito carinho. Aqui você encontrará:
+                  Este aplicativo oferece ferramentas de acompanhamento pessoal e autocuidado. Aqui você encontrará:
                 </p>
                 <ul className="list-disc list-inside space-y-2 ml-4">
                   <li>Monitoramento em tempo real do seu progresso</li>
-                  <li>Cálculos precisos de economia e saúde</li>
+                  <li>Estimativas de economia baseadas nos dados que você informar</li>
                   <li>Ferramentas práticas para momentos de fissura</li>
-                  <li>Uma comunidade de apoio anônima</li>
+                  <li>Uma comunidade de apoio sem exibição pública de nomes</li>
                   <li>Conquistas e recompensas motivacionais</li>
-                  <li>Recursos para prevenir recaídas</li>
+                  <li>Estratégias de apoio para lidar com momentos difíceis</li>
                 </ul>
+                <p className="text-sm">
+                  As estimativas não são avaliações clínicas. O WeedReset não é dispositivo médico,
+                  não diagnostica, trata, cura ou previne condições de saúde e não substitui
+                  atendimento profissional. O serviço é destinado a pessoas com 18 anos ou mais.
+                </p>
                 <p>
                   <strong>Lembre-se:</strong> Recaídas fazem parte do processo. O importante não é ser perfeito, mas sim continuar tentando.
                   Cada dia limpo é uma vitória. Cada recomeço é uma prova de coragem.
