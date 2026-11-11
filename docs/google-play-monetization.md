@@ -36,7 +36,8 @@ Fontes oficiais:
    - `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`: JSON da conta de serviço (chave privada).
    - `SUPABASE_SERVICE_ROLE_KEY` (ou `SUPABASE_SECRET_KEY`): chave server-side do Supabase com permissão para gravar as tabelas e RPC.
    - `WEEDRESET_ACCESS_LAUNCH_DATE`: ISO UTC, ex. `2027-01-01T12:00:00Z`, **data de ativação escolhida**, não data definida aqui. Usuários antigos têm 7 dias a partir dessa data.
-7. **Somente depois da migração e dos testes** colocar `WEEDRESET_PAID_ACCESS_ENABLED=true` na Vercel. Esse interruptor exige as outras configurações para não bloquear usuários acidentalmente. Deploy e validar o status com contas de teste.
+7. Configurar o tópico e assinatura **Google Cloud Pub/Sub push autenticada** para `https://SEU_DOMINIO/api/play/rtdn` e, na Vercel (servidor), `GOOGLE_PUBSUB_AUDIENCE` com a audiência OIDC exata da assinatura e `GOOGLE_PUBSUB_PUSH_SERVICE_ACCOUNT_EMAIL` com o e-mail exato da conta de serviço configurada para gerar o token push. Habilitar RTDN na Play Console para este tópico; testar envio de notificação de teste e um estorno de compra de laboratório. A rota não confia em URL secreta nem em e-mail sem assinatura.
+8. **Somente depois da migração e dos testes** colocar `WEEDRESET_PAID_ACCESS_ENABLED=true` na Vercel. Esse interruptor exige as outras configurações para não bloquear usuários acidentalmente. Deploy e validar o status com contas de teste.
 
 ### Sem estas configurações
 
@@ -62,5 +63,5 @@ Se houver problema durante teste, desligue `WEEDRESET_PAID_ACCESS_ENABLED`; o ap
 
 1. Não foi feito **build Android**, compra real, teste com Google Play Console ou migração de produção nesta etapa.
 2. Compra validada depende de permissões reais na Google Cloud/Play Console e de conta com sessão Supabase.
-3. Revogação automática e blindagem RLS de cada recurso avançado ainda exigem auditoria antes de cobrar usuários.
+3. O handler RTDN já está codificado, mas faltam configurar Pub/Sub, validar em ambiente real, criar rotina de reconciliação de eventos perdidos e revisar RLS de cada recurso pago antes de cobrar usuários.
 4. O preço sugerido no site **não garante** o preço de outro país; mostrar o preço retornado pela Google Play quando disponível.
