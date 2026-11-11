@@ -1,6 +1,11 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { isTrustedAdmin } from '@/lib/admin-access';
+import { getAccessStatus, paidAccessEnabled } from '@/lib/access-status';
+
+// Recursos avançados: no pré-lançamento as rotas continuam livres como hoje.
+// SOS, diário de emoções, comunidade e configuração da conta continuam acessíveis.
+const PAID_FEATURE_PATH = /^\/(analytics|ai-insights|body-evolution|jornada|missions|rewards|experimento)(\/|$)/;
 
 const ADMIN_PATH = /^\/(admin|api\/admin)(\/|$)/;
 
@@ -18,6 +23,10 @@ export async function middleware(request: NextRequest) {
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const adminRoute = ADMIN_PATH.test(request.nextUrl.pathname);
+  const paidFeature = PAID_FEATURE_PATH.test(request.nextUrl.pathname);
+  if (paidFeature && !paidAccessEnabled() && !request.nextUrl.pathname.startsWith('/ai-insights')) {
+    return NextResponse.next({ request });
+  }
   const adminApi = request.nextUrl.pathname.startsWith('/api/admin');
 
   // Fail closed if deployment is misconfigured.
@@ -85,6 +94,21 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
+  if (paidFeature && paidAccessEnabled() && !isTrustedAdmin(user)) {
+    try {
+      const access = await getAccessStatus(supabase, user);
+      if (!access.hasFullAccess) {
+        const checkout = new URL('/premium', request.url);
+        checkout.searchParams.set('next', request.nextUrl.pathname + request.nextUrl.search);
+        const response = NextResponse.redirect(checkout);
+        authResponse.cookies.getAll().forEach((cookie) => response.cookies.set(cookie));
+        return response;
+      }
+    } catch {
+      return new NextResponse('Não foi possível verificar seu acesso. Tente novamente.', { status: 503 });
+    }
+  }
+
   return authResponse;
 }
 
@@ -94,6 +118,12 @@ export const config = {
     '/settings/:path*',
     '/premium/:path*',
     '/ai-insights/:path*',
+    '/analytics/:path*',
+    '/body-evolution/:path*',
+    '/jornada/:path*',
+    '/missions/:path*',
+    '/rewards/:path*',
+    '/experimento/:path*',
     '/admin/:path*',
     '/api/admin/:path*',
   ],
