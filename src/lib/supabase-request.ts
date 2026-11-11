@@ -10,9 +10,10 @@ export async function getRequestSupabase() {
   return createServerClient(url, key, {
     cookies: {
       getAll() { return cookieStore.getAll(); },
-      // Refresh cookies is handled by middleware; a read-only API response
-      // must not invent/set cookies at this layer.
-      setAll() {},
+      setAll(cookiesToSet) {
+        // Route handlers may refresh cookie sessions for authenticated calls.
+        cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
+      },
     },
   });
 }
