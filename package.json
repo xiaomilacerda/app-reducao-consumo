@@ -10,7 +10,8 @@
     "prebuild": "node scripts/generate-pwa-icons.mjs",
     "test:release": "node --test tests/release-safety.test.mjs",
     "typecheck": "tsc --noEmit --pretty false",
-    "check:playstore": "node scripts/check-playstore-assets.mjs"
+    "check:playstore": "node scripts/check-playstore-assets.mjs",
+    "assets:playstore": "node scripts/generate-playstore-assets.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
