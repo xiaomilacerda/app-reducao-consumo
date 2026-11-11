@@ -76,7 +76,7 @@ export const APP_NAV_GROUPS: AppNavGroup[] = [
     items: [
       { href: "/profile", label: "Meu perfil", description: "Seus dados e informações", icon: UserRound, keywords: "conta cadastro perfil" },
       { href: "/settings", label: "Configurações", description: "Notificações e preferências", icon: Settings, keywords: "configurações ajustes tema notificações" },
-      { href: "/premium", label: "Plano Premium", description: "Conheça os recursos do plano", icon: Crown, keywords: "premium assinatura" },
+      { href: "/premium", label: "Acesso completo", description: "Compra única, sem assinatura", icon: Crown, keywords: "acesso comprar compra única pagamento" },
       { href: "/excluir-conta", label: "Excluir conta", description: "Remova sua conta e registros pessoais", icon: Trash2, keywords: "privacidade remoção excluir apagar dados lgpd" },
       { href: "/privacy", label: "Privacidade", description: "Como os dados são tratados", icon: Shield, keywords: "termos dados segurança" },
       { href: "/terms", label: "Termos de uso", description: "Condições de utilização", icon: FileText, keywords: "juridico contrato termos" },
