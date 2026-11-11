@@ -1028,7 +1028,7 @@ export default function AiInsightsPage() {
             {isPremium ? (
               <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-semibold text-xs">
                 <Crown className="w-4 h-4" />
-                Premium ativo
+                Acesso completo ativo
               </span>
             ) : (
               <Link
@@ -1234,12 +1234,12 @@ export default function AiInsightsPage() {
                 {lockedPremium ? (
                   <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 text-white/80 text-xs font-semibold">
                     <Lock className="w-4 h-4" />
-                    Edição no Premium
+                    Edição no acesso completo
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/20 text-emerald-200 text-xs font-semibold">
                     <Crown className="w-4 h-4" />
-                    Editável (Premium)
+                    Editável (acesso completo)
                   </span>
                 )}
               </div>
@@ -1286,7 +1286,7 @@ export default function AiInsightsPage() {
                 {lockedPremium ? (
                   <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 border border-white/10 text-white/80 text-xs font-semibold">
                     <Lock className="w-4 h-4" />
-                    Histórico completo no Premium
+                    Histórico no acesso completo
                   </div>
                 ) : (
                   <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/20 border border-emerald-400/20 text-emerald-200 text-xs font-semibold">
@@ -1417,13 +1417,13 @@ export default function AiInsightsPage() {
 
               {!isPremium && (
                 <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-white/75">
-                  <div className="font-semibold text-white">Premium</div>
+                  <div className="font-semibold text-white">Acesso completo</div>
                   <div className="mt-1">Acesso ao histórico completo + busca avançada.</div>
                   <Link
                     href="/premium"
                     className="mt-3 inline-flex items-center justify-center px-3 py-2 rounded-xl bg-white text-black font-semibold text-xs hover:bg-white/90 transition-colors"
                   >
-                    Ver Premium
+                    Ver acesso completo
                   </Link>
                 </div>
               )}
@@ -1467,7 +1467,7 @@ export default function AiInsightsPage() {
                 {!isPremium && filteredHistory.length > 25 && (
                   <div className="p-5 text-sm text-white/70">
                     <div className="font-semibold text-white">Desbloqueie o histórico completo</div>
-                    <div className="mt-1">No Premium você vê todas as respostas do ano, com busca completa.</div>
+                    <div className="mt-1">Com acesso completo você vê todas as respostas do ano, com busca completa.</div>
                     <Link
                       href="/premium"
                       className="mt-3 inline-flex items-center justify-center px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold text-sm"
