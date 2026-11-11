@@ -65,3 +65,46 @@ test('Android Digital Asset Links uses a public well-known rewrite', () => {
   assert.match(config, /source: '\/\.well-known\/assetlinks\.json'/);
   assert.match(config, /destination: '\/api\/android-assetlinks'/);
 });
+
+test('Store listing meets text limits and contains a non-clinical disclaimer', () => {
+  const listing = read('docs/play-store-listing-pt-BR.md');
+  const short = listing.match(/<!-- SHORT_DESCRIPTION_START -->([\\s\\S]*?)<!-- SHORT_DESCRIPTION_END -->/)?.[1]?.trim();
+  const full = listing.match(/<!-- FULL_DESCRIPTION_START -->([\\s\\S]*?)<!-- FULL_DESCRIPTION_END -->/)?.[1]?.trim();
+  assert.ok(short, 'A descrição curta precisa existir');
+  assert.ok(full, 'A descrição longa precisa existir');
+  assert.ok(short.length <= 80, 'A descrição curta deve ter até 80 caracteres');
+  assert.ok(full.length <= 4000, 'A descrição longa deve ter até 4000 caracteres');
+  assert.match(full, /não é um dispositivo médico/);
+  assert.match(full, /consulte um profissional de saúde/);
+  assert.match(full, /18 anos ou mais/);
+});
+
+test('Onboarding avoids unsupported medical and anonymity claims', () => {
+  const onboarding = read('src/app/onboarding/page.tsx');
+  assert.doesNotMatch(onboarding, /Cálculos precisos de economia e saúde/);
+  assert.doesNotMatch(onboarding, /Uma comunidade de apoio anônima/);
+  assert.match(onboarding, /não é dispositivo médico/);
+  assert.match(onboarding, /gramsPerJoint: Math\.max\(0, Number\(gramsPerJoint\) \|\| 0\)/);
+  assert.match(onboarding, /thcPotency: Math\.max\(0, Number\(thcPotency\) \|\| 0\)/);
+});
+
+test('Community rules and settings expose required user safeguards', () => {
+  const community = read('src/app/community/page.tsx');
+  const words = community.split('const BLOCKED_WORDS = new Set(')[1]?.split('function hasProfanity')[0] ?? '';
+  assert.ok(words, 'A lista de moderação precisa existir');
+  assert.doesNotMatch(words, /['"]gay['"]\s*,/);
+  assert.match(community, /Não publique ofertas, pedidos de compra/);
+  assert.match(community, /opções de denúncia e bloqueio/);
+  const settings = read('src/app/settings/page.tsx');
+  assert.match(settings, /href="\/privacy"/);
+  assert.match(settings, /href="\/terms"/);
+  assert.match(settings, /href="\/excluir-conta"/);
+});
+
+test('Signing secrets and local Android bundles are ignored', () => {
+  const ignore = read('.gitignore');
+  assert.match(ignore, /\*\.keystore/);
+  assert.match(ignore, /\*\.jks/);
+  assert.match(ignore, /\*\.aab/);
+  assert.match(ignore, /\.env\.\*/);
+});
