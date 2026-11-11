@@ -46,6 +46,11 @@ export default function OnboardingPage() {
       setSaveError('Informe uma data válida.');
       return;
     }
+    if (parsedDate.getTime() > Date.now()) {
+      setSaveError('A data e a hora do último uso não podem estar no futuro.');
+      setStep(8);
+      return;
+    }
     const lastUseDateTime = parsedDate.toISOString();
     const payload = {
       currency,
