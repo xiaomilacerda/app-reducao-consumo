@@ -39,3 +39,6 @@ android-twa/build-local/
 # Editor
 .vscode/
 .idea/
+
+# Generated store artwork (review before uploading to Play Console)
+store-assets/
