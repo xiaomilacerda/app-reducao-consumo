@@ -13,7 +13,7 @@ export function paidAccessEnabled() {
   return process.env.WEEDRESET_PAID_ACCESS_ENABLED === "true" &&
     Boolean(launch && Number.isFinite(Date.parse(launch)) &&
       process.env.GOOGLE_PLAY_PACKAGE_NAME && process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON &&
-      process.env.SUPABASE_SERVICE_ROLE_KEY);
+      (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY));
 }
 
 export function trialEndDate(createdAt: string): string {
