@@ -15,13 +15,16 @@
 Execute em uma pasta local **fora** do repositório ou em `android-twa/build-local/` (que deve ser ignorada pelo Git):
 
 ```bash
-npm install --global @bubblewrap/cli
+npm install --global @bubblewrap/cli@1.25.0
 bubblewrap init --manifest=https://app-reducao-consumo.vercel.app/manifest.webmanifest
 ```
 
 O assistente do Bubblewrap solicitará package ID, nome do aplicativo, versões, SDK e chave. Confira o nome `WeedReset`, ícones PNG reais, start URL e domínio. Inspecione o projeto Android gerado: **targetSdkVersion >= 36** para novo app convencional enviado em novembro de 2026. Não assuma que o padrão da versão instalada está atualizado.
 
 ```bash
+# Em twa-manifest.json, configure: "features": {"playBilling": {"enabled": true}}
+# Depois de revisar suas modificações manuais:
+bubblewrap update
 bubblewrap build
 ```
 
@@ -53,7 +56,7 @@ O certificado de **upload** pode ser útil para testes instalados localmente; pa
 - Não é possível criar um AAB **assinado para publicação** apenas a partir do código web sem package ID final, Android SDK, chave e configuração do Play App Signing.
 - A aprovação do Google não é garantida; formulários devem refletir o comportamento real, especialmente dados sensíveis de humor/consumo e conteúdo da comunidade.
 - A função de exclusão e as regras RLS devem ser testadas com contas descartáveis antes do lançamento.
-- Não habilitar assinaturas digitais antes de integrar Google Play Billing e verificar compras no backend.
+- O modelo novo usa compra única do produto não consumível `weedreset_full_access`, sem assinatura. A integração web e a validação no servidor estão no PR; a TWA real deve ter Play Billing Library **8 ou superior** (Bubblewrap >= 1.25.0 / android-browser-helper billing 1.2.0).\n- Não habilitar `WEEDRESET_PAID_ACCESS_ENABLED` antes da migração SQL, Play Console/merchant, RTDN de reembolsos e testes internos de compra/restauração. Consulte `docs/google-play-monetization.md`.
 
 Fontes:
 - [Trusted Web Activities — Android Developers](https://developer.android.com/develop/ui/views/layout/webapps/guide-trusted-web-activities-version2)
