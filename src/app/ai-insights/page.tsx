@@ -610,7 +610,7 @@ export default function AiInsightsPage() {
 
   const [supabaseUser, setSupabaseUser] = useState<any | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [isPremium, setIsPremium] = useState(false);
+  const [isAcesso completo, setIsAcesso completo] = useState(false);
 
   const [loading, setLoading] = useState(true);
 
@@ -666,7 +666,14 @@ export default function AiInsightsPage() {
 
           if (!cancelled) {
             if (error) console.error('Erro carregando profile em /ai-insights:', formatDbError(error), error);
-            setIsPremium(!!(profile as ProfileMini | null)?.is_premium);
+            // Status oficial também reconhece compra única e teste inicial.
+            const statusResponse = await fetch('/api/access/status', { cache: 'no-store' });
+            if (statusResponse.ok) {
+              const status = await statusResponse.json() as { state: string };
+              if (!cancelled) setIsAcesso completo(status.state === 'lifetime' || status.state === 'trial');
+            } else if (!cancelled) {
+              setIsAcesso completo(!!(profile as ProfileMini | null)?.is_premium);
+            }
           }
         }
       } catch (err) {
@@ -996,7 +1003,7 @@ export default function AiInsightsPage() {
     );
   }
 
-  const lockedPremium = !isPremium;
+  const lockedAcesso completo = !isAcesso completo;
 
   return (
     <div className="wr-screen min-h-screen bg-gradient-to-br from-gray-950 via-slate-950 to-gray-950 text-white">
@@ -1018,10 +1025,10 @@ export default function AiInsightsPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            {isPremium ? (
+            {isAcesso completo ? (
               <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-semibold text-xs">
                 <Crown className="w-4 h-4" />
-                Premium ativo
+                Acesso completo
               </span>
             ) : (
               <Link
@@ -1029,7 +1036,7 @@ export default function AiInsightsPage() {
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 text-white/90 text-xs font-semibold transition-colors"
               >
                 <Lock className="w-4 h-4" />
-                Ver Premium
+                Ver acesso
               </Link>
             )}
 
@@ -1224,15 +1231,15 @@ export default function AiInsightsPage() {
                   <p className="mt-1 text-sm text-white/70">Frases prontas para cortar gatilhos.</p>
                 </div>
 
-                {lockedPremium ? (
+                {lockedAcesso completo ? (
                   <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 text-white/80 text-xs font-semibold">
                     <Lock className="w-4 h-4" />
-                    Edição no Premium
+                    Edição no acesso completo
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/20 text-emerald-200 text-xs font-semibold">
                     <Crown className="w-4 h-4" />
-                    Editável (Premium)
+                    Editável (Acesso completo)
                   </span>
                 )}
               </div>
@@ -1246,7 +1253,7 @@ export default function AiInsightsPage() {
                     <div className="mt-3 text-xs text-white/60 font-semibold">ENTÃO</div>
                     <div className="mt-1 text-sm">{r.then}</div>
 
-                    {lockedPremium && <div className="mt-3 text-[11px] text-white/55">No Premium você cria e salva seus próprios planos.</div>}
+                    {lockedAcesso completo && <div className="mt-3 text-[11px] text-white/55">Com acesso completo você cria e salva seus próprios planos.</div>}
                   </div>
                 ))}
               </div>
@@ -1276,15 +1283,15 @@ export default function AiInsightsPage() {
                   Limpar
                 </button>
 
-                {lockedPremium ? (
+                {lockedAcesso completo ? (
                   <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 border border-white/10 text-white/80 text-xs font-semibold">
                     <Lock className="w-4 h-4" />
-                    Histórico completo no Premium
+                    Histórico no acesso completo
                   </div>
                 ) : (
                   <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/20 border border-emerald-400/20 text-emerald-200 text-xs font-semibold">
                     <Crown className="w-4 h-4" />
-                    Premium ativo
+                    Acesso completo
                   </div>
                 )}
               </div>
@@ -1408,15 +1415,15 @@ export default function AiInsightsPage() {
                 </p>
               </div>
 
-              {!isPremium && (
+              {!isAcesso completo && (
                 <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-white/75">
-                  <div className="font-semibold text-white">Premium</div>
+                  <div className="font-semibold text-white">Acesso completo</div>
                   <div className="mt-1">Acesso ao histórico completo + busca avançada.</div>
                   <Link
                     href="/premium"
                     className="mt-3 inline-flex items-center justify-center px-3 py-2 rounded-xl bg-white text-black font-semibold text-xs hover:bg-white/90 transition-colors"
                   >
-                    Ver Premium
+                    Ver acesso
                   </Link>
                 </div>
               )}
@@ -1443,7 +1450,7 @@ export default function AiInsightsPage() {
 
             <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
               <div className="max-h-[520px] overflow-auto">
-                {(isPremium ? filteredHistory : filteredHistory.slice(0, 25)).map((r, idx) => (
+                {(isAcesso completo ? filteredHistory : filteredHistory.slice(0, 25)).map((r, idx) => (
                   <div key={`jr-${idx}-${r.id ?? 'x'}`} className="border-b border-white/10 p-4 last:border-b-0">
                     <div className="flex items-center justify-between gap-2">
                       <div className="text-sm font-bold">Dia {r.journey_day ?? '—'}</div>
@@ -1457,20 +1464,20 @@ export default function AiInsightsPage() {
                   </div>
                 ))}
 
-                {!isPremium && filteredHistory.length > 25 && (
+                {!isAcesso completo && filteredHistory.length > 25 && (
                   <div className="p-5 text-sm text-white/70">
                     <div className="font-semibold text-white">Desbloqueie o histórico completo</div>
-                    <div className="mt-1">No Premium você vê todas as respostas do ano, com busca completa.</div>
+                    <div className="mt-1">Com acesso completo você vê todas as respostas do ano, com busca completa.</div>
                     <Link
                       href="/premium"
                       className="mt-3 inline-flex items-center justify-center px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold text-sm"
                     >
-                      Virar Premium
+                      Liberar acesso
                     </Link>
                   </div>
                 )}
 
-                {isPremium && filteredHistory.length === 0 && <div className="p-5 text-sm text-white/70">Nenhuma resposta encontrada.</div>}
+                {isAcesso completo && filteredHistory.length === 0 && <div className="p-5 text-sm text-white/70">Nenhuma resposta encontrada.</div>}
               </div>
             </div>
 
