@@ -108,3 +108,73 @@ test('Signing secrets and local Android bundles are ignored', () => {
   assert.match(ignore, /\*\.aab/);
   assert.match(ignore, /\.env\.\*/);
 });
+
+
+test('Monetization is single non-consumable SKU with safe preview default', () => {
+  const cfg = read('src/config/monetization.ts');
+  const prices = read('src/config/pricing.ts');
+  const access = read('src/lib/access-status.ts');
+  assert.match(cfg, /weedreset_full_access/);
+  assert.match(cfg, /TRIAL_DAYS = 7/);
+  assert.match(prices, /pricingModel: "one_time"/);
+  assert.doesNotMatch(prices, /Premium Mensal|Premium Anual/);
+  assert.match(access, /WEEDRESET_PAID_ACCESS_ENABLED/);
+  assert.match(access, /WEEDRESET_ACCESS_LAUNCH_DATE/);
+});
+
+test('Paid feature gating preserves SOS and account access', () => {
+  const middleware = read('src/middleware.ts');
+  assert.match(middleware, /PAID_FEATURE_PATH/);
+  assert.match(middleware, /getAccessStatus\(supabase, user\)/);
+  assert.match(middleware, /new URL\('\/premium'/);
+  const gated = middleware.match(/const PAID_FEATURE_PATH = ([^;]+);/)?.[1] || '';
+  assert.ok(gated);
+  assert.doesNotMatch(gated, /sos|community|mood|privacy|terms|excluir-conta/);
+});
+
+test('Purchase permission cannot be set directly from a client-side button', () => {
+  const checkout = read('src/app/premium/page.tsx');
+  const oldPage = read('src/app/PAGES/premium.tsx');
+  assert.match(checkout, /PaymentRequest/);
+  assert.match(checkout, /getDigitalGoodsService/);
+  assert.match(checkout, /Restaurar compra/);
+  assert.match(checkout, /api\/play\/verify/);
+  assert.doesNotMatch(checkout, /is_premium:\s*true|localStorage.*isPremium/);
+  assert.doesNotMatch(oldPage, /is_premium:\s*true|storage\.saveUserData/);
+  assert.match(oldPage, /export \{ default \}/);
+});
+
+test('Purchase is verified and acknowledged server-side before granting access', () => {
+  const route = read('src/app/api/play/verify/route.ts');
+  const google = read('src/lib/google-play-server.ts');
+  assert.match(route, /supabase\.auth\.getUser\(\)/);
+  assert.match(route, /validateAndAcknowledgePurchase\(purchaseToken\)/);
+  assert.match(route, /weedreset_record_google_play_purchase/);
+  assert.match(google, /purchaseState !== 0/);
+  assert.match(google, /:acknowledge/);
+  assert.match(google, /sha256/);
+  assert.doesNotMatch(checkoutSafeString(google), /NEXT_PUBLIC_GOOGLE_PLAY_SERVICE_ACCOUNT/);
+});
+
+function checkoutSafeString(source) { return source; }
+
+test('Entitlements reject client writes, share-resistant token and support refund revocation', () => {
+  const migration = read('supabase/migrations/20261111_weedreset_play_one_time_entitlements.sql');
+  assert.match(migration, /enable row level security/);
+  assert.match(migration, /revoke all on public\.weedreset_play_purchases from public, anon, authenticated/);
+  assert.match(migration, /grant execute on function public\.weedreset_record_google_play_purchase/);
+  assert.match(migration, /purchase_belongs_to_another_account/);
+  assert.match(migration, /weedreset_revoke_google_play_purchase/);
+});
+
+test('Refund push requires signed Google OIDC and verified merchant package', () => {
+  const auth = read('src/lib/google-pubsub-auth.ts');
+  const push = read('src/app/api/play/rtdn/route.ts');
+  assert.match(auth, /createPublicKey/);
+  assert.match(auth, /verify\(/);
+  assert.match(auth, /GOOGLE_PUBSUB_AUDIENCE/);
+  assert.match(auth, /GOOGLE_PUBSUB_PUSH_SERVICE_ACCOUNT_EMAIL/);
+  assert.match(push, /verifyPubsubPushJwt/);
+  assert.match(push, /notification\.packageName !== packageName/);
+  assert.match(push, /weedreset_revoke_google_play_purchase/);
+});
