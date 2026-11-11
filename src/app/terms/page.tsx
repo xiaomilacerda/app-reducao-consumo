@@ -127,7 +127,7 @@ export default function TermsPage() {
         </section>
 
         <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-3">
-          <h2 className="text-base font-semibold">5. Recursos gratuitos e Premium</h2>
+          <h2 className="text-base font-semibold">5. Acesso completo e pagamento único</h2>
           <p>
             O WeedReset pode oferecer uma versão gratuita e recursos adicionais na modalidade
             Premium. A disponibilidade, preço, forma de pagamento e benefícios do plano Premium
