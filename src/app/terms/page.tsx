@@ -57,7 +57,8 @@ export default function TermsPage() {
             <li>Conteúdos motivacionais e recursos de apoio.</li>
           </ul>
           <p>
-            O aplicativo tem caráter informativo e de apoio, não substituindo acompanhamento
+            O aplicativo tem caráter informativo e de apoio. Não é dispositivo médico e não
+            diagnostica, trata, cura ou previne condições de saúde. Não substitui acompanhamento
             médico, psicológico ou qualquer outro tipo de tratamento profissional.
           </p>
         </section>
@@ -106,11 +107,32 @@ export default function TermsPage() {
         </section>
 
         <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-3">
-          <h2 className="text-base font-semibold">5. Recursos gratuitos e Premium</h2>
+          <h2 className="text-base font-semibold">Regras da Comunidade e moderação</h2>
           <p>
-            O WeedReset pode oferecer uma versão gratuita e recursos adicionais na modalidade
-            Premium. A disponibilidade, preço, forma de pagamento e benefícios do plano Premium
-            podem ser alterados ao longo do tempo.
+            A Comunidade existe para apoio entre pessoas adultas. Publicações e comentários podem
+            ser denunciados e seus autores podem ser bloqueados. Nomes não aparecem no mural,
+            mas isso não garante anonimato absoluto: identificadores técnicos são usados para
+            segurança e moderação.
+          </p>
+          <ul className="list-disc list-inside space-y-1">
+            <li>É proibido oferecer, solicitar, vender, comprar ou facilitar a entrega de cannabis ou outras substâncias controladas.</li>
+            <li>Não publique ameaças, assédio, discriminação, dados pessoais de terceiros, conteúdo sexual explícito ou instruções de autolesão.</li>
+            <li>Não divulgue informações falsas de saúde como se fossem diagnósticos ou tratamentos garantidos.</li>
+            <li>Denuncie conteúdo inadequado e bloqueie autores quando necessário.</li>
+          </ul>
+          <p>
+            Podemos analisar denúncias, ocultar ou remover conteúdo e suspender a participação
+            de contas que violem estas regras. A Comunidade não é um canal de atendimento de emergência.
+          </p>
+        </section>
+
+        <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-3">
+          <h2 className="text-base font-semibold">5. Acesso completo e pagamento único</h2>
+          <p>
+            O WeedReset pode oferecer um período inicial de experimentação e uma compra única
+            de acesso completo, sem renovação automática. A cobrança só estará disponível após
+            a ativação oficial na Google Play. O preço final e a moeda serão exibidos pela loja
+            antes da confirmação. Cancelamentos e reembolsos seguem as regras da Google Play.
           </p>
           <p>
             Em caso de dúvidas sobre cobranças realizadas por lojas de aplicativos (como Google

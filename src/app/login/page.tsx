@@ -115,7 +115,7 @@ export default function LoginPage() {
           </div>
 
           <p className="text-[11px] text-purple-200/80 max-w-sm">
-            O WeedReset está disponível gratuitamente nesta fase. Não há assinaturas ou cobranças ativas.
+            O WeedReset está em pré-lançamento, sem cobrança ativa. No lançamento, o acesso completo será uma compra única, sem assinatura.
           </p>
 
           <div className="hidden md:flex items-center gap-2 text-[11px] text-purple-200/70">
@@ -193,7 +193,7 @@ export default function LoginPage() {
               href="/signup"
               className="text-purple-300 hover:text-purple-100 underline underline-offset-2"
             >
-              Criar conta gratuita
+              Criar minha conta
             </Link>
           </div>
 

@@ -94,7 +94,7 @@ export default function PrivacyPage() {
             <li>Calcular tempo limpo, economia e estimativas de saúde.</li>
             <li>Exibir estatísticas da sua jornada e evolução.</li>
             <li>Exibir seu diário emocional e viabilizar interações e moderação na Comunidade.</li>
-            <li>Liberar recursos Premium, quando aplicável.</li>
+            <li>Verificar compras na Google Play, restaurar o acesso completo e evitar o uso indevido de comprovantes de compra.</li>
             <li>Melhorar o funcionamento, segurança e estabilidade do app.</li>
             <li>Cumprir obrigações legais, quando necessário.</li>
           </ul>

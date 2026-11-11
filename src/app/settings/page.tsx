@@ -61,6 +61,16 @@ export default function SettingsPage() {
 
   const [displayName, setDisplayName] = useState<string>('');
   const [isPremium, setIsPremium] = useState<boolean>(false);
+  const [accessState, setAccessState] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void fetch('/api/access/status', { cache: 'no-store' })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data: { state?: string } | null) => { if (active && data?.state) setAccessState(data.state); })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, []);
 
   // Preferências de app
   const [preferredLanguage, setPreferredLanguage] =
@@ -376,16 +386,16 @@ export default function SettingsPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
-                    Plano
+                    Acesso
                   </p>
-                  {isPremium ? (
+                  {(isPremium || accessState === 'lifetime') ? (
                     <p className="text-xs font-semibold text-emerald-600 flex items-center gap-1 justify-end">
                       <CheckCircle2 className="w-3 h-3" />
-                      Premium ativo
+                      Acesso completo ativo
                     </p>
                   ) : (
                     <p className="text-xs font-semibold text-purple-600">
-                      Plano gratuito em uso
+                      {accessState === 'trial' ? 'Testando o acesso completo' : accessState === 'expired' ? 'Teste encerrado' : 'Acesso de pré-lançamento'}
                     </p>
                   )}
                 </div>
@@ -395,7 +405,7 @@ export default function SettingsPage() {
                 href="/premium"
                 className="inline-flex items-center justify-center px-4 py-1.5 rounded-full text-[11px] font-semibold bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md hover:opacity-90 transition"
               >
-                {isPremium ? 'Gerenciar Premium' : 'Ver plano Premium'}
+                {isPremium || accessState === 'lifetime' ? 'Consultar meu acesso' : 'Conhecer acesso completo'}
               </Link>
             </div>
           </div>
@@ -646,6 +656,10 @@ export default function SettingsPage() {
           <Link href="/excluir-conta" className="mt-3 inline-flex min-h-11 items-center rounded-xl border border-rose-300/30 px-4 text-xs font-semibold text-rose-200 hover:bg-rose-300/10">
             Excluir minha conta
           </Link>
+          <div className="mt-3 flex flex-wrap gap-4 text-xs">
+            <Link href="/privacy" className="inline-flex min-h-10 items-center text-violet-200 underline underline-offset-2">Política de Privacidade</Link>
+            <Link href="/terms" className="inline-flex min-h-10 items-center text-violet-200 underline underline-offset-2">Termos de Uso</Link>
+          </div>
         </section>
 
         {/* SOBRE & PRIVACIDADE */}
@@ -659,8 +673,9 @@ export default function SettingsPage() {
             <code>user_settings</code>) e podem ser usadas em outros dispositivos.
           </p>
           <p>
-            • Idioma, fuso horário, foco, tema e notificações servem apenas para
-            personalizar a sua experiência — não compartilhamos esses dados com terceiros.
+            • Idioma, fuso horário, foco, tema e notificações ajudam a personalizar
+            a experiência. Prestadores de infraestrutura podem processar esses dados
+            conforme descrito na Política de Privacidade.
           </p>
           <p>
             • Tradução completa para inglês e espanhol será ligada apenas quando o app

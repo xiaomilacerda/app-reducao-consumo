@@ -183,7 +183,7 @@ export default function SignupPage() {
           </div>
 
           <p className="text-[11px] text-purple-200/80 max-w-sm">
-            Você começa no plano gratuito. Novas assinaturas Premium ainda não estão disponíveis.
+            Durante o pré-lançamento não há cobrança. O acesso completo será oferecido por compra única, sem assinatura.
           </p>
         </section>
 

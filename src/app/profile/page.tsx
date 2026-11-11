@@ -222,6 +222,16 @@ export default function ProfilePage() {
   const [moneySaved, setMoneySaved] = useState<number | null>(null);
   const [achievements, setAchievements] = useState<string[]>([]);
   const [isPremium, setIsPremium] = useState<boolean>(false);
+  const [accessState, setAccessState] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void fetch('/api/access/status', { cache: 'no-store' })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data: { state?: string } | null) => { if (active && data?.state) setAccessState(data.state); })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, []);
   const [dailyPhrase, setDailyPhrase] = useState<string>('');
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -1881,22 +1891,22 @@ if (lastIso) {
               </div>
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Status da assinatura
+                  Status do acesso
                 </p>
                 {isPremium ? (
                   <p className="text-sm font-semibold text-emerald-600 flex items-center gap-1.5">
                     <CheckCircle2 className="w-4 h-4" />
-                    Premium ativo neste app
+                    Acesso completo ativo
                   </p>
                 ) : (
                   <p className="text-sm font-semibold text-purple-600">
-                    Plano gratuito em uso
+                    {accessState === 'trial' ? 'Testando o acesso completo' : accessState === 'expired' ? 'Teste encerrado' : 'Acesso de pré-lançamento'}
                   </p>
                 )}
                 <p className="text-xs text-gray-500 mt-1 max-w-xl">
                   {isPremium
                     ? 'Você tem acesso liberado à IA de prevenção, análises avançadas e histórico completo do que escreve nas áreas especiais do app.'
-                    : 'Novas assinaturas ainda estão indisponíveis. A página Premium mostra quais recursos serão oferecidos após a integração de pagamentos.'}
+                    : accessState === 'trial' ? 'Você pode experimentar as ferramentas avançadas durante o período inicial, sem cartão e sem assinatura.' : accessState === 'expired' ? 'Seu teste terminou. Uma compra única na Google Play poderá liberar os recursos avançados.' : 'Durante a preparação para a loja não existe cobrança ativa. O acesso completo será oferecido por compra única.'}
                 </p>
               </div>
             </div>
@@ -1905,7 +1915,7 @@ if (lastIso) {
               href="/premium"
               className="inline-flex items-center justify-center px-4 py-2 rounded-full text-xs font-semibold bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md hover:opacity-90 transition"
             >
-              {isPremium ? 'Ver meu status Premium' : 'Conhecer o Premium'}
+              {isPremium || accessState === 'lifetime' ? 'Consultar meu acesso' : 'Conhecer acesso completo'}
             </Link>
           </div>
 

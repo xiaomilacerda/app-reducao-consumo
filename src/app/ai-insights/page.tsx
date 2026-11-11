@@ -666,7 +666,14 @@ export default function AiInsightsPage() {
 
           if (!cancelled) {
             if (error) console.error('Erro carregando profile em /ai-insights:', formatDbError(error), error);
-            setIsPremium(!!(profile as ProfileMini | null)?.is_premium);
+            // Compra validada e período inicial são conferidos pelo servidor.
+            const accessResponse = await fetch('/api/access/status', { cache: 'no-store' });
+            if (accessResponse.ok) {
+              const access = await accessResponse.json() as { state: string };
+              if (!cancelled) setIsPremium(access.state === 'lifetime' || access.state === 'trial' || !!(profile as ProfileMini | null)?.is_premium);
+            } else if (!cancelled) {
+              setIsPremium(!!(profile as ProfileMini | null)?.is_premium);
+            }
           }
         }
       } catch (err) {
@@ -1021,7 +1028,7 @@ export default function AiInsightsPage() {
             {isPremium ? (
               <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-semibold text-xs">
                 <Crown className="w-4 h-4" />
-                Premium ativo
+                Acesso completo ativo
               </span>
             ) : (
               <Link
@@ -1029,7 +1036,7 @@ export default function AiInsightsPage() {
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 text-white/90 text-xs font-semibold transition-colors"
               >
                 <Lock className="w-4 h-4" />
-                Ver Premium
+                Ver acesso completo
               </Link>
             )}
 
@@ -1227,12 +1234,12 @@ export default function AiInsightsPage() {
                 {lockedPremium ? (
                   <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 text-white/80 text-xs font-semibold">
                     <Lock className="w-4 h-4" />
-                    Edição no Premium
+                    Edição no acesso completo
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/20 text-emerald-200 text-xs font-semibold">
                     <Crown className="w-4 h-4" />
-                    Editável (Premium)
+                    Editável (acesso completo)
                   </span>
                 )}
               </div>
@@ -1246,7 +1253,7 @@ export default function AiInsightsPage() {
                     <div className="mt-3 text-xs text-white/60 font-semibold">ENTÃO</div>
                     <div className="mt-1 text-sm">{r.then}</div>
 
-                    {lockedPremium && <div className="mt-3 text-[11px] text-white/55">No Premium você cria e salva seus próprios planos.</div>}
+                    {lockedPremium && <div className="mt-3 text-[11px] text-white/55">No acesso completo você cria e salva seus próprios planos.</div>}
                   </div>
                 ))}
               </div>
@@ -1279,7 +1286,7 @@ export default function AiInsightsPage() {
                 {lockedPremium ? (
                   <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 border border-white/10 text-white/80 text-xs font-semibold">
                     <Lock className="w-4 h-4" />
-                    Histórico completo no Premium
+                    Histórico no acesso completo
                   </div>
                 ) : (
                   <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/20 border border-emerald-400/20 text-emerald-200 text-xs font-semibold">
@@ -1410,13 +1417,13 @@ export default function AiInsightsPage() {
 
               {!isPremium && (
                 <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-white/75">
-                  <div className="font-semibold text-white">Premium</div>
+                  <div className="font-semibold text-white">Acesso completo</div>
                   <div className="mt-1">Acesso ao histórico completo + busca avançada.</div>
                   <Link
                     href="/premium"
                     className="mt-3 inline-flex items-center justify-center px-3 py-2 rounded-xl bg-white text-black font-semibold text-xs hover:bg-white/90 transition-colors"
                   >
-                    Ver Premium
+                    Ver acesso completo
                   </Link>
                 </div>
               )}
@@ -1460,12 +1467,12 @@ export default function AiInsightsPage() {
                 {!isPremium && filteredHistory.length > 25 && (
                   <div className="p-5 text-sm text-white/70">
                     <div className="font-semibold text-white">Desbloqueie o histórico completo</div>
-                    <div className="mt-1">No Premium você vê todas as respostas do ano, com busca completa.</div>
+                    <div className="mt-1">Com acesso completo você vê todas as respostas do ano, com busca completa.</div>
                     <Link
                       href="/premium"
                       className="mt-3 inline-flex items-center justify-center px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold text-sm"
                     >
-                      Virar Premium
+                      Liberar acesso completo
                     </Link>
                   </div>
                 )}
