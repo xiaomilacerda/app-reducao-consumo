@@ -118,30 +118,19 @@ function formatDateTimeBR(iso: string): string {
   }
 }
 
-const BLOCKED_WORDS = [
-  'sexo',
-  'pinto',
-  'pênis',
-  'penis',
-  'buceta',
-  'xoxota',
-  'gay',
-  'viado',
-  'veado',
-  'corno',
-  'puto',
-  'puta',
-  'merda',
-  'caralho',
-  'porra',
-  'arrombado',
-  'otário',
-  'otario',
-];
+// Local pre-submission guard only. Server-side reports and human moderation remain
+// necessary. Never classify an identity term (e.g. "gay") as profanity.
+const BLOCKED_WORDS = new Set([
+  'buceta', 'xoxota', 'viado', 'veado', 'corno', 'puto', 'puta',
+  'merda', 'caralho', 'porra', 'arrombado', 'otario',
+]);
 
 function hasProfanity(text: string): boolean {
-  const lowered = text.toLowerCase();
-  return BLOCKED_WORDS.some((w) => lowered.includes(w));
+  // Tokenize whole words so e.g. "computador" is not rejected for "puta".
+  // Normalize diacritics to handle common spelling variants.
+  const words = text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
+    .match(/\p{L}+/gu) ?? [];
+  return words.some((word) => BLOCKED_WORDS.has(word));
 }
 
 function createClient(): SupabaseClient {
@@ -961,6 +950,9 @@ let safePosts: CommunityPost[] = (postsData ?? []).filter(
             </summary>
             <ul className="mt-2 space-y-1.5 border-t border-white/10 pt-3 leading-relaxed">
               <li>• Respeito sempre, sem exceção.</li>
+              <li>• Não publique ofertas, pedidos de compra, venda ou entrega de cannabis ou outras substâncias controladas.</li>
+              <li>• Não compartilhe dados pessoais de terceiros, ameaças, discurso de ódio ou instruções de autolesão.</li>
+              <li>• Use as opções de denúncia e bloqueio se encontrar conteúdo inadequado. A moderação pode remover conteúdo e restringir contas.</li>
               <li>• Conteúdo ofensivo ou explícito é removido.</li>
               <li>• Nomes não são exibidos; identificadores técnicos são mantidos para segurança e moderação.</li>
               <li>• Publicar e responder é gratuito para contas autenticadas, respeitando os limites de segurança e moderação.</li>
