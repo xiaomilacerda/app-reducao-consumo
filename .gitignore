@@ -34,6 +34,7 @@ local.properties
 **/android.keystore
 **/upload-keystore.*
 android-twa/.bubblewrap/
+android-twa/build-local/
 
 # Editor
 .vscode/
