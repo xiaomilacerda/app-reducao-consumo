@@ -45,7 +45,10 @@ export async function verifyPubsubPushJwt(authorization: string | null): Promise
     const jwks = (await response.json()) as { keys?: Array<JsonWebKey & { kid?: string }> };
     const jwk = jwks.keys?.find((key) => key.kid === header.kid && key.kty === "RSA");
     if (!jwk) return false;
-    const publicKey = createPublicKey({ key: jwk, format: "jwk" });
+    // Node's crypto JsonWebKey requires an index signature that DOM JsonWebKey lacks.
+    if (!jwk.n || !jwk.e) return false;
+    const rsaPublicJwk: Record<string, string> = { kty: "RSA", n: jwk.n, e: jwk.e };
+    const publicKey = createPublicKey({ key: rsaPublicJwk, format: "jwk" });
     return verify(
       "RSA-SHA256",
       Buffer.from(parts[0] + "." + parts[1]),
