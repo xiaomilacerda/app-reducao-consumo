@@ -20,7 +20,7 @@ Acompanhe sua jornada com recursos de autocuidado:
 • Acesse ferramentas de apoio e exercícios de atenção nos momentos difíceis.
 • Compartilhe experiências na comunidade, com opções de denúncia e bloqueio.
 
-O WeedReset não vende cannabis, não facilita compra ou entrega de substâncias e não incentiva o consumo. As novas assinaturas Premium não estão disponíveis nesta versão.
+O WeedReset não vende cannabis, não facilita compra ou entrega de substâncias e não incentiva o consumo. O acesso completo poderá ser oferecido por compra única na Google Play, sem renovação automática. A compra ainda não está ativada no pré-lançamento.
 
 Importante: o WeedReset é uma ferramenta de informação e apoio, não é um dispositivo médico e não diagnostica, trata, cura ou previne qualquer condição de saúde. Não substitui avaliação ou acompanhamento profissional. Para aconselhamento médico, diagnóstico ou tratamento, consulte um profissional de saúde. Em uma emergência, procure os serviços locais de urgência.
 
@@ -35,7 +35,7 @@ Solicitar exclusão de conta: https://app-reducao-consumo.vercel.app/excluir-con
 - Propósito: acompanhamento voluntário e apoio à redução/interrupção do consumo de cannabis; **sem** venda, promoção ou intermediação de substâncias.
 - O aplicativo oferece registro de humor, progresso, exercícios SOS e comunidade com denúncias/bloqueios.
 - Há dados potencialmente sensíveis de hábitos, humor e consumo; a política de privacidade e o formulário Data Safety precisam refletir o tratamento real.
-- Não há oferta de novas assinaturas nesta versão. Caso o Play Console peça uma conta de acesso, criar **conta de teste descartável**, com dados fictícios, e fornecer credenciais somente pelo campo seguro do Console (nunca pelo GitHub).
+- Não há cobrança ativa na versão de pré-lançamento. Antes de anunciar compra única, concluir as etapas de \`docs/google-play-monetization.md\`. Caso o Play Console peça uma conta de acesso, criar **conta de teste descartável**, com dados fictícios, e fornecer credenciais somente pelo campo seguro do Console (nunca pelo GitHub).
 
 ## Materiais gráficos obrigatórios / a confirmar
 
@@ -56,7 +56,7 @@ Solicitar exclusão de conta: https://app-reducao-consumo.vercel.app/excluir-con
 | Conteúdo do usuário | Publicações, comentários, denúncias | Compartilhamento entre participantes e moderação |
 | Dados técnicos e analytics | Hospedagem Vercel, Supabase e telemetria habilitada | IP, eventos, diagnósticos, fornecedores e finalidades |
 | Preferências | Configurações e armazenamento local | Notificações, idioma, fuso horário |
-| Dados de pagamento | Nenhuma compra nova nesta versão | Revisar somente se Play Billing for implementado |
+| Compras e acesso | A versão paga poderá receber estado de compra e hash do token do Google Play, identificador do pedido e conta vinculada; não armazenamos número do cartão | Atualizar a declaração Data Safety **após ativar** Play Billing e revisar o fluxo real |
 
 Verificar se dados são transmitidos com TLS, se há criptografia em repouso no fornecedor, se exclusão é efetiva e quais backups seguem retidos. A declaração da loja deve ser consistente com a política pública e com o comportamento real do aplicativo.
 
