@@ -128,8 +128,8 @@ const BLOCKED_WORDS = new Set([
 function hasProfanity(text: string): boolean {
   // Tokenize whole words so e.g. "computador" is not rejected for "puta".
   // Normalize diacritics to handle common spelling variants.
-  const words = text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
-    .match(/\p{L}+/gu) ?? [];
+  const words = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .split(/[^a-z0-9]+/).filter(Boolean);
   return words.some((word) => BLOCKED_WORDS.has(word));
 }
 
