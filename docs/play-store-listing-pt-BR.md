@@ -39,8 +39,8 @@ Solicitar exclusão de conta: https://app-reducao-consumo.vercel.app/excluir-con
 
 ## Materiais gráficos obrigatórios / a confirmar
 
-- Ícone da ficha da loja em PNG de 512 × 512 px, sem usar diretamente SVG.
-- Imagem de destaque (*feature graphic*) de 1024 × 500 px.
+- Ícone da ficha da loja em PNG de 512 × 512 px, sem usar diretamente SVG. Gerar rascunho com `npm run assets:playstore`.
+- Imagem de destaque (*feature graphic*) de 1024 × 500 px. O mesmo comando gera `store-assets/feature-graphic-1024x500.png`; **revisar visualmente** antes do envio.
 - Capturas de tela reais em aparelho Android da versão que será enviada; sem informações pessoais verdadeiras.
 - Capturas sugeridas: painel, diário, SOS, comunidade, configurações/exclusão de conta.
 - E-mail público de suporte funcional, nome do desenvolvedor, site e dados exigidos pelo Console.
