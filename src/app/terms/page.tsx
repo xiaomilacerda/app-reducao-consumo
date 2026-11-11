@@ -129,9 +129,10 @@ export default function TermsPage() {
         <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-3">
           <h2 className="text-base font-semibold">5. Acesso completo e pagamento único</h2>
           <p>
-            O WeedReset pode oferecer uma versão gratuita e recursos adicionais na modalidade
-            Premium. A disponibilidade, preço, forma de pagamento e benefícios do plano Premium
-            podem ser alterados ao longo do tempo.
+            O WeedReset pode oferecer um período inicial de experimentação e uma compra única
+            de acesso completo, sem renovação automática. A cobrança só estará disponível após
+            a ativação oficial na Google Play. O preço final e a moeda serão exibidos pela loja
+            antes da confirmação. Cancelamentos e reembolsos seguem as regras da Google Play.
           </p>
           <p>
             Em caso de dúvidas sobre cobranças realizadas por lojas de aplicativos (como Google
