@@ -646,6 +646,10 @@ export default function SettingsPage() {
           <Link href="/excluir-conta" className="mt-3 inline-flex min-h-11 items-center rounded-xl border border-rose-300/30 px-4 text-xs font-semibold text-rose-200 hover:bg-rose-300/10">
             Excluir minha conta
           </Link>
+          <div className="mt-3 flex flex-wrap gap-4 text-xs">
+            <Link href="/privacy" className="inline-flex min-h-10 items-center text-violet-200 underline underline-offset-2">Política de Privacidade</Link>
+            <Link href="/terms" className="inline-flex min-h-10 items-center text-violet-200 underline underline-offset-2">Termos de Uso</Link>
+          </div>
         </section>
 
         {/* SOBRE & PRIVACIDADE */}
@@ -659,8 +663,9 @@ export default function SettingsPage() {
             <code>user_settings</code>) e podem ser usadas em outros dispositivos.
           </p>
           <p>
-            • Idioma, fuso horário, foco, tema e notificações servem apenas para
-            personalizar a sua experiência — não compartilhamos esses dados com terceiros.
+            • Idioma, fuso horário, foco, tema e notificações ajudam a personalizar
+            a experiência. Prestadores de infraestrutura podem processar esses dados
+            conforme descrito na Política de Privacidade.
           </p>
           <p>
             • Tradução completa para inglês e espanhol será ligada apenas quando o app
