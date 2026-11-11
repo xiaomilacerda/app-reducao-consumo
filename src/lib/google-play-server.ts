@@ -1,5 +1,6 @@
 import { createHash, sign } from "node:crypto";
 import { WEEDRESET_PRODUCT_ID } from "@/config/monetization";
+import { paidAccessEnabled } from "@/lib/access-status";
 
 type ServiceAccount = { client_email: string; private_key: string };
 type ProductPurchase = {
@@ -21,10 +22,10 @@ function getServiceAccount(): ServiceAccount {
 
 export function googlePlayReady() {
   return Boolean(
-    process.env.WEEDRESET_PAID_ACCESS_ENABLED === "true" &&
+    paidAccessEnabled() &&
     process.env.GOOGLE_PLAY_PACKAGE_NAME &&
     process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON &&
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY)
   );
 }
 
