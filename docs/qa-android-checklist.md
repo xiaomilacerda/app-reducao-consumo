@@ -1,6 +1,6 @@
 # WeedReset — plano de testes antes do envio à Play Store
 
-Status inicial em 11/11/2026: **NÃO EXECUTADO**. Marcar cada item apenas após evidência em dispositivo/conta de testes.
+Status inicial em 11/11/2026: **NÃO EXECUTADO**. Para monetização, consultar também `docs/google-play-monetization.md`. Marcar cada item apenas após evidência em dispositivo/conta de testes.
 
 ## 1. Identidade Android e TWA
 
@@ -32,7 +32,7 @@ Status inicial em 11/11/2026: **NÃO EXECUTADO**. Marcar cada item apenas após 
 - [ ] Modo offline exibe aviso sem revelar dados de outra sessão; retorno online sincroniza corretamente.
 - [ ] Fonte ampliada, leitor de tela, foco de teclado, contraste e alvos de toque adequados.
 - [ ] Mensagens de saúde não prometem cura, diagnóstico, prevenção ou números clínicos comprovados.
-- [ ] Não há compra Premium funcional nem links externos de pagamento digital não permitidos.
+- [ ] No pré-lançamento, compras desativadas; antes da versão paga, testar compra única, restauração, conta diferente e bloqueio de compra por site dentro da TWA.
 - [ ] Não há links de venda, entrega ou facilitação de cannabis.
 - [ ] E-mail de suporte, URLs legais, formulário Data Safety e classificação etária verificados.
 
